@@ -1,0 +1,13 @@
+<package>
+  <description brief="Jaguar CANbus speed controller driver">
+    Driver for Texas Instruments' Jaguar speed controller that is controlled
+    via CANbus network. Communication with the first Jaguar is done over RS232,
+    which acts as a bridge to other daisy-chained CANbus devices.
+  </description>
+  <author>Michael Koval</author>
+  <license>BSD</license>
+  <rosdep name="pyserial"/>
+  <depend package="geometry_msgs"/>
+  <depend package="rospy"/>
+  <depend package="tf"/>
+</package>
