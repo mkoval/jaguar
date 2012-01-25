@@ -29,12 +29,12 @@ class PacketizerTests(unittest.TestCase):
         payloads = self.recv_bytes(packet1 + packet2)
         self.assertEqual(payloads, [ None, None, 'a', None, None, 'b' ])
 
-    def test_RecvByte_SOFIsEscaped(self):
+    def test_RecvByte_EscapesSOF(self):
         packet   = self.build_packet('\xFE\xFE', 1)
         payloads = self.recv_bytes(packet)
         self.assertEqual(payloads, [ None, None, None, '\xFF' ])
 
-    def test_RecvByte_ESCIsEscaped(self):
+    def test_RecvByte_EscapesESC(self):
         packet   = self.build_packet('\xFE\xFD', 1)
         payloads = self.recv_bytes(packet)
         self.assertEqual(payloads, [ None, None, None, '\xFE' ])
