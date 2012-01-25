@@ -1,7 +1,6 @@
-import serial
-import struct
+import serial, struct
 from collections import deque, namedtuple
-from Threading import Condition, Thread
+from threading import Condition, Thread
 
 SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
 GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
@@ -9,31 +8,33 @@ GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
                                               'payload' ])
 
 class Packetizer:
-    def __init__(self, sof, esc, sof_esc, esc_esc);
+    def __init__(self, sof, esc, sof_esc, esc_esc):
         self.sof = sof
         self.esc = esc
         self.esc_sof = sof_esc
         self.esc_esc = esc_esc
         self.packets = deque()
-        self.reset()
+        self._reset()
 
-    def recv_byte(self, byte):
+    def recv_byte(self, byte_raw):
+        byte     = ord(byte_raw)
         byte_dec = self._decode(self.last, byte)
 
-        if byte_dec == None:
-            self._error()
         # Every start of frame (SOF) byte starts a new frame because it is
         # otherwise escaped.
-        if byte_dec == self.sof:
+        if byte == self.sof:
             self._reset()
         # Next byte is the total number of bytes in the packet. Note that this
         # could be encoded if it equals 255, although this should never occur
         # in practice when framing CANbus messages.
         elif self.offset == 1:
-            (self.count, ) = struct.unpack('B', byte_dec)
+            self.count   = byte
             self.offset += 1
-        else:
+        elif byte_dec:
             self.packet.append(byte_dec)
+            self.offset += 1
+
+        self.last = byte
 
         # Done receiving the entire packet, so add it to the queue. Padding
         # compensates for fields in the packet (e.g. device id) that don't
@@ -65,9 +66,11 @@ class Packetizer:
             elif curr == self.esc_sof:
                 return self.sof
             else:
-                return None
-        else:
+                raise IOError('Unexpected escape sequence.')
+        elif curr != self.esc:
             return curr
+        else:
+            return None
 
 class JaguarUART:
     def __init__(self, serial, packetizer):
@@ -100,10 +103,10 @@ class JaguarUART:
         )
 
     def send_message(self, message):
-        message_id = ((message.device_id     & 0b11111)      << 28) |
-                     ((message.manufacturer  & 0b11111111)   << 23) |
-                     ((message.api           & 0b1111111111) << 15) |
-                     ((message.device_number & 0b111111)     <<  0)
+        message_id = (((message.device_id     & 0b11111)      << 28) |
+                      ((message.manufacturer  & 0b11111111)   << 23) |
+                      ((message.api           & 0b1111111111) << 15) |
+                      ((message.device_number & 0b111111)     <<  0))
         packed_id = struct.pack('<I', message_id)
 
         packed_message = packed_id + message.payload
