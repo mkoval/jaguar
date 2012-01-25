@@ -1,4 +1,4 @@
-import serial, struct
+import logging, serial, struct
 from collections import deque, namedtuple
 from threading import Condition, Thread
 
@@ -8,13 +8,19 @@ GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
                                               'payload' ])
 
 class Packetizer:
-    def __init__(self, sof, esc, sof_esc, esc_esc):
+    def __init__(self, sof, esc, sof_esc, esc_esc, logger):
         self.sof = sof
         self.esc = esc
         self.esc_sof = sof_esc
         self.esc_esc = esc_esc
         self.packets = deque()
         self._reset()
+
+        FORMAT = "%(message)s"
+        logging.basicConfig(format=FORMAT)
+        self.logger = logging.getLogger('Packetizer')
+        self.logger.setLevel(logging.WARNING)
+        self.logger = logger
 
     def recv_byte(self, byte_raw):
         byte     = ord(byte_raw)
@@ -23,6 +29,7 @@ class Packetizer:
         # Every start of frame (SOF) byte starts a new frame because it is
         # otherwise escaped.
         if byte == self.sof:
+            self.logger.debug('packet start')
             self._reset()
         # Next byte is the total number of bytes in the packet. Note that this
         # could be encoded if it equals 255, although this should never occur
@@ -40,6 +47,7 @@ class Packetizer:
         # compensates for fields in the packet (e.g. device id) that don't
         # contribute to the byte count.
         if self.valid and self.offset == self.count + 2:
+            self.logger.debug('packet end')
             new_packet = self.packet
             self._reset()
             return new_packet
@@ -66,11 +74,12 @@ class Packetizer:
             elif curr == self.esc_sof:
                 return self.sof
             else:
-                raise IOError('Unexpected escape sequence.')
-        elif curr != self.esc:
-            return curr
-        else:
+                self.logger.warning('Unexpected escape sequence.')
+        elif curr == self.esc:
+            self.logger.debug('packet esc')
             return None
+        else:
+            return curr
 
 class JaguarUART:
     def __init__(self, serial, packetizer):
