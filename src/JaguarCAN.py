@@ -4,8 +4,8 @@ from threading import Condition, Thread
 
 SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
 GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
-                                              'api', 'device_number',
-                                              'payload' ])
+                                              'api_class', 'api_key',
+                                              'device_number', 'payload' ])
 
 class Packetizer:
     def __init__(self, sof, esc, sof_esc, esc_esc, logger):
@@ -14,13 +14,8 @@ class Packetizer:
         self.esc_sof = sof_esc
         self.esc_esc = esc_esc
         self.packets = deque()
+        self.logger  = logger
         self._reset()
-
-        FORMAT = "%(message)s"
-        logging.basicConfig(format=FORMAT)
-        self.logger = logging.getLogger('Packetizer')
-        self.logger.setLevel(logging.WARNING)
-        self.logger = logger
 
     def recv_byte(self, byte_raw):
         byte     = ord(byte_raw)
@@ -82,16 +77,21 @@ class Packetizer:
             return curr
 
 class JaguarUART:
-    def __init__(self, serial, packetizer):
-        self.packets    = deque()
-        self.serial     = serial
+    def __init__(self, serial, packetizer, timeout=0.25):
+        self.packets = deque()
+        self.alive   = True
+
+        self.serial = serial
+        self.serial.timeout = timeout
         self.packetizer = packetizer
-        self.condition  = Condition()
-        self.producer   = Thread(target=self._producer)
-        self.producer.run()
+
+        self.condition = Condition()
+        self.producer = Thread(target=self._producer)
+        self.producer.start()
 
     def close(self):
-        # TODO: Kill the producer thread before closing the connection.
+        self.alive = False
+        self.producer.join()
         self.fp.close()
 
     def recv_message(self):
@@ -101,14 +101,18 @@ class JaguarUART:
 
         packet = self.packets.popleft()
         self.condition.release()
+        return JaguarUART.parse_message(packet)
 
+    @staticmethod
+    def parse_message(packet):
         (message_id, ) = struct.unpack('<I', packet[0:4])
-        return GenericCANMessage(
-            device_type   = message_id & 0b00011111000000000000000000000000,
-            manufacturer  = message_id & 0b00000000111111110000000000000000,
-            api           = message_id & 0b00000000000000001111111111000000,
-            device_number = message_id & 0b00000000000000000000000000111111,
-            payload       = packet[5:]
+        return GenericCANMsg(
+            device_type   = (message_id & (0x1F << 24)) >> 24,
+            manufacturer  = (message_id & (0xFF << 16)) >> 16,
+            api_class     = (message_id & (0x3F << 10)) >> 10,
+            api_key       = (message_id & (0x0F << 6))  >> 6,
+            device_number = (message_id & (0x3F << 0))  >> 0,
+            payload       = packet[4:]
         )
 
     def send_message(self, message):
@@ -122,19 +126,18 @@ class JaguarUART:
         self.serial.send_bytes(packed_message)
 
     def _producer(self):
-        while True:
-            pending = self.serial.inWaiting()
-            data    = self.serial.read(pending)
+        while self.alive:
+            pending = max(self.serial.inWaiting(), 1)
+            data    = self.serial.read(size=pending)
             
-            self.condition.acquire()
-
-            for datum in data:
-                packet = self.packetizer.recv_byte(datum)
-                if packet:
-                    self.packets.append(packet)
-                    self.condition.notify()
-
-            self.condition.release()
+            if data != None:
+                self.condition.acquire()
+                for datum in data:
+                    packet = self.packetizer.recv_byte(datum)
+                    if packet:
+                        self.packets.append(packet)
+                        self.condition.notify()
+                self.condition.release()
 
 def main():
     serial = serial.Serial(

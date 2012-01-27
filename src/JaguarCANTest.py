@@ -1,5 +1,9 @@
 import logging, unittest, struct
+from collections import deque
+from mock import Mock
+from threading import Condition,Thread
 from JaguarCAN import JaguarUART, Packetizer
+import time
 
 class PacketizerTests(unittest.TestCase):
     def setUp(self):
@@ -45,6 +49,17 @@ class PacketizerTests(unittest.TestCase):
 
     def recv_bytes(self, data):
         return map(self.packetizer.recv_byte, data)
+
+class JaguarUARTTests(unittest.TestCase):
+    def test_ParseMessage(self):
+        data    = b'\x85\x00\x02\x02\x00\x08'
+        message = JaguarUART.parse_message(data)
+        self.assertEqual(message.device_type, 2)
+        self.assertEqual(message.device_number, 5)
+        self.assertEqual(message.manufacturer, 2)
+        self.assertEqual(message.payload, '\x00\x08')
+        self.assertEqual(message.api_class, 0)
+        self.assertEqual(message.api_key, 2)
 
 if __name__ == '__main__':
     unittest.main()
