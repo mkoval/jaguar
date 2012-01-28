@@ -18,7 +18,7 @@
 # CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 # DAMAGES, FOR ANY REASON WHATSOEVER.
 # 
-# This is part of revision 8264 of the RDK-BDC Firmware Package.
+# This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 #
 #******************************************************************************
 
@@ -57,7 +57,7 @@ IPATH+=../../..
 # The default rule, which causes the Brushed DC Motor Controller to be built.
 #
 all: ${COMPILER}
-all: ${COMPILER}/qs-bdc.axf
+all: ${COMPILER}/qs-bdc24.axf
 
 #
 # The rule to clean out all the build products.
@@ -74,28 +74,30 @@ ${COMPILER}:
 #
 # Rules for building the Brushed DC Motor Controller.
 #
-${COMPILER}/qs-bdc.axf: ${COMPILER}/adc_ctrl.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/button.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/can_if.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/commands.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/controller.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/encoder.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/fan.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/flash_pb.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/hbridge.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/led.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/limit.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/math.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/param.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/pid.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/qs-bdc.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/servo_if.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/startup_${COMPILER}.o
-${COMPILER}/qs-bdc.axf: ${COMPILER}/wdog.o
-${COMPILER}/qs-bdc.axf: ${ROOT}/driverlib/${COMPILER}-cm3/libdriver-cm3.a
-${COMPILER}/qs-bdc.axf: qs-bdc.ld
-SCATTERgcc_qs-bdc=qs-bdc.ld
-ENTRY_qs-bdc=ResetISR
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/adc_ctrl.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/button.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/can_if.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/commands.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/controller.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/encoder.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/fan.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/flash_pb.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/hbridge.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/led.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/limit.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/math.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/message.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/param.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/pid.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/qs-bdc24.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/servo_if.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/startup_${COMPILER}.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/uart_if.o
+${COMPILER}/qs-bdc24.axf: ${COMPILER}/wdog.o
+${COMPILER}/qs-bdc24.axf: ${ROOT}/driverlib/${COMPILER}-cm3/libdriver-cm3.a
+${COMPILER}/qs-bdc24.axf: qs-bdc24.ld
+SCATTERgcc_qs-bdc24=qs-bdc24.ld
+ENTRY_qs-bdc24=ResetISR
 CFLAGSgcc=-DTARGET_IS_DUSTDEVIL_RA0
 
 #

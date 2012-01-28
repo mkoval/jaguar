@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -57,6 +57,7 @@ extern void CAN0IntHandler(void);
 extern void ServoIFIntHandler(void);
 extern void EncoderIntHandler(void);
 extern void ControllerIntHandler(void);
+extern void UART0IntHandler(void);
 extern void WatchdogIntHandler(void);
 
 //*****************************************************************************
@@ -91,7 +92,7 @@ void (* const g_pfnVectors[])(void) =
     EncoderIntHandler,                      // GPIO Port C
     IntDefaultHandler,                      // GPIO Port D
     IntDefaultHandler,                      // GPIO Port E
-    IntDefaultHandler,                      // UART0 Rx and Tx
+    UART0IntHandler,                        // UART0 Rx and Tx
     IntDefaultHandler,                      // UART1 Rx and Tx
     IntDefaultHandler,                      // SSI0 Rx and Tx
     IntDefaultHandler,                      // I2C0 Master and Slave

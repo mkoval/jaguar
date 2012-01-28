@@ -1,5 +1,5 @@
 <!--
-Configuration file for Code Red project qs-bdc
+Configuration file for Code Red project qs-bdc24
 
 Copyright (c) 2008-2011 Texas Instruments Incorporated.  All rights reserved.
 Software License Agreement
@@ -17,7 +17,7 @@ A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. TI SHALL NOT, UNDER ANY
 CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, FOR ANY REASON WHATSOEVER.
 
-This is part of revision 8264 of the RDK-BDC Firmware Package.
+This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 -->
 
 <project chip="LM3S2616"
@@ -36,7 +36,7 @@ This is part of revision 8264 of the RDK-BDC Firmware Package.
     <copy>utils/flash_pb.c</copy>
   </import>
   <import src=".">
-    <copy>qs-bdc_codered.ld</copy>
+    <copy>qs-bdc24_codered.ld</copy>
   </import>
   <requires>
     <value>inc</value>
@@ -80,7 +80,7 @@ This is part of revision 8264 of the RDK-BDC Firmware Package.
     <value>-Os</value>
   </setting>
   <setting id="linker.script">
-    <value>../qs-bdc_codered.ld</value>
+    <value>../qs-bdc24_codered.ld</value>
   </setting>
   <setting id="linker.libs">
     <value>driver-cm3</value>

@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -34,6 +34,7 @@
 #define LINK_TYPE_NONE          0
 #define LINK_TYPE_SERVO         1
 #define LINK_TYPE_CAN           2
+#define LINK_TYPE_UART          3
 
 //*****************************************************************************
 //
@@ -96,6 +97,8 @@ extern void ControllerCurrentIGainSet(long lIGain);
 extern long ControllerCurrentIGainGet(void);
 extern void ControllerCurrentDGainSet(long lDGain);
 extern long ControllerCurrentDGainGet(void);
+extern unsigned long ControllerPowerStatus(void);
+extern void ControllerPowerStatusClear(void);
 extern void ControllerHaltSet(void);
 extern void ControllerHaltClear(void);
 extern unsigned long ControllerHalted(void);

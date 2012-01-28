@@ -19,7 +19,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -28,19 +28,13 @@
 
 //*****************************************************************************
 //
-// The number of seconds to wait for an assignment before returning to normal
-// operation.
-//
-//*****************************************************************************
-#define CAN_ASSIGN_WAIT_SECONDS 5
-
-//*****************************************************************************
-//
 // Prototypes for the CAN interface functions.
 //
 //*****************************************************************************
 extern void CANIFInit(void);
-extern void CANIFTick(void);
-extern void CANIFButtonPress(void);
+extern void CANIFSetID(unsigned long ulID);
+extern void CANIFEnumerate(void);
+extern void CANIFSendBridgeMessage(unsigned long ulID, unsigned char *pucData,
+                                   unsigned long ulMsgLen);
 
 #endif // __CAN_IF_H__

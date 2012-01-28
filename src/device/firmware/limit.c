@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -26,21 +26,31 @@
 #include "inc/hw_types.h"
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
+#include "driverlib/sysctl.h"
+#include "commands.h"
 #include "controller.h"
+#include "constants.h"
 #include "limit.h"
 #include "pins.h"
 
 //*****************************************************************************
 //
-// The soft limit switch flags.  The first enables the soft limit switches, the
-// second indicates that the forward soft limit switch is a less than
-// comparison instead of a greater than comparison, and the third indicates the
-// same for the reverse soft limit switch.
+// The limit switch flags.
+//
+// The first enables the soft limit switches, the second indicates that the
+// forward soft limit switch is a less than comparison instead of a greater
+// than comparison, and the third indicates the same for the reverse soft limit
+// switch.
+//
+// The last flag indicates that the Jaguar was put into Automatic Ramp mode on
+// startup because it detected a cross-connected jumper on the hard limit
+// switch inputs.
 //
 //*****************************************************************************
-#define LIMIT_FLAG_POSITION_EN  2
-#define LIMIT_FLAG_FORWARD_LT   3
-#define LIMIT_FLAG_REVERSE_LT   4
+#define LIMIT_FLAG_POSITION_EN      2
+#define LIMIT_FLAG_FORWARD_LT       3
+#define LIMIT_FLAG_REVERSE_LT       4
+#define LIMIT_FLAG_AUTO_RAMP_EN     5
 unsigned long g_ulLimitFlags;
 
 //*****************************************************************************
@@ -56,9 +66,16 @@ static long g_lLimitReverse;
 // This function initializes the limit switch inputs, preparing them to sense
 // the state of the limit switches.
 //
+// Before final initilization, this function can set the Voltage Mode ramp rate
+// when it detects a cross-connected jumper across the limit swich inputs;
+// essentially enabiling an automatic voltage ramp without the use of CAN.
+//
 // The limit switches are normally closed switches that open when the switches
 // are pressed.  When closed, the switches connect the input to ground.  When
 // opened, the on-chip weak pull-up connects the input to Vdd.
+//
+// This function should always be called sometime after ControllerInit()
+// because it depends on the controller being initialized.
 //
 //*****************************************************************************
 void
@@ -85,6 +102,57 @@ LimitInit(void)
     // Clear the limit flags.
     //
     g_ulLimitFlags = 0;
+
+    //
+    // If both limit switch inputs are high, determine if there is a cross-
+    // connected jumper.
+    //
+    if(ROM_GPIOPinRead(LIMIT_FWD_PORT, LIMIT_FWD_PIN) &&
+       ROM_GPIOPinRead(LIMIT_REV_PORT, LIMIT_REV_PIN))
+    {
+        //
+        // Configure forward limit pin as an open-drain output with a weak
+        // pull-up.
+        //
+        ROM_GPIODirModeSet(LIMIT_FWD_PORT, LIMIT_FWD_PIN, GPIO_DIR_MODE_OUT);
+        ROM_GPIOPadConfigSet(LIMIT_FWD_PORT, LIMIT_FWD_PIN, GPIO_STRENGTH_2MA,
+                             GPIO_PIN_TYPE_OD_WPU);
+
+        //
+        // Set the forward limit pin low.
+        //
+        ROM_GPIOPinWrite(LIMIT_FWD_PORT, LIMIT_FWD_PIN, 0);
+
+        //
+        // Wait a bit.
+        //
+        SysCtlDelay(1000);
+
+        //
+        // If the reverse limit pin is now low too, a cross-connected
+        // jumper was successfully detected.
+        //
+        if(ROM_GPIOPinRead(LIMIT_REV_PORT, LIMIT_REV_PIN) == 0)
+        {
+            //
+            // Set the Automatic Ramp Flag.
+            //
+            HWREGBITW(&g_ulLimitFlags, LIMIT_FLAG_AUTO_RAMP_EN) = 1;
+
+            //
+            // Set Voltage Mode ramp to AUTO_RAMP_RATE.
+            //
+            ControllerVoltageRateSet(AUTO_RAMP_RATE);
+        }
+
+        //
+        // Reconfigure the forward limit pin as an input with a weak pull-
+        // up.
+        //
+        ROM_GPIODirModeSet(LIMIT_FWD_PORT, LIMIT_FWD_PIN, GPIO_DIR_MODE_IN);
+        ROM_GPIOPadConfigSet(LIMIT_FWD_PORT, LIMIT_FWD_PIN, GPIO_STRENGTH_2MA,
+                             GPIO_PIN_TYPE_STD_WPU);
+    }
 }
 
 //*****************************************************************************
@@ -214,7 +282,7 @@ LimitPositionReverseGet(long *plPosition, unsigned long *pulLessThan)
 void
 LimitTick(void)
 {
-    unsigned long ulFlag;
+    unsigned long ulFlag, ulLimitStatus;
     long lPosition;
 
     //
@@ -238,9 +306,23 @@ LimitTick(void)
     ulFlag = 1;
 
     //
+    // If Automatic Ramp mode is enabled set the status to LIMIT_FWD_OK,
+    // ignoring the hard limit. Otherwise, read the status of the forward
+    // limit switch.
+    //
+    if(HWREGBITW(&g_ulLimitFlags, LIMIT_FLAG_AUTO_RAMP_EN))
+    {
+        ulLimitStatus = LIMIT_FWD_OK;
+    }
+    else
+    {
+        ulLimitStatus = ROM_GPIOPinRead(LIMIT_FWD_PORT, LIMIT_FWD_PIN);
+    }
+
+    //
     // See if the forward limit switch is engaged.
     //
-    if(ROM_GPIOPinRead(LIMIT_FWD_PORT, LIMIT_FWD_PIN) == LIMIT_FWD_OK)
+    if(ulLimitStatus == LIMIT_FWD_OK)
     {
         //
         // See if the soft limit switches are enabled.
@@ -291,9 +373,23 @@ LimitTick(void)
     ulFlag = 1;
 
     //
+    // If Automatic Ramp mode is enabled set the status to LIMIT_REV_OK,
+    // ignoring the hard limit. Otherwise, read the status of the reverse
+    // limit switch.
+    //
+    if(HWREGBITW(&g_ulLimitFlags, LIMIT_FLAG_AUTO_RAMP_EN))
+    {
+        ulLimitStatus = LIMIT_REV_OK;
+    }
+    else
+    {
+        ulLimitStatus = ROM_GPIOPinRead(LIMIT_REV_PORT, LIMIT_REV_PIN);
+    }
+
+    //
     // See if the reverse limit switch is engaged.
     //
-    if(ROM_GPIOPinRead(LIMIT_REV_PORT, LIMIT_REV_PIN) == LIMIT_REV_OK)
+    if(ulLimitStatus == LIMIT_REV_OK)
     {
         //
         // See if the soft limit switches are enabled.
@@ -324,7 +420,7 @@ LimitTick(void)
     {
         //
         // The reverse limit switch has opened, so it is not acceptable to run
-        // the motor in the reverse direction.
+        // the motor in the forward direction.
         //
         ulFlag = 0;
     }

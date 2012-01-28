@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -39,6 +39,7 @@
 // Function prototypes.
 //
 //*****************************************************************************
+extern void HBridgeGateDriverReset(void);
 extern void HBridgeInit(void);
 extern void HBridgeVoltageMaxSet(long lVoltage);
 extern long HBridgeVoltageMaxGet(void);

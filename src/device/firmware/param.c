@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -26,6 +26,20 @@
 #include "utils/flash_pb.h"
 #include "constants.h"
 #include "param.h"
+
+//*****************************************************************************
+//
+// The firmware version.
+//
+//*****************************************************************************
+const unsigned long g_ulFirmwareVersion = 8264;
+
+//*****************************************************************************
+//
+// The hardware version.
+//
+//*****************************************************************************
+unsigned char g_ucHardwareVersion = 0;
 
 //*****************************************************************************
 //
