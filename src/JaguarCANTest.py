@@ -54,12 +54,12 @@ class JaguarUARTTests(unittest.TestCase):
     def test_ParseMessage(self):
         data    = b'\x85\x00\x02\x02\x00\x08'
         message = JaguarUART.parse_message(data)
+        self.assertEqual(message.manufacturer, 2)
         self.assertEqual(message.device_type, 2)
         self.assertEqual(message.device_number, 5)
-        self.assertEqual(message.manufacturer, 2)
-        self.assertEqual(message.payload, '\x00\x08')
         self.assertEqual(message.api_class, 0)
         self.assertEqual(message.api_key, 2)
+        self.assertEqual(message.payload, '\x00\x08')
 
 if __name__ == '__main__':
     unittest.main()
