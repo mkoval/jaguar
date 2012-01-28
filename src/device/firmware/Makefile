@@ -35,7 +35,7 @@ VARIANT=cm3
 #
 # The base directory for StellarisWare.
 #
-ROOT=../../..
+ROOT=..
 
 #
 # Include the common make definitions.
@@ -45,13 +45,12 @@ include ${ROOT}/makedefs
 #
 # Where to find source files that do not live in this directory.
 #
-VPATH=../../../utils
+VPATH=${ROOT}/utils
 
 #
 # Where to find header files that do not live in the source directory.
 #
-IPATH=..
-IPATH+=../../..
+IPATH=${ROOT}
 
 #
 # The default rule, which causes the Brushed DC Motor Controller to be built.
