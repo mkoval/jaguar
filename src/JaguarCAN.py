@@ -1,5 +1,5 @@
-import logging, serial, struct
-from collections import deque, namedtuple
+import bitstring, logging, serial, struct
+from collections import deque, namedtuple, OrderedDict
 from threading import Condition, Thread
 
 SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
@@ -77,6 +77,16 @@ class Packetizer:
             return curr
 
 class JaguarUART:
+    header_fields = OrderedDict([
+        ('resv',          'uint:3'),
+        ('device_type',   'uint:5'),
+        ('manufacturer',  'uint:8'),
+        ('api_class',     'uint:6'),
+        ('api_key',       'uint:4'),
+        ('device_number', 'uint:6')
+    ])
+    header_fmt = [ field + '=' + name for name, field in header_fields.items() ]
+
     def __init__(self, serial, packetizer, timeout=0.25):
         self.packets = deque()
         self.alive   = True
@@ -94,6 +104,26 @@ class JaguarUART:
         self.producer.join()
         self.fp.close()
 
+    @classmethod
+    def parse_message(cls, packet):
+        header_raw = bitstring.BitArray(bytes=packet[0:4])
+        header_raw.byteswap()
+
+        header_list = header_raw.unpack(cls.header_fmt)
+        header = dict(zip(cls.header_fields.keys(), header_list))
+        del header['resv']
+        return GenericCANMsg(payload=packet[4:], **header)
+
+    @classmethod
+    def generate_message(cls, msg):
+        header = bitstring.pack(cls.header_fmt, resv=0, **msg._asdict())
+        header.byteswap()
+        return header.bytes + msg.payload
+
+    def send_message(self, msg):
+        packed = self.generate_message(msg)
+        self.serial.send_bytes(packed)
+
     def recv_message(self):
         self.condition.acquire()
         while not self.packets:
@@ -101,29 +131,7 @@ class JaguarUART:
 
         packet = self.packets.popleft()
         self.condition.release()
-        return JaguarUART.parse_message(packet)
-
-    @staticmethod
-    def parse_message(packet):
-        (message_id, ) = struct.unpack('<I', packet[0:4])
-        return GenericCANMsg(
-            device_type   = (message_id & (0x1F << 24)) >> 24,
-            manufacturer  = (message_id & (0xFF << 16)) >> 16,
-            api_class     = (message_id & (0x3F << 10)) >> 10,
-            api_key       = (message_id & (0x0F << 6))  >> 6,
-            device_number = (message_id & (0x3F << 0))  >> 0,
-            payload       = packet[4:]
-        )
-
-    def send_message(self, message):
-        message_id = (((message.device_id     & 0b11111)      << 28) |
-                      ((message.manufacturer  & 0b11111111)   << 23) |
-                      ((message.api           & 0b1111111111) << 15) |
-                      ((message.device_number & 0b111111)     <<  0))
-        packed_id = struct.pack('<I', message_id)
-
-        packed_message = packed_id + message.payload
-        self.serial.send_bytes(packed_message)
+        return self.parse_message(packet)
 
     def _producer(self):
         while self.alive:

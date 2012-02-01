@@ -2,7 +2,7 @@ import logging, unittest, struct
 from collections import deque
 from mock import Mock
 from threading import Condition,Thread
-from JaguarCAN import JaguarUART, Packetizer
+from JaguarCAN import GenericCANMsg, JaguarUART, Packetizer
 import time
 
 class PacketizerTests(unittest.TestCase):
@@ -60,6 +60,18 @@ class JaguarUARTTests(unittest.TestCase):
         self.assertEqual(message.api_class, 0)
         self.assertEqual(message.api_key, 2)
         self.assertEqual(message.payload, '\x00\x08')
+
+    def test_GenerateMessage(self):
+        message = GenericCANMsg(
+            manufacturer=2,
+            device_type=2,
+            device_number=5,
+            api_class=0,
+            api_key=2,
+            payload='\x00\x08'
+        )
+        data = JaguarUART.generate_message(message)
+        self.assertEqual(data, b'\x85\x00\x02\x02\x00\x08')
 
 if __name__ == '__main__':
     unittest.main()
