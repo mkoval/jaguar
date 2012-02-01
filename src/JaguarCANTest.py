@@ -1,3 +1,4 @@
+from __future__ import nested_scopes
 import logging, unittest, struct
 from collections import deque
 from mock import Mock
@@ -7,11 +8,7 @@ import time
 
 class PacketizerTests(unittest.TestCase):
     def setUp(self):
-        logging.basicConfig(format='%(message)s')
-        logger = logging.getLogger('Packetizer')
-        logger.setLevel(logging.WARNING)
-
-        self.packetizer = Packetizer(0xff, 0xfe, 0xfe, 0xfd, logger)
+        self.packetizer = Packetizer(0xff, 0xfe, 0xfe, 0xfd)
 
     def test_RecvByte_ReturnsNone_WhenNoPacket(self):
         packet = self.packetizer.recv_byte('\xff')
@@ -50,10 +47,44 @@ class PacketizerTests(unittest.TestCase):
     def recv_bytes(self, data):
         return map(self.packetizer.recv_byte, data)
 
+class SerialMock:
+    def __init__(self):
+        self._buf_read  = deque()
+        self._buf_write = deque()
+
+    def _add_data(self, data):
+        self._buf_read.extend(data)
+
+    def read(self, size=1):
+        assert self._buf_read
+        return self._buf_read.popleft()
+
+    def write(self, data):
+        self._buf_write.extend(data)
+
+    def inWaiting(self):
+        return len(self._buf_read)
+
 class JaguarUARTTests(unittest.TestCase):
+    raw_v0 = b'\xff\x06\x85\x00\x02\x02\x00\x08'
+    dec_v0 = b'\x85\x00\x02\x02\x00\x08'
+    msg_v0 = GenericCANMsg(
+        manufacturer=2,
+        device_type=2,
+        device_number=5,
+        api_class=0,
+        api_key=2,
+        payload='\x00\x08'
+    )
+
+    def setUp(self):
+        self.serial = SerialMock()
+        self.packetizer = Packetizer(0xff, 0xfe, 0xfe, 0xfd)
+        self.jaguar = JaguarUART(self.serial, self.packetizer)
+
     def test_ParseMessage(self):
         data    = b'\x85\x00\x02\x02\x00\x08'
-        message = JaguarUART.parse_message(data)
+        message = self.jaguar.parse_message(data)
         self.assertEqual(message.manufacturer, 2)
         self.assertEqual(message.device_type, 2)
         self.assertEqual(message.device_number, 5)
@@ -70,8 +101,30 @@ class JaguarUARTTests(unittest.TestCase):
             api_key=2,
             payload='\x00\x08'
         )
-        data = JaguarUART.generate_message(message)
+        data = self.jaguar.generate_message(message)
         self.assertEqual(data, b'\x85\x00\x02\x02\x00\x08')
+
+    def test_RecvMessage(self):
+        # Arrange:
+        def mock_recv_byte(byte):
+            return None if self.serial.inWaiting() else self.msg_v0
+
+        self.packetizer.recv_byte = Mock(side_effect=mock_recv_byte)
+        self.serial.read = Mock(side_effect=self.serial.read)
+        self.serial._add_data(self.raw_v0)
+
+        # Act:
+        msg = self.jaguar.recv_message()
+
+        # Assert:
+        expected_read_args = [ ((1,), {}) ] * len(self.raw_v0)
+        self.assertEqual(self.serial.read.call_args_list, expected_read_args)
+        self.assertEqual(msg, self.msg_v0)
+
+    def test_SendMessage(self):
+        self.packetizer.send_bytes = Mock()
+        self.jaguar.send_message(self.msg_v0)
+        self.packetizer.send_bytes.called_once_with(self.dec_v0)
 
 if __name__ == '__main__':
     unittest.main()

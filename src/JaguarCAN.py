@@ -1,5 +1,6 @@
 import bitstring, logging, serial, struct
 from collections import deque, namedtuple, OrderedDict
+from serial import Serial
 from threading import Condition, Thread
 
 SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
@@ -8,13 +9,12 @@ GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
                                               'device_number', 'payload' ])
 
 class Packetizer:
-    def __init__(self, sof, esc, sof_esc, esc_esc, logger):
+    def __init__(self, sof, esc, sof_esc, esc_esc):
         self.sof = sof
         self.esc = esc
         self.esc_sof = sof_esc
         self.esc_esc = esc_esc
         self.packets = deque()
-        self.logger  = logger
         self._reset()
 
     def recv_byte(self, byte_raw):
@@ -24,7 +24,6 @@ class Packetizer:
         # Every start of frame (SOF) byte starts a new frame because it is
         # otherwise escaped.
         if byte == self.sof:
-            self.logger.debug('packet start')
             self._reset()
         # Next byte is the total number of bytes in the packet. Note that this
         # could be encoded if it equals 255, although this should never occur
@@ -42,14 +41,13 @@ class Packetizer:
         # compensates for fields in the packet (e.g. device id) that don't
         # contribute to the byte count.
         if self.valid and self.offset == self.count + 2:
-            self.logger.debug('packet end')
             new_packet = self.packet
             self._reset()
             return new_packet
         else:
             return None
 
-    def send_bytes(self, ):
+    def send_bytes(self, payload):
         raise NotImplemented('Sending is not implemented!')
 
     def _reset(self):
@@ -68,10 +66,7 @@ class Packetizer:
                 return self.esc
             elif curr == self.esc_sof:
                 return self.sof
-            else:
-                self.logger.warning('Unexpected escape sequence.')
         elif curr == self.esc:
-            self.logger.debug('packet esc')
             return None
         else:
             return curr
@@ -87,22 +82,13 @@ class JaguarUART:
     ])
     header_fmt = [ field + '=' + name for name, field in header_fields.items() ]
 
-    def __init__(self, serial, packetizer, timeout=0.25):
-        self.packets = deque()
-        self.alive   = True
-
+    def __init__(self, serial, packetizer):
         self.serial = serial
-        self.serial.timeout = timeout
         self.packetizer = packetizer
-
-        self.condition = Condition()
-        self.producer = Thread(target=self._producer)
-        self.producer.start()
+        self.alive = True
 
     def close(self):
         self.alive = False
-        self.producer.join()
-        self.fp.close()
 
     @classmethod
     def parse_message(cls, packet):
@@ -122,33 +108,19 @@ class JaguarUART:
 
     def send_message(self, msg):
         packed = self.generate_message(msg)
-        self.serial.send_bytes(packed)
+        self.packetizer.send_bytes(packed)
 
     def recv_message(self):
-        self.condition.acquire()
-        while not self.packets:
-            self.condition.wait()
+        while True:
+            byte = self.serial.read(1)
+            packet = self.packetizer.recv_byte(byte)
 
-        packet = self.packets.popleft()
-        self.condition.release()
-        return self.parse_message(packet)
-
-    def _producer(self):
-        while self.alive:
-            pending = max(self.serial.inWaiting(), 1)
-            data    = self.serial.read(size=pending)
-            
-            if data != None:
-                self.condition.acquire()
-                for datum in data:
-                    packet = self.packetizer.recv_byte(datum)
-                    if packet:
-                        self.packets.append(packet)
-                        self.condition.notify()
-                self.condition.release()
+            if packet != None:
+                msg = self.parse_message(packet)
+                return packet
 
 def main():
-    serial = serial.Serial(
+    serial = Serial(
         baudrate = 115200,
         bytesize = serial.EIGHTBITS,
         parity   = serial.PARITY_NONE,
