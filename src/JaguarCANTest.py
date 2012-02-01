@@ -40,6 +40,35 @@ class PacketizerTests(unittest.TestCase):
         payloads = self.recv_bytes(packet)
         self.assertEqual(payloads, [ None, None, None, '\xFE' ])
 
+    def test_FrameBytes_EmptyPayload(self):
+        framed = self.packetizer.frame_bytes(b'')
+        self.assertEqual(framed, b'\xff\x00')
+
+    def test_FrameBytes_AddsHeader(self):
+        payload = b'ab'
+        framed = self.packetizer.frame_bytes(payload)
+        self.assertEqual(framed, b'\xff\x02ab')
+
+    def test_FrameBytes_EscapesSOFInLength(self):
+        payload = b'a' * 0xff
+        framed = self.packetizer.frame_bytes(payload)
+        self.assertEqual(framed, '\xff\xfe\xfe' + payload)
+
+    def test_FrameBytes_EscapesESCInLength(self):
+        payload = b'a' * 0xfe
+        framed = self.packetizer.frame_bytes(payload)
+        self.assertEqual(framed, '\xff\xfe\xfd' + payload)
+
+    def test_FrameBytes_EscapesSOFInPayload(self):
+        payload = b'a\xffb'
+        framed = self.packetizer.frame_bytes(payload)
+        self.assertEqual(framed, '\xff\x03a\xfe\xfeb')
+
+    def test_FrameBytes_EscapesESCInPayload(self):
+        payload = b'a\xfeb'
+        framed = self.packetizer.frame_bytes(payload)
+        self.assertEqual(framed, '\xff\x03a\xfe\xfdb')
+
     def build_packet(self, payload_raw, count):
         payload = map(ord, payload_raw)
         return struct.pack('BB{0}B'.format(len(payload)), 0xff, count, *payload)

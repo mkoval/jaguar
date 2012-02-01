@@ -47,8 +47,10 @@ class Packetizer:
         else:
             return None
 
-    def send_bytes(self, payload):
-        raise NotImplemented('Sending is not implemented!')
+    def frame_bytes(self, payload):
+        count = len(payload)
+        contents = struct.pack('B{}s'.format(count), count, payload)
+        return bytearray([ self.sof ]) + self._encode(contents)
 
     def _reset(self):
         self.offset = 1
@@ -70,6 +72,20 @@ class Packetizer:
             return None
         else:
             return curr
+
+    def _encode(self, raw):
+        encoded = bytearray()
+        for curr_raw in raw:
+            curr = ord(curr_raw)
+            if curr == self.sof:
+                encoded.append(self.esc)
+                encoded.append(self.esc_sof)
+            elif curr == self.esc:
+                encoded.append(self.esc)
+                encoded.append(self.esc_esc)
+            else:
+                encoded.append(curr)
+        return encoded
 
 class JaguarUART:
     header_fields = OrderedDict([
@@ -108,7 +124,8 @@ class JaguarUART:
 
     def send_message(self, msg):
         packed = self.generate_message(msg)
-        self.packetizer.send_bytes(packed)
+        framed = self.packetizer.frame_bytes(packed)
+        self.serial.write(framed)
 
     def recv_message(self):
         while True:
