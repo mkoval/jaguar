@@ -1,7 +1,5 @@
-import bitstring, logging, serial, struct
-from collections import deque, namedtuple, OrderedDict
-from serial import Serial
-from threading import Condition, Thread
+import bitstring, serial, struct
+from collections import namedtuple, OrderedDict
 
 SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
 GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
@@ -14,7 +12,6 @@ class Packetizer:
         self.esc = bytearray([ esc ])
         self.esc_sof = bytearray([ sof_esc ])
         self.esc_esc = bytearray([ esc_esc ])
-        self.packets = deque()
         self._reset()
 
     def recv_byte(self, byte):
@@ -135,7 +132,7 @@ class JaguarUART:
                 return packet
 
 def main():
-    serial = Serial(
+    serial = serial.Serial(
         baudrate = 115200,
         bytesize = serial.EIGHTBITS,
         parity   = serial.PARITY_NONE,

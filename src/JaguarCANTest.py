@@ -1,10 +1,7 @@
-from __future__ import nested_scopes
-import logging, unittest, struct
-from collections import deque
+import unittest, struct
+from collections import deque, namedtuple
 from mock import Mock
-from threading import Condition,Thread
 from JaguarCAN import GenericCANMsg, JaguarUART, Packetizer
-import time
 
 class PacketizerTests(unittest.TestCase):
     def setUp(self):
@@ -94,17 +91,26 @@ class SerialMock:
     def inWaiting(self):
         return len(self._buf_read)
 
+
 class JaguarUARTTests(unittest.TestCase):
-    raw_v0 = b'\xff\x06\x85\x00\x02\x02\x00\x08'
-    dec_v0 = b'\x85\x00\x02\x02\x00\x08'
-    msg_v0 = GenericCANMsg(
-        manufacturer=2,
-        device_type=2,
-        device_number=5,
-        api_class=0,
-        api_key=2,
-        payload='\x00\x08'
-    )
+    SampleMsg = namedtuple('SampleMsg', [ 'raw', 'dec', 'msg' ])
+    samples = [
+        SampleMsg(
+            raw = b'\xff\x06\x85\x00\x02\x02\x00\x08',
+            dec = b'\x85\x00\x02\x02\x00\x08',
+            msg = GenericCANMsg(2, 2, 0, 2, 5, b'\x00\x08')
+        ),
+        SampleMsg(
+            raw = b'\xff\x06\x85\x00\x02\x02\xfe\xfe\xfe\xfe',
+            dec = b'\x85\x00\x02\x02\xff\xff',
+            msg = GenericCANMsg(2, 2, 0, 2, 5, payload=b'\xff\xff')
+        ),
+        SampleMsg(
+            raw = b'\xff\x04\x85\x00\x02\x02',
+            dec = b'\x85\x00\x02\x02',
+            msg = GenericCANMsg(2, 2, 0, 2, 5, payload=b'')
+        )
+    ]
 
     def setUp(self):
         self.serial = SerialMock()
@@ -112,40 +118,38 @@ class JaguarUARTTests(unittest.TestCase):
         self.jaguar = JaguarUART(self.serial, self.packetizer)
 
     def test_ParseMessage(self):
-        data    = b'\x85\x00\x02\x02\x00\x08'
-        message = self.jaguar.parse_message(data)
-        self.assertEqual(message.manufacturer, 2)
-        self.assertEqual(message.device_type, 2)
-        self.assertEqual(message.device_number, 5)
-        self.assertEqual(message.api_class, 0)
-        self.assertEqual(message.api_key, 2)
-        self.assertEqual(message.payload, '\x00\x08')
+        for sample in self.samples:
+            msg = self.jaguar.parse_message(sample.dec)
+            self.assertEqual(msg, sample.msg)
 
     def test_GenerateMessage(self):
-        data = self.jaguar.generate_message(self.msg_v0)
-        self.assertEqual(data, self.dec_v0)
+        for sample in self.samples:
+            data = self.jaguar.generate_message(sample.msg)
+            self.assertEqual(data, sample.dec)
 
     def test_RecvMessage(self):
-        # Arrange:
-        def mock_recv_byte(byte):
-            return None if self.serial.inWaiting() else self.msg_v0
+        for sample in self.samples:
+            # Arrange:
+            def mock_recv_byte(byte):
+                return None if self.serial.inWaiting() else sample.msg
 
-        self.packetizer.recv_byte = Mock(side_effect=mock_recv_byte)
-        self.serial.read = Mock(side_effect=self.serial.read)
-        self.serial._add_data(self.raw_v0)
+            self.packetizer.recv_byte = Mock(side_effect=mock_recv_byte)
+            self.serial.read = Mock(side_effect=self.serial.read)
+            self.serial._add_data(sample.raw)
 
-        # Act:
-        msg = self.jaguar.recv_message()
+            # Act:
+            msg = self.jaguar.recv_message()
 
-        # Assert:
-        expected_read_args = [ ((1,), {}) ] * len(self.raw_v0)
-        self.assertEqual(self.serial.read.call_args_list, expected_read_args)
-        self.assertEqual(msg, self.msg_v0)
+            # Assert:
+            expected_read_args = [ ((1,), {}) ] * len(sample.raw)
+            self.assertEqual(self.serial.read.call_args_list, expected_read_args)
+            self.assertEqual(msg, sample.msg)
 
     def test_SendMessage(self):
-        self.packetizer.send_bytes = Mock()
-        self.jaguar.send_message(self.msg_v0)
-        self.packetizer.send_bytes.called_once_with(self.dec_v0)
+        for sample in self.samples:
+            self.packetizer.send_bytes = Mock()
+            self.jaguar.send_message(sample.msg)
+            self.packetizer.send_bytes.called_once_with(sample.dec)
 
 if __name__ == '__main__':
     unittest.main()
