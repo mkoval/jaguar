@@ -10,15 +10,14 @@ GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
 
 class Packetizer:
     def __init__(self, sof, esc, sof_esc, esc_esc):
-        self.sof = sof
-        self.esc = esc
-        self.esc_sof = sof_esc
-        self.esc_esc = esc_esc
+        self.sof = bytearray([ sof ])
+        self.esc = bytearray([ esc ])
+        self.esc_sof = bytearray([ sof_esc ])
+        self.esc_esc = bytearray([ esc_esc ])
         self.packets = deque()
         self._reset()
 
-    def recv_byte(self, byte_raw):
-        byte     = ord(byte_raw)
+    def recv_byte(self, byte):
         byte_dec = self._decode(self.last, byte)
 
         # Every start of frame (SOF) byte starts a new frame because it is
@@ -29,10 +28,10 @@ class Packetizer:
         # could be encoded if it equals 255, although this should never occur
         # in practice when framing CANbus messages.
         elif self.offset == 1:
-            self.count   = byte
+            self.count   = ord(byte_dec)
             self.offset += 1
         elif byte_dec:
-            self.packet.append(byte_dec)
+            self.packet.extend(byte_dec)
             self.offset += 1
 
         self.last = byte
@@ -50,7 +49,7 @@ class Packetizer:
     def frame_bytes(self, payload):
         count = len(payload)
         contents = struct.pack('B{}s'.format(count), count, payload)
-        return bytearray([ self.sof ]) + self._encode(contents)
+        return self.sof + self._encode(contents)
 
     def _reset(self):
         self.offset = 1
@@ -75,16 +74,15 @@ class Packetizer:
 
     def _encode(self, raw):
         encoded = bytearray()
-        for curr_raw in raw:
-            curr = ord(curr_raw)
+        for curr in raw:
             if curr == self.sof:
-                encoded.append(self.esc)
-                encoded.append(self.esc_sof)
+                encoded.extend(self.esc)
+                encoded.extend(self.esc_sof)
             elif curr == self.esc:
-                encoded.append(self.esc)
-                encoded.append(self.esc_esc)
+                encoded.extend(self.esc)
+                encoded.extend(self.esc_esc)
             else:
-                encoded.append(curr)
+                encoded.extend(curr)
         return encoded
 
 class JaguarUART:

@@ -122,16 +122,8 @@ class JaguarUARTTests(unittest.TestCase):
         self.assertEqual(message.payload, '\x00\x08')
 
     def test_GenerateMessage(self):
-        message = GenericCANMsg(
-            manufacturer=2,
-            device_type=2,
-            device_number=5,
-            api_class=0,
-            api_key=2,
-            payload='\x00\x08'
-        )
-        data = self.jaguar.generate_message(message)
-        self.assertEqual(data, b'\x85\x00\x02\x02\x00\x08')
+        data = self.jaguar.generate_message(self.msg_v0)
+        self.assertEqual(data, self.dec_v0)
 
     def test_RecvMessage(self):
         # Arrange:
