@@ -224,46 +224,35 @@ class JaguarCAN:
     def __init__(self, bridge):
         self.bridge = bridge
 
+    def _broadcast(self, api_key, payload):
+        self.bridge.send_message(GenericCANMsg(
+            device_type   = self.DeviceType.BroadcastMessages,
+            manufacturer  = self.Manufacturer.BroadcastMessages,
+            api_class     = 0, # arbitrary
+            api_key       = api_key,
+            device_number = 0, # arbitrary
+            payload       = payload
+        ))
+
     def halt(self):
         '''
         Stop driving all motors and go into a neutral state. No motors can not
         be driven again until either a resume has been issued.
         '''
-        self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
-            api_class     = 0, # arbitrary
-            api_key       = self.SystemControl.Halt,
-            device_number = 0, # arbitrary
-            payload       = b''
-        ))
+        self._broadcast(self.SystemControl.Halt, b'')
 
     def resume(self):
         '''
         Enable motor control. See halt() for more information.
         '''
-        self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
-            api_class     = 0, # arbitrary
-            api_key       = self.SystemControl.Resume,
-            device_number = 0, # arbitrary
-            payload       = b''
-        ))
+        self._broadcast(self.SystemControl.Resume, b'')
 
     def update(self, mask):
         '''
         Trigger a synchronous update all motor controllers with a group that
         matches the bitmask.
         '''
-        self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
-            api_class     = 0, # arbitrary
-            api_key       = self.SystemControl.SynchronousUpdate,
-            device_number = 0, # arbitrary
-            payload       = struct.pack('B', mask)
-        ))
+        self._broadcast(self.SynchronousUpdate, struct.pack('B', mask))
 
     def heartbeat(self):
         '''
@@ -271,14 +260,7 @@ class JaguarCAN:
         controller must receive a minimum of one CAN message every 100 ms to
         avoid entering a fault state.
         '''
-        self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
-            api_class     = 0, # arbitrary
-            api_key       = self.SystemControl.Heartbeat,
-            device_number = 0, # arbitrary
-            payload       = b''
-        ))
+        self._broadcast(self.Heartbeat, b'')
 
     def enumerate(self):
         '''
@@ -286,14 +268,7 @@ class JaguarCAN:
         requesting each controller to enumerate itself. This enumeration takes
         a minimum of 80 ms.
         '''
-        self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
-            api_class     = 0, # arbitrary
-            api_key       = self.SystemControl.Enumeration,
-            device_number = 0, # arbitrary
-            payload       = b''
-        ))
+        self._broadcast(self.Enumeration, b'')
 
         controllers = list()
         end = datetime.now() + self.enumerate_timeout
