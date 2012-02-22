@@ -1,147 +1,13 @@
-import bitstring, serial, struct
-from collections import namedtuple, OrderedDict
+import struct
+from collections import namedtuple
 from datetime import datetime, timedelta
 
-SerialPayload = namedtuple('SerialPayload', [ 'device_id', 'payload' ])
 GenericCANMsg = namedtuple('GenericCANMsg', [ 'device_type', 'manufacturer',
                                               'api_class', 'api_key',
                                               'device_number', 'payload' ])
 MotorCtrl     = namedtuple('MotorCtrl',     [ 'device_type', 'manufacturer',
                                               'device_number' ])
-
-class Packetizer:
-    def __init__(self, sof, esc, sof_esc, esc_esc):
-        self.sof = bytearray([ sof ])
-        self.esc = bytearray([ esc ])
-        self.esc_sof = bytearray([ sof_esc ])
-        self.esc_esc = bytearray([ esc_esc ])
-        self._reset()
-
-    def recv_byte(self, byte):
-        byte_dec = self._decode(self.last, byte)
-
-        # Every start of frame (SOF) byte starts a new frame because it is
-        # otherwise escaped.
-        if byte == self.sof:
-            self._reset()
-        # Next byte is the total number of bytes in the packet. Note that this
-        # could be encoded if it equals 255, although this should never occur
-        # in practice when framing CANbus messages.
-        elif self.offset == 1:
-            self.count   = ord(byte_dec)
-            self.offset += 1
-        elif byte_dec:
-            self.packet.extend(byte_dec)
-            self.offset += 1
-
-        self.last = byte
-
-        # Done receiving the entire packet, so add it to the queue. Padding
-        # compensates for fields in the packet (e.g. device id) that don't
-        # contribute to the byte count.
-        if self.valid and self.offset == self.count + 2:
-            new_packet = self.packet
-            self._reset()
-            return new_packet
-        else:
-            return None
-
-    def frame_bytes(self, payload):
-        count = len(payload)
-        contents = struct.pack('B{}s'.format(count), count, payload)
-        return self.sof + self._encode(contents)
-
-    def _reset(self):
-        self.offset = 1
-        self.count  = 0
-        self.last   = None
-        self.packet = bytearray()
-        self.valid  = True
-
-    def _error(self):
-        self.valid = False
-
-    def _decode(self, last, curr):
-        if last == self.esc:
-            if curr == self.esc_esc:
-                return self.esc
-            elif curr == self.esc_sof:
-                return self.sof
-        elif curr == self.esc:
-            return None
-        else:
-            return curr
-
-    def _encode(self, raw):
-        encoded = bytearray()
-        for curr in raw:
-            if curr == self.sof:
-                encoded.extend(self.esc)
-                encoded.extend(self.esc_sof)
-            elif curr == self.esc:
-                encoded.extend(self.esc)
-                encoded.extend(self.esc_esc)
-            else:
-                encoded.extend(curr)
-        return encoded
-
-class JaguarUART:
-    header_fields = OrderedDict([
-        ('resv',          'uint:3'),
-        ('device_type',   'uint:5'),
-        ('manufacturer',  'uint:8'),
-        ('api_class',     'uint:6'),
-        ('api_key',       'uint:4'),
-        ('device_number', 'uint:6')
-    ])
-    header_fmt = [ field + '=' + name for name, field in header_fields.items() ]
-
-    def __init__(self, serial, packetizer):
-        self.serial = serial
-        self.packetizer = packetizer
-        self.alive = True
-
-    def close(self):
-        self.alive = False
-
-    @classmethod
-    def parse_message(cls, packet):
-        header_raw = bitstring.BitArray(bytes=packet[0:4])
-        header_raw.byteswap()
-
-        header_list = header_raw.unpack(cls.header_fmt)
-        header = dict(zip(cls.header_fields.keys(), header_list))
-        del header['resv']
-        return GenericCANMsg(payload=packet[4:], **header)
-
-    @classmethod
-    def generate_message(cls, msg):
-        header = bitstring.pack(cls.header_fmt, resv=0, **msg._asdict())
-        header.byteswap()
-        return header.bytes + msg.payload
-
-    def send_message(self, msg):
-        packed = self.generate_message(msg)
-        framed = self.packetizer.frame_bytes(packed)
-        self.serial.write(framed)
-
-    def recv_message(self, timeout=None):
-        self.timeout = timeout
-        while True:
-            # This may timeout and return zero bytes, so timeout here as well.
-            byte = self.serial.read(1)
-            if byte:
-                return None
-
-            # Feed the packetizing state machine the next character.
-            packet = self.packetizer.recv_byte(byte)
-            if packet:
-                return self.parse_message(packet)
-
-    def pending_data(self):
-        return self.serial.inWaiting() > 0
-
-class JaguarCAN:
+class CAN:
     class DeviceType:
         BroadcastMessages   = 0
         RobotController     = 1
@@ -219,6 +85,8 @@ class JaguarCAN:
         Negative   = 2
         Quadrature = 3
 
+class BroadcastCAN:
+
     enumerate_timeout = timeval(milliseconds=80)
 
     def __init__(self, bridge):
@@ -226,8 +94,8 @@ class JaguarCAN:
 
     def _broadcast(self, api_key, payload):
         self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.BroadcastMessages,
-            manufacturer  = self.Manufacturer.BroadcastMessages,
+            device_type   = CAN.DeviceType.BroadcastMessages,
+            manufacturer  = CAN.Manufacturer.BroadcastMessages,
             api_class     = 0, # arbitrary
             api_key       = api_key,
             device_number = 0, # arbitrary
@@ -239,20 +107,20 @@ class JaguarCAN:
         Stop driving all motors and go into a neutral state. No motors can not
         be driven again until either a resume has been issued.
         '''
-        self._broadcast(self.SystemControl.Halt, b'')
+        self._broadcast(CAN.SystemControl.Halt, b'')
 
     def resume(self):
         '''
         Enable motor control. See halt() for more information.
         '''
-        self._broadcast(self.SystemControl.Resume, b'')
+        self._broadcast(CAN.SystemControl.Resume, b'')
 
     def update(self, mask):
         '''
         Trigger a synchronous update all motor controllers with a group that
         matches the bitmask.
         '''
-        self._broadcast(self.SynchronousUpdate, struct.pack('B', mask))
+        self._broadcast(CAN.SynchronousUpdate, struct.pack('B', mask))
 
     def heartbeat(self):
         '''
@@ -260,7 +128,7 @@ class JaguarCAN:
         controller must receive a minimum of one CAN message every 100 ms to
         avoid entering a fault state.
         '''
-        self._broadcast(self.Heartbeat, b'')
+        self._broadcast(CAN.Heartbeat, b'')
 
     def enumerate(self):
         '''
@@ -268,7 +136,7 @@ class JaguarCAN:
         requesting each controller to enumerate itself. This enumeration takes
         a minimum of 80 ms.
         '''
-        self._broadcast(self.Enumeration, b'')
+        self._broadcast(CAN.Enumeration, b'')
 
         controllers = list()
         end = datetime.now() + self.enumerate_timeout
@@ -286,65 +154,57 @@ class JaguarCAN:
 
         return ids
 
-class Jaguar:
+class JaguarCAN:
     def __init__(self, bridge, device_number):
         self.bridge = bridge
         self.number = device_number
-
-        # Use a quadrature encoder to measure velocity.
-        payload = struct.pack('B', JaguarCAN.SpeedReference.Quadrature)
-        self._send_message(JaguarCAN.SpeedControl.SpeedReference, payload)
 
     def enable(self):
         '''
         Enables speed control and sets the output to neutral.
         '''
-        self._send_message(JaguarCAN.SpeedControl.SpeedModeEnable, b'')
+        self._send_message(CAN.SpeedControl.SpeedModeEnable, b'')
 
     def disable(self):
         '''
         Disables speed control, returns to the default control mode, and sets
         the output to neutral.
         '''
-        self._send_message(JaguarCAN.SpeedControl.SpeedModeDisable, b'')
+        self._send_message(CAN.SpeedControl.SpeedModeDisable, b'')
 
     def set_speed(self, speed, group=0):
         '''
         Sets the target rotational speed in revolutions per minute.
         '''
-        payload_speed = struct.pack('<i', ???)
-        payload_group = struct.pack('B', group)
-        payload       = payload_speed + payload_group
+        payload = self._to16p16(speed) + struct.pack('B', group)
         self._send_message(self.SpeedControl.SpeedSet, payload)
 
     def set_constants(self, kp, ki, kd):
-        payload_kp = struct.pack('<i', ???)
-        payload_ki = struct.pack('<i', ???)
-        payload_kd = struct.pack('<i', ???)
-        self._send_message(self.SpeedControl.SetPConstant, payload_kp)
-        self._send_message(self.SpeedControl.SetIConstant, payload_ki)
-        self._send_message(self.SpeedControl.SetDConstant, payload_kd)
+        '''
+        Sets the PID control constants.
+        '''
+        self._send_message(CAN.SpeedControl.SetPConstant, self._to16p16(kp))
+        self._send_message(CAN.SpeedControl.SetIConstant, self._to16p16(ki))
+        self._send_message(CAN.SpeedControl.SetDConstant, self._to16p16(kp))
+
+    def set_reference(self, reference):
+        payload = struct.pack('B', reference)
+        self._send_message(CAN.SpeedControl.SpeedReference, payload)
+
+    def set_encoder_lines(self, ticks_per_rev):
+        payload = struct.pack('<H', ticks_per_rev)
+        self._send_message(CAN.Configuration.EncoderLines, payload)
 
     def _send_message(self, api_key, payload):
         self.bridge.send_message(GenericCANMsg(
-            device_type   = self.DeviceType.MotorController,
-            manufacturer  = self.Manufacturer.TexasInstruments,
-            api_class     = self.APIClass.SpeedControl,
+            device_type   = CAN.DeviceType.MotorController,
+            manufacturer  = CAN.Manufacturer.TexasInstruments,
+            api_class     = CAN.APIClass.SpeedControl,
             api_key       = api_key,
             device_number = self.number,
             payload       = payload
         ))
 
-def main():
-    serial = serial.Serial(
-        baudrate = 115200,
-        bytesize = serial.EIGHTBITS,
-        parity   = serial.PARITY_NONE,
-        stopbits = serial.STOPBITS_ONE,
-        timeout  = None
-    )
-    packetizer = Packetizer(0xff, 0xfe, 0xfe, 0xfd)
-    jaguar = JaguarUART(serial, packetizer)
-
-if __name__ == '__main__':
-    main()
+    @staticmethod
+    def _to16p16(x):
+        return struct.pack('<i', x * (2 ** 16))
