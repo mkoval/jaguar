@@ -79,7 +79,7 @@ class Packetizer:
                 encoded.extend(curr)
         return encoded
 
-class JaguarBridge:
+class CANBridge:
     header_fields = OrderedDict([
         ('resv',          'uint:3'),
         ('device_type',   'uint:5'),
@@ -89,14 +89,6 @@ class JaguarBridge:
         ('device_number', 'uint:6')
     ])
     header_fmt = [ field + '=' + name for name, field in header_fields.items() ]
-
-    def __init__(self, serial, packetizer):
-        self.serial = serial
-        self.packetizer = packetizer
-        self.alive = True
-
-    def close(self):
-        self.alive = False
 
     @classmethod
     def parse_message(cls, packet):
@@ -112,7 +104,17 @@ class JaguarBridge:
     def generate_message(cls, msg):
         header = bitstring.pack(cls.header_fmt, resv=0, **msg._asdict())
         header.byteswap()
-        return header.bytes + msg.payload
+        return header.bytes, msg.payload
+
+
+class JaguarBridge(CANBridge):
+    def __init__(self, serial, packetizer):
+        self.serial = serial
+        self.packetizer = packetizer
+        self.alive = True
+
+    def close(self):
+        self.alive = False
 
     def send_message(self, msg):
         packed = self.generate_message(msg)

@@ -160,29 +160,16 @@ class JaguarCAN:
         self.number = device_number
 
     def enable(self):
-        '''
-        Enables speed control and sets the output to neutral.
-        '''
         self._send_message(CAN.SpeedControl.SpeedModeEnable, b'')
 
     def disable(self):
-        '''
-        Disables speed control, returns to the default control mode, and sets
-        the output to neutral.
-        '''
         self._send_message(CAN.SpeedControl.SpeedModeDisable, b'')
 
     def set_speed(self, speed, group=0):
-        '''
-        Sets the target rotational speed in revolutions per minute.
-        '''
         payload = self._to16p16(speed) + struct.pack('B', group)
         self._send_message(self.SpeedControl.SpeedSet, payload)
 
     def set_constants(self, kp, ki, kd):
-        '''
-        Sets the PID control constants.
-        '''
         self._send_message(CAN.SpeedControl.SetPConstant, self._to16p16(kp))
         self._send_message(CAN.SpeedControl.SetIConstant, self._to16p16(ki))
         self._send_message(CAN.SpeedControl.SetDConstant, self._to16p16(kp))
