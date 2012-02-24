@@ -1,12 +1,12 @@
-#include <assert>
+#include <cassert>
 #include "ntcan_bridge.h"
 
-namespace ntcan {
+namespace can {
 
-void NTCANBridge::NTCANBridge(int net)
+NTCANBridge::NTCANBridge(int net)
 {
-    NTCAN_ERROR result;
-    result = canOpen(net, 0, tx_queue, rx_queue, tx_timeout, rx_timeout, &m_handle);
+    NTCAN_RESULT result;
+    result = canOpen(net, 0, m_tx_queue, m_rx_queue, m_tx_timeout, m_rx_timeout, &m_handle);
     switch (result) {
     case NTCAN_SUCCESS:
         break;
@@ -28,15 +28,15 @@ void NTCANBridge::NTCANBridge(int net)
     canIdAdd(NTCAN_20B_BASE);
 }
 
-void NTCANBridge::~NTCANBridge(void)
+NTCANBridge::~NTCANBridge(void)
 {
     canClose(m_handle);
 }
 
-void NTCANBridge::send(uint32_t id, uint8_t const *data, size_t payload_length);
+void NTCANBridge::send(uint32_t id, void const *data, size_t payload_length);
 {
-    std::assert(id & ~0x1fffffff == 0);
-    std::assert(length <= 8);
+    assert(id & ~0x1fffffff == 0);
+    assert(length <= 8);
 
     CMSG ntcan_msg;
     ntcan_msg.id  = id | NTCAN_20B_BASE
@@ -63,7 +63,7 @@ void NTCANBridge::send(uint32_t id, uint8_t const *data, size_t payload_length);
     }
 }
 
-uint32_t NTCANBridge::recv(uint8_t *data, size_t payload_length)
+uint32_t NTCANBridge::recv(void *data, size_t payload_length)
 {
     int32_t msg_length = sizeof(CMSG);
     NTCAN_RESULT result = canRead(m_handle, &m_buffer, &msg_length, NULL);
@@ -82,8 +82,8 @@ uint32_t NTCANBridge::recv(uint8_t *data, size_t payload_length)
 
     // Any timeout should be indicated in the return code, so we can assume
     // that one message was received.
-    std::assert(msg_length == sizeof(CMSG));
-    std::assert(m_buffer.len == payload_length);
+    assert(msg_length == sizeof(CMSG));
+    assert(m_buffer.len == payload_length);
     memcpy(data, m_buffer.data, payload_length);
     return m_buffer.id;
 }

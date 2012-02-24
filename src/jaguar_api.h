@@ -3,22 +3,23 @@
 
 namespace can {
 
+enum {
+	kBroadcastMessage = 0
+};
+
 enum DeviceType {
-    kBroadcastMessage = 0,
     kRobotController,
     kMotorController,
     kRelayController,
     kGyroSensor,
     kAccelerometerSensor,
-    kUltrasonicSensor,
-    kFirmwareUpdate = 31
+    kUltrasonicSensor
 };
 
 enum Manufacturer {
-    kBroadcastMessage    = 0,
     kNationalInstruments = 1,
-    kTexasInstruments    = 2,
-    kDEKA                = 3
+    kTexasInstruments,
+    kDEKA
 };
 
 enum APIClass {
@@ -45,13 +46,6 @@ enum SystemControlInterface {
     kSystemResume
 };
 
-enum VoltageControlInterface {
-    kVoltageModeEnable = 0,
-    kVoltageModeDisable,
-    kVoltageSet,
-    kVoltageRampSet
-};
-
 enum SpeedControlInterface {
     kSpeedModeEnable = 0,
     kSpeedModeDisable,
@@ -60,33 +54,6 @@ enum SpeedControlInterface {
     kSpeedIntegralConstant,
     kSpeedDifferentialConstant,
     kSpeedReference
-};
-
-enum VoltageCompensationInterface {
-    kVoltageCompensationModeEnable = 0,
-    kVoltageCompensationModeDisable,
-    kVoltageSet,
-    kVoltageRampSet,
-    kVoltageCompensationRateSet
-};
-
-enum PositionControlInterface {
-    kPositionModeEnable = 0,
-    kPositionModeDisable,
-    kPositionSet,
-    kPositionProportionalConstant,
-    kPositionIntegralConstant,
-    kPositionDifferentialConstant,
-    kPositionReference
-};
-
-enum CurrentControlInterface {
-    kCurrentModeEnable = 0,
-    kCurrentModeDisable,
-    kCurrentSet,
-    kCurrentProportionalConstant,
-    kCurrentIntegralConstant,
-    kCurrentDifferentialConstant
 };
 
 enum MotorControlStatus {
@@ -99,8 +66,7 @@ enum MotorControlStatus {
     kLimit,
     kFault,
     kPower,
-    kControlMode,
-    kOutputVoltage
+    kControlMode
 };
 
 enum MotorControlConfiguration {
