@@ -22,14 +22,6 @@ private:
     boost::asio::serial_port m_serial;
     uint8_t m_last;
 
-    enum PacketState {
-        kWaiting,
-        kHeader,
-        kIdentifier,
-        kPayload,
-        kFinished
-    };
-
     static uint8_t const m_sof, m_esc;
     static uint8_t const m_sof_esc, m_esc_esc;
 

@@ -57,12 +57,72 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
 
 uint32_t JaguarBridge::recv(void *data, size_t length)
 {
-    // See JaguarBridge::send() for a detailed explaination of this capacity.
+    // Four bytes for the CAN id plus a payload of at most eight bytes.
     std::vector<uint8_t> buffer;
-    buffer.reserve(26);
+    buffer.reserve(12);
 
-    // TODO
-    return 0;
+    enum {
+        kWaiting,
+        kLength,
+        kPayload,
+        kComplete
+    } state = kWaiting;
+    size_t count  = 0;
+    bool   escape = false;
+
+    while (state != kComplete) {
+        uint8_t byte;
+        asio::read(m_serial, asio::buffer(&byte, 1));
+
+        // Due to escaping, the SOF byte only appears at frame starts.
+        if (byte == m_sof) {
+            state = kLength;
+            count = 0;
+        }
+        // Packet length can never be SOF or ESC, so we can ignore escaping.
+        else if (state == kLength) {
+            state = kPayload;
+            count = byte;
+        }
+        // This is the second byte in a two-byte escape code.
+        else if (state == kPayload && escape) {
+            switch (byte) {
+            case m_sof_esc:
+                buffer.push_back(m_sof);
+                break;
+
+            case m_esc_esc:
+                buffer.push_back(m_esc);
+                break;
+
+            default:
+                // TODO: Print a warning because this should never happen.
+                state = kWaiting;
+            }
+            escape = false;
+        }
+        // Escape character, so the next byte has special meaning.
+        else if (state == kPayload && byte == m_esc) {
+            escape = true;
+        }
+        // Normal data.
+        else {
+            buffer.push_back(byte);
+        }
+
+        if (state == kPayload && buffer.size() >= count) {
+            state = kComplete;
+        }
+    }
+
+    // Fix the endian-ness on the CAN id.
+    uint32_t id;
+    memcpy(&id, &buffer[0], 4);
+    id = le32toh(id);
+
+    assert(count <= length);
+    memcpy(data, &buffer[4], count - 4);
+    return id;
 }
 
 size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer)
@@ -92,33 +152,5 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
 
     return emitted;
 }
-
-#if 0
-static uint8_t decode_byte(boost::asio::SyncReadStream stream, uint8_t *)
-{
-    while (read < length) {
-        uint8_t byte;
-        asio::read(m_serial, asio::buffer(&byte, 1));
-
-        // Start a new packet whenever we receive a SOF byte. This is necessary
-        // for resynchronization and is possible because of escaping.
-        if (byte == m_sof) {
-            state    = kHeader;
-            consumed = 0;
-        } else if (state == kLength) {
-        } else if (state == kIdentifier) {
-            packet_length <<= 8;
-            packet_length  |= byte;
-            ++consumed;
-
-            if (consumed == 4) {
-                state = kIdentifier;
-            }
-        } else if (state == kPayload) {
-            // TODO: read (length - 4) decoded bytes
-        }
-    }
-}
-#endif
 
 };
