@@ -50,9 +50,9 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     buffer.push_back(m_sof);
     buffer.push_back(2 + length);
     encode_bytes(id_conversion.bytes, 4, buffer);
-    //encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
+    encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
 
-    //asio::write(m_serial, buffer);
+    asio::write(m_serial, asio::buffer(buffer));
 }
 
 uint32_t JaguarBridge::recv(void *data, size_t length)
