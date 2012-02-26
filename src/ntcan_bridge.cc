@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 #include "ntcan_bridge.h"
 
 namespace can {
@@ -25,7 +26,7 @@ NTCANBridge::NTCANBridge(int net)
         throw CANException("An unknown error has occurred.");
     }
 
-    canIdAdd(NTCAN_20B_BASE);
+    canIdAdd(m_handle, NTCAN_20B_BASE);
 }
 
 NTCANBridge::~NTCANBridge(void)
@@ -33,18 +34,18 @@ NTCANBridge::~NTCANBridge(void)
     canClose(m_handle);
 }
 
-void NTCANBridge::send(uint32_t id, void const *data, size_t payload_length);
+void NTCANBridge::send(uint32_t id, void const *data, size_t payload_length)
 {
-    assert(id & ~0x1fffffff == 0);
-    assert(length <= 8);
+    assert((id & ~0x1fffffff) == 0);
+    assert(payload_length <= 8);
 
     CMSG ntcan_msg;
-    ntcan_msg.id  = id | NTCAN_20B_BASE
+    ntcan_msg.id  = id | NTCAN_20B_BASE;
     ntcan_msg.len = payload_length;
     memcpy(ntcan_msg.data, data, payload_length);
 
     int32_t msg_length = sizeof(CMSG);
-    NTCAN_RESULT result = canWrite(m_handle, &ctcan_msg, &msg_length, NULL);
+    NTCAN_RESULT result = canWrite(m_handle, &ntcan_msg, &msg_length, NULL);
 
     switch (result) {
     case NTCAN_SUCCESS:
@@ -72,7 +73,7 @@ uint32_t NTCANBridge::recv(void *data, size_t payload_length)
     case NTCAN_SUCCESS:
         break;
 
-    case NTCAN_RX_ERROR:
+    //case NTCAN_RX_ERROR:
     case NTCAN_RX_TIMEOUT:
         throw CANException("Receive timeout exceeded.");
 

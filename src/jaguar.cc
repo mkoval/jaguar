@@ -37,6 +37,13 @@ void Jaguar::heartbeat(void)
     m_can.send(request_id, NULL, 0);
 }
 
+void Jaguar::device_assignment(uint8_t id)
+{
+    assert((id & 0xC0) == 0);
+    uint32_t request_id = pack_id(id, kBroadcastMessage, kBroadcastMessage, kDeviceAssignment);
+    m_can.send(request_id, NULL, 0);
+}
+
 void Jaguar::synchronous_update(uint8_t group)
 {
     uint32_t request_id = pack_id(0, kBroadcastMessage, kBroadcastMessage, kSynchronousUpdate);
@@ -220,7 +227,7 @@ double Jaguar::s16p16_to_double(int32_t x)
     return ntohl(x) / 65536.;
 }
 
-static uint16_t pack_api(uint8_t api_class, uint8_t api_index)
+uint16_t Jaguar::pack_api(uint8_t api_class, uint8_t api_index)
 {
     assert((api_class & ~0x3F) == 0);
     assert((api_index & ~0x0F) == 0);

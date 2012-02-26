@@ -4,9 +4,7 @@
 #include <string>
 #include <stdint.h>
 #include "jaguar.h"
-#include "ntcan_bridge.h"
-
-namespace can {
+#include "jaguar_bridge.h"
 
 template <typename T>
 static T convert(std::string str)
@@ -21,17 +19,17 @@ int main(int argc, char *argv[])
 {
     if (argc <= 2) {
         std::cerr << "err: incorrect number of arguments\n"
-                  << "usage: ./assign_id <network> <device id>"
+                  << "usage: ./assign_id <port> <device id>"
                   << std::endl;
         return 1;
     }
 
-	int net = convert<int>(argv[1]);
-    uint16_t new_id = convert<uint16_t>(argv[2]);
+    std::string const port = argv[1];
+    uint8_t const new_id = convert<uint16_t>(argv[2]);
 
     try {
-        NTCANBridge can(20);
-        Jaguar jaguar(can, 0);
+        can::JaguarBridge can(port);
+        can::Jaguar jaguar(can, 0);
         jaguar.device_assignment(new_id);
 
         std::cout << "Press the button on the desired Jaguar.\n"
@@ -43,10 +41,8 @@ int main(int argc, char *argv[])
 
         std::cout << " ...Done." << std::endl;
         return 0;
-    } catch (CANException const &e) {
+    } catch (can::CANException const &e) {
         std::cerr << "err: " << e.what() << std::endl;
         return 1;
     }
 }
-
-};
