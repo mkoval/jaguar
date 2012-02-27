@@ -8,42 +8,42 @@ enum {
 };
 
 enum DeviceType {
-    kRobotController,
-    kMotorController,
-    kRelayController,
-    kGyroSensor,
-    kAccelerometerSensor,
-    kUltrasonicSensor
+    kRobotController     = 1,
+    kMotorController     = 2,
+    kRelayController     = 3,
+    kGyroSensor          = 4,
+    kAccelerometerSensor = 5,
+    kUltrasonicSensor    = 6,
+    kGearToothSensor     = 7,
 };
 
 enum Manufacturer {
     kNationalInstruments = 1,
-    kTexasInstruments,
-    kDEKA
+    kTexasInstruments    = 2,
+    kDEKA                = 3
 };
 
 enum APIClass {
-    kVoltageControl = 0,
-    kSpeedControl,
-    kVoltageCompensationControl,
-    kPositionControl,
-    kCurrentControl,
-    kStatus,
-    kConfiguration = 7,
-    kAcknowledge
+    kVoltageControl             = 0,
+    kSpeedControl               = 1,
+    kVoltageCompensationControl = 2,
+    kPositionControl            = 3,
+    kCurrentControl             = 4,
+    kStatus                     = 5,
+    kConfiguration              = 7,
+    kAcknowledge                = 8
 };
 
 enum SystemControlInterface {
-    kSystemHalt = 0,
-    kSystemReset,
-    kDeviceAssignment,
-    kDeviceQuery,
-    kHeartbeat,
-    kSynchronousUpdate,
-    kFirmwareUpdate,
-    kFirmwareVersion,
-    kEnumeration,
-    kSystemResume
+    kSystemHalt        = 0,
+    kSystemReset       = 1,
+    kDeviceAssignment  = 2,
+    kDeviceQuery       = 3,
+    kHeartbeat         = 5,
+    kSynchronousUpdate = 6,
+    kFirmwareVersion   = 8,
+    kEnumeration       = 9,
+    kSystemResume      = 10
 };
 
 enum SpeedControlInterface {
@@ -56,17 +56,22 @@ enum SpeedControlInterface {
     kSpeedReference
 };
 
+enum VoltageControl {
+    kVoltageSet = 2
+};
+
 enum MotorControlStatus {
-    kOutputVoltage = 0,
-    kBusVoltage,
-    kCurrent,
-    kTemperature,
-    kPosition,
-    kSpeed,
-    kLimit,
-    kFault,
-    kPower,
-    kControlMode
+    kOutputVoltagePercent = 0,
+    kBusVoltage = 1,
+    kCurrent = 2,
+    kTemperature = 3,
+    kPosition = 4,
+    kSpeed = 5,
+    kLimit = 6,
+    kFault = 7,
+    kPower = 8,
+    kControlMode = 9,
+    kOutputVoltage = 10
 };
 
 enum MotorControlConfiguration {

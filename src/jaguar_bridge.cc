@@ -3,6 +3,9 @@
 #include <vector>
 #include "jaguar_bridge.h"
 
+#include <iomanip>
+#include <iostream>
+
 namespace asio = boost::asio;
 
 namespace can {
@@ -33,6 +36,7 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     assert(length <= 8);
     assert((id & 0xE0000000) == 0);
 
+
     // Each message consists of two bytes of framing, a 29-bit CAN identifier
     // packed into four bytes, and a maximum of eight bytes of data. All of
     // these, except the start of frame byte, may need to be escaped. In all,
@@ -48,9 +52,15 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     } id_conversion = { htole32(id) };
 
     buffer.push_back(m_sof);
-    buffer.push_back(2 + length);
+    buffer.push_back(length + 4);
     encode_bytes(id_conversion.bytes, 4, buffer);
     encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
+
+    std::cout << std::hex << std::setfill('0');
+    for (size_t i = 0; i < buffer.size(); ++i) {
+        std::cout << std::setw(2) << (int)buffer[i];
+    }
+    std::cout << std::endl;
 
     asio::write(m_serial, asio::buffer(buffer));
 }

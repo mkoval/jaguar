@@ -5,6 +5,9 @@
 
 namespace can {
 
+uint8_t const Jaguar::m_manufacturer = kTexasInstruments;
+uint8_t const Jaguar::m_type = kMotorController;
+
 Jaguar::Jaguar(CANBridge &can, uint8_t device_num)
     : m_can(can), m_num(device_num)
 {
@@ -140,6 +143,16 @@ Fault Jaguar::get_fault(void)
     return static_cast<Fault>(ntohs(payload));
 }
 
+double Jaguar::get_output_voltage(void)
+{
+    uint32_t request_id = pack_id(m_num, m_manufacturer, m_type, kStatus, kOutputVoltage);
+    m_can.send(request_id, NULL, 0);
+
+    int32_t payload;
+    uint16_t response_id = m_can.recv(&payload, 2);
+    return s8p8_to_double(payload);
+}
+
 /*
  * Speed Control
  */
@@ -231,7 +244,8 @@ uint16_t Jaguar::pack_api(uint8_t api_class, uint8_t api_index)
 {
     assert((api_class & ~0x3F) == 0);
     assert((api_index & ~0x0F) == 0);
-    return api_class | (api_index << 6);
+    return static_cast<uint16_t>(api_class)
+        | (static_cast<uint16_t>(api_index) << 6);
 }
 
 uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type, uint16_t api)
@@ -248,7 +262,25 @@ uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type,
 
 uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type, uint8_t api_class, uint8_t api_index)
 {
-    return pack_id(device_num, pack_api(api_class, api_index), manufacturer, type);
+    assert((device_num   & ~0x1F)  == 0);
+    assert((api_class    & ~0x3F) == 0);
+    assert((api_index    & ~0x0F) == 0);
+    assert((manufacturer & ~0xFF)  == 0);
+    assert((type         & ~0x1F)  == 0);
+    return (static_cast<uint32_t>(device_num)   << 0)
+         | (static_cast<uint32_t>(api_class)    << 6)
+         | (static_cast<uint32_t>(api_index)    << 12)
+         | (static_cast<uint32_t>(manufacturer) << 16)
+         | (static_cast<uint32_t>(type)         << 24);
+}
+
+void Jaguar::set_voltage(void)
+{
+    // TODO: DEBUG
+    uint32_t request_id = pack_id(m_num, m_manufacturer, m_type, kVoltageControl, kVoltageSet);
+    uint16_t payload = 0x0800;
+    m_can.send(request_id, &payload, 2);
 }
 
 };
+

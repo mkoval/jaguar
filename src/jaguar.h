@@ -19,6 +19,8 @@ public:
     void device_assignment(uint8_t id);
     void synchronous_update(uint8_t group);
 
+    void set_voltage(void);
+
     // Motor Control Configuration
     void set_encoder_lines(uint16_t lines);
     void set_fault_time(uint16_t ms);
@@ -29,6 +31,7 @@ public:
     double get_temperature(void);
     double get_speed(void);
     double get_position(void);
+    double get_output_voltage(void);
     Fault get_fault(void);
 
     // Speed Control
@@ -45,8 +48,8 @@ private:
     CANBridge &m_can;
     uint32_t m_num;
 
-    static uint8_t const m_manufacturer = kTexasInstruments;
-    static uint8_t const m_type = kMotorController;
+    static uint8_t const m_manufacturer;
+    static uint8_t const m_type;
 
     // Conversion between floating and fixed point numbers
     static int16_t double_to_s8p8(double x);
