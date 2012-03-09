@@ -17,20 +17,29 @@ static T convert(std::string str)
 
 int main(int argc, char *argv[])
 {
-    if (argc <= 2) {
+    if (argc <= 1) {
         std::cerr << "err: incorrect number of arguments\n"
-                  << "usage: ./assign_id <port> <device id>"
+                  << "usage: ./assign_id <device id>"
                   << std::endl;
         return 1;
     }
 
-    std::string const port = argv[1];
-    uint8_t const new_id = convert<uint16_t>(argv[2]);
+    uint8_t const new_id = convert<uint16_t>(argv[1]);
 
-    try {
-        can::JaguarBridge can(port);
-        can::Jaguar jaguar(can, 5);
-        jaguar.set_voltage();
+        can::JaguarBridge can("/dev/ttyUSB0");
+        can::Jaguar jaguar(can, 2);
+        sleep(1);
+
+        //jaguar.device_assignment(new_id);
+
+        for (;;) {
+            jaguar.device_assignment(1);
+            //jaguar.system_halt();
+            //jaguar.set_voltage();
+            //jaguar.heartbeat();
+            //usleep(50000);
+            sleep(5);
+        }
 #if 0
         jaguar.device_assignment(new_id);
 
@@ -44,8 +53,4 @@ int main(int argc, char *argv[])
         std::cout << " ...Done." << std::endl;
 #endif
         return 0;
-    } catch (can::CANException const &e) {
-        std::cerr << "err: " << e.what() << std::endl;
-        return 1;
-    }
 }

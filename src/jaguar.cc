@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include "jaguar.h"
 
+#include <iomanip>
+#include <iostream>
+
 namespace can {
 
 uint8_t const Jaguar::m_manufacturer = kTexasInstruments;
@@ -24,7 +27,7 @@ void Jaguar::system_reset(void)
 
 void Jaguar::system_halt(void)
 {
-    uint32_t request_id = pack_id(0, kBroadcastMessage, kBroadcastMessage, kSystemHalt);
+    uint32_t request_id = pack_id(0, 0, 0, kSystemHalt);
     m_can.send(request_id, NULL, 0);
 }
 
@@ -43,8 +46,8 @@ void Jaguar::heartbeat(void)
 void Jaguar::device_assignment(uint8_t id)
 {
     assert((id & 0xC0) == 0);
-    uint32_t request_id = pack_id(id, kBroadcastMessage, kBroadcastMessage, kDeviceAssignment);
-    m_can.send(request_id, NULL, 0);
+    uint32_t request_id = pack_id(0, kBroadcastMessage, kBroadcastMessage, kDeviceAssignment);
+    m_can.send(request_id, &id, 1);
 }
 
 void Jaguar::synchronous_update(uint8_t group)
@@ -52,7 +55,6 @@ void Jaguar::synchronous_update(uint8_t group)
     uint32_t request_id = pack_id(0, kBroadcastMessage, kBroadcastMessage, kSynchronousUpdate);
     m_can.send(request_id, &group, 1);
 }
-
 /*
  * Motor Control Configuration
  */
@@ -240,20 +242,13 @@ double Jaguar::s16p16_to_double(int32_t x)
     return ntohl(x) / 65536.;
 }
 
-uint16_t Jaguar::pack_api(uint8_t api_class, uint8_t api_index)
-{
-    assert((api_class & ~0x3F) == 0);
-    assert((api_index & ~0x0F) == 0);
-    return static_cast<uint16_t>(api_class)
-        | (static_cast<uint16_t>(api_index) << 6);
-}
-
 uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type, uint16_t api)
 {
-    assert((device_num   & ~0x1F)  == 0);
-    assert((api          & ~0x3FF) == 0);
-    assert((manufacturer & ~0xFF)  == 0);
-    assert((type         & ~0x1F)  == 0);
+    assert((device_num & ~0x3F) == 0);
+    assert((api & ~0x3FF) == 0);
+    assert((manufacturer & ~0xFF) == 0);
+    assert((type & ~0x1F) == 0);
+
     return (static_cast<uint32_t>(device_num)   << 0)
          | (static_cast<uint32_t>(api)          << 6)
          | (static_cast<uint32_t>(manufacturer) << 16)
@@ -262,24 +257,17 @@ uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type,
 
 uint32_t Jaguar::pack_id(uint8_t device_num, uint8_t manufacturer, uint8_t type, uint8_t api_class, uint8_t api_index)
 {
-    assert((device_num   & ~0x1F)  == 0);
-    assert((api_class    & ~0x3F) == 0);
-    assert((api_index    & ~0x0F) == 0);
-    assert((manufacturer & ~0xFF)  == 0);
-    assert((type         & ~0x1F)  == 0);
-    return (static_cast<uint32_t>(device_num)   << 0)
-         | (static_cast<uint32_t>(api_class)    << 6)
-         | (static_cast<uint32_t>(api_index)    << 12)
-         | (static_cast<uint32_t>(manufacturer) << 16)
-         | (static_cast<uint32_t>(type)         << 24);
+    assert((api_class & ~0x3F) == 0);
+    assert((api_index & ~0x0F) == 0);
+    uint16_t api = (api_class << 4) | api_index;
+    return pack_id(device_num, manufacturer, type, api);
 }
 
 void Jaguar::set_voltage(void)
 {
-    // TODO: DEBUG
     uint32_t request_id = pack_id(m_num, m_manufacturer, m_type, kVoltageControl, kVoltageSet);
-    uint16_t payload = 0x0800;
-    m_can.send(request_id, &payload, 2);
+    uint16_t payload = 0xFFFF;
+    m_can.send(request_id, &payload, sizeof(uint16_t));
 }
 
 };

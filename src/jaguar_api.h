@@ -14,7 +14,7 @@ enum DeviceType {
     kGyroSensor          = 4,
     kAccelerometerSensor = 5,
     kUltrasonicSensor    = 6,
-    kGearToothSensor     = 7,
+    kGearToothSensor     = 7
 };
 
 enum Manufacturer {

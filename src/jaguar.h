@@ -57,7 +57,6 @@ private:
     static double s8p8_to_double(int16_t x);
     static double s16p16_to_double(int32_t x);
 
-    static uint16_t pack_api(uint8_t api_class, uint8_t api_index);
     static uint32_t pack_id(uint8_t device_number, uint8_t manufacturer, uint8_t type, uint16_t api);
     static uint32_t pack_id(uint8_t device_number, uint8_t manufacturer, uint8_t type,
                             uint8_t api_class, uint8_t api_index);

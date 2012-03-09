@@ -36,6 +36,7 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     assert(length <= 8);
     assert((id & 0xE0000000) == 0);
 
+    std::cout << ">>> ID = " << std::hex << std::setw(8) << std::setfill('0') << id << std::endl;
 
     // Each message consists of two bytes of framing, a 29-bit CAN identifier
     // packed into four bytes, and a maximum of eight bytes of data. All of
@@ -56,17 +57,30 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     encode_bytes(id_conversion.bytes, 4, buffer);
     encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
 
-    std::cout << std::hex << std::setfill('0');
+    std::cout << "send: " << std::hex << std::setfill('0');
     for (size_t i = 0; i < buffer.size(); ++i) {
         std::cout << std::setw(2) << (int)buffer[i];
     }
     std::cout << std::endl;
 
-    asio::write(m_serial, asio::buffer(buffer));
+    asio::write(m_serial, asio::buffer(&buffer[0], buffer.size()));
+}
+
+void JaguarBridge::recv_test(void)
+{
+    for (;;) {
+        uint8_t byte;
+        asio::read(m_serial, asio::buffer(&byte, 1));
+        std::cout << "recv: "
+                  << std::hex << std::setfill('0') << std::setw(2)
+                  << (int)byte
+                  << std::endl;
+    }
 }
 
 uint32_t JaguarBridge::recv(void *data, size_t length)
 {
+
     // Four bytes for the CAN id plus a payload of at most eight bytes.
     std::vector<uint8_t> buffer;
     buffer.reserve(12);

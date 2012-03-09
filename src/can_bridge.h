@@ -16,10 +16,13 @@ public:
 class CANException : public std::exception {
 public:
     CANException(std::string what) : m_what(what) {}
+    CANException(int code, std::string what) : m_code(code), m_what(what) {}
 	virtual ~CANException(void) throw() {}
     virtual char const* what() const throw() { return m_what.c_str(); }
+    virtual int code() const throw() { return m_code; }
 
 private:
+    int m_code;
     std::string m_what;
 };
 
