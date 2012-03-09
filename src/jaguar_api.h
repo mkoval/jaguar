@@ -57,7 +57,10 @@ enum SpeedControlInterface {
 };
 
 enum VoltageControl {
-    kVoltageSet = 2
+    kVoltageModeEnable  = 0,
+    kVoltageModeDisable = 1,
+    kVoltageSet         = 2,
+    kVoltageRampSet     = 3
 };
 
 enum MotorControlStatus {

@@ -34,6 +34,12 @@ public:
     double get_output_voltage(void);
     Fault get_fault(void);
 
+    // Voltage Control
+    void enable_voltage(void);
+    void disable_voltage(void);
+    void set_voltage(double scale);
+    void set_voltage_ramp(double rate);
+
     // Speed Control
     void enable_pid(void);
     void disable_pid(void);

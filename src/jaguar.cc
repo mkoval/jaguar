@@ -1,4 +1,5 @@
 #include <cassert>
+#include <limits>
 #include <arpa/inet.h>
 #include <stdint.h>
 #include "jaguar.h"
@@ -80,7 +81,7 @@ double Jaguar::get_bus_voltage(void)
 
     int16_t payload;
     uint32_t response_id = m_can.recv(&payload, 2);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return s8p8_to_double(payload);
 }
@@ -92,7 +93,7 @@ double Jaguar::get_current(void)
 
     int16_t payload;
     uint32_t response_id = m_can.recv(&payload, 2);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return s8p8_to_double(payload);
 }
@@ -104,7 +105,7 @@ double Jaguar::get_temperature(void)
 
     int16_t payload;
     uint32_t response_id = m_can.recv(&payload, 2);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return s8p8_to_double(payload);
 }
@@ -116,7 +117,7 @@ double Jaguar::get_position(void)
 
     int32_t payload;
     uint32_t response_id = m_can.recv(&payload, 4);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return s16p16_to_double(payload);
 }
@@ -128,7 +129,7 @@ double Jaguar::get_speed(void)
 
     int32_t payload;
     uint32_t response_id = m_can.recv(&payload, 4);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return s16p16_to_double(payload);
 }
@@ -140,7 +141,7 @@ Fault Jaguar::get_fault(void)
 
     uint16_t payload;
     uint32_t response_id = m_can.recv(&payload, 2);
-    assert(response_id == request_id);
+    // TODO: verify response
 
     return static_cast<Fault>(ntohs(payload));
 }
@@ -153,6 +154,52 @@ double Jaguar::get_output_voltage(void)
     int32_t payload;
     uint16_t response_id = m_can.recv(&payload, 2);
     return s8p8_to_double(payload);
+}
+
+/*
+ * Voltage Control
+ */
+void Jaguar::enable_voltage(void)
+{
+    uint32_t request_id = pack_id(m_num, m_manufacturer, kMotorController, kVoltageControl, kVoltageModeEnable);
+    m_can.send(request_id, NULL, 0);
+
+    uint32_t response_id = m_can.recv(NULL, 0);
+    // TODO: verify response
+}
+
+void Jaguar::disable_voltage(void)
+{
+    uint32_t request_id = pack_id(m_num, m_manufacturer, kMotorController, kVoltageControl, kVoltageModeDisable);
+    m_can.send(request_id, NULL, 0);
+    // TODO: verify response
+}
+
+void Jaguar::set_voltage(double scale)
+{
+    uint32_t request_id = pack_id(m_num, m_manufacturer, kMotorController, kVoltageControl, kVoltageSet);
+
+    double constrained = std::min(std::max(scale, -1.0), +1.0);
+    int16_t output;
+
+    if (constrained < 0) {
+        output = static_cast<int16_t>(std::numeric_limits<int16_t>::min() * -constrained);
+    } else if (constrained > 0) {
+        output = static_cast<int16_t>(std::numeric_limits<int16_t>::max() * +constrained);
+    } else {
+        output = 0;
+    }
+    output = std::numeric_limits<int16_t>::max();
+    output = htole16(output);
+    m_can.send(request_id, &output, sizeof(int16_t));
+
+    uint32_t response_id = m_can.recv(NULL, 0);
+    std::cout << std::hex << std::setw(8) << std::setfill('0') << response_id << std::endl;
+    // TODO: verify response
+}
+
+void Jaguar::set_voltage_ramp(double rate)
+{
 }
 
 /*

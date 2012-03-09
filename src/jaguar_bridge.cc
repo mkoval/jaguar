@@ -36,8 +36,6 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     assert(length <= 8);
     assert((id & 0xE0000000) == 0);
 
-    std::cout << ">>> ID = " << std::hex << std::setw(8) << std::setfill('0') << id << std::endl;
-
     // Each message consists of two bytes of framing, a 29-bit CAN identifier
     // packed into four bytes, and a maximum of eight bytes of data. All of
     // these, except the start of frame byte, may need to be escaped. In all,
@@ -98,6 +96,11 @@ uint32_t JaguarBridge::recv(void *data, size_t length)
         uint8_t byte;
         asio::read(m_serial, asio::buffer(&byte, 1));
 
+        std::cout << "recv: "
+                  << std::hex << std::setfill('0') << std::setw(2)
+                  << (int)byte
+                  << std::endl;
+
         // Due to escaping, the SOF byte only appears at frame starts.
         if (byte == m_sof) {
             state = kLength;
@@ -105,8 +108,9 @@ uint32_t JaguarBridge::recv(void *data, size_t length)
         }
         // Packet length can never be SOF or ESC, so we can ignore escaping.
         else if (state == kLength) {
+            assert(byte >= 4);
             state = kPayload;
-            count = byte;
+            count = byte - 4;
         }
         // This is the second byte in a two-byte escape code.
         else if (state == kPayload && escape) {
@@ -145,7 +149,9 @@ uint32_t JaguarBridge::recv(void *data, size_t length)
     id = le32toh(id);
 
     assert(count <= length);
-    memcpy(data, &buffer[4], count - 4);
+    if (length > 0) {
+        memcpy(data, &buffer[4], count - 4);
+    }
     return id;
 }
 

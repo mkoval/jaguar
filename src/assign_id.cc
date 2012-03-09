@@ -26,21 +26,10 @@ int main(int argc, char *argv[])
 
     uint8_t const new_id = convert<uint16_t>(argv[1]);
 
+    try {
         can::JaguarBridge can("/dev/ttyUSB0");
-        can::Jaguar jaguar(can, 2);
-        sleep(1);
+        can::Jaguar jaguar(can, 0);
 
-        //jaguar.device_assignment(new_id);
-
-        for (;;) {
-            jaguar.device_assignment(1);
-            //jaguar.system_halt();
-            //jaguar.set_voltage();
-            //jaguar.heartbeat();
-            //usleep(50000);
-            sleep(5);
-        }
-#if 0
         jaguar.device_assignment(new_id);
 
         std::cout << "Press the button on the desired Jaguar.\n"
@@ -51,6 +40,9 @@ int main(int argc, char *argv[])
         }
 
         std::cout << " ...Done." << std::endl;
-#endif
-        return 0;
+    } catch (can::CANException &e) {
+        std::cerr << "error " << e.code() << ": " << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
 }
