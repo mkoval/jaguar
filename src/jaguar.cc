@@ -189,7 +189,6 @@ void Jaguar::set_voltage(double scale)
     } else {
         output = 0;
     }
-    output = std::numeric_limits<int16_t>::max();
     output = htole16(output);
     m_can.send(request_id, &output, sizeof(int16_t));
 

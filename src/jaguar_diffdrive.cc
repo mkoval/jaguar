@@ -46,13 +46,20 @@ void JaguarDiffDrive::set_voltage(double left, double right)
 int main(int argc, char *argv[])
 {
     can::JaguarBridge can(kPath);
-    can::Jaguar jag(can, 2);
-    jag.system_resume();
-    jag.enable_voltage();
-    jag.set_voltage(1.0);
+    can::Jaguar jag1(can, 1);
+    can::Jaguar jag2(can, 2);
+
+    jag1.system_resume();
+    jag1.enable_voltage();
+    jag1.set_voltage(1.0);
+
+    jag2.system_resume();
+    jag2.enable_voltage();
+    jag2.set_voltage(-1.0);
+
 
     for (;;) {
-        jag.heartbeat();
+        jag1.heartbeat();
         usleep(100000);
     }
 
