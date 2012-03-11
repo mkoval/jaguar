@@ -2,11 +2,27 @@
 #define JAGUAR_BRIDGE_H_
 
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/optional.hpp>
 #include <vector>
 #include <stdint.h>
 #include "can_bridge.h"
+#include "jaguar_helper.h"
+
+typedef boost::asio::buffers_iterator<
+    boost::asio::streambuf::const_buffers_type> asio_iterator;
+
 
 namespace can {
+
+typedef std::pair<uint32_t, std::vector<uint8_t> > CANMessage;
+
+enum ReceiveState {
+    kWaiting,
+    kLength,
+    kPayload,
+    kComplete
+};
 
 class JaguarBridge : public CANBridge
 {
@@ -15,19 +31,28 @@ public:
     virtual ~JaguarBridge(void);
 
     virtual void send(uint32_t id, void const *data, size_t length);
-    virtual uint32_t recv(void *data, size_t length);
-
-    void recv_test(void);
 
 private:
-    boost::asio::io_service  m_io;
-    boost::asio::serial_port m_serial;
-    uint8_t m_last;
+    static uint8_t const kSOF, kESC;
+    static uint8_t const kSOFESC, kESCESC;
 
-    static uint8_t const m_sof, m_esc;
-    static uint8_t const m_sof_esc, m_esc_esc;
+    boost::asio::io_service  io_;
+    boost::asio::serial_port serial_;
+    boost::asio::streambuf recv_buffer_;
 
-    static size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
+    std::vector<uint8_t> packet_;
+    ReceiveState state_;
+    size_t length_;
+    bool escape_;
+
+    std::vector<CANMessage> queue_;
+
+    boost::optional<CANMessage> recv_byte(uint8_t byte);
+    std::pair<asio_iterator, bool> recv_bytes(asio_iterator begin, asio_iterator end);
+    void recv_handle(boost::system::error_code const& error, size_t count);
+
+    CANMessage unpack_packet(std::vector<uint8_t> const &packet);
+    size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
 };
 
 };

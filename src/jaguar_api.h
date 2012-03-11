@@ -1,4 +1,4 @@
-#ifndef JAGUAR_API_H_
+        #ifndef JAGUAR_API_H_
 #define JAGUAR_API_H_
 
 namespace jaguar {
