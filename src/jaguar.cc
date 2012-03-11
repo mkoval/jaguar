@@ -32,12 +32,6 @@ void Jaguar::set_num_encoders(uint16_t lines)
     send(APIClass::kConfiguration, Configuration::kNumberOfEncodersLines, payload);
 }
 
-void Jaguar::set_max_voltage(double voltage)
-{
-    uint16_t const payload = double_to_u8p8(voltage);
-    send(APIClass::kConfiguration, Configuration::kMaximumOutputVoltage, payload);
-}
-
 void Jaguar::set_fault_time(uint16_t ms)
 {
     uint16_t const payload = htole16(ms);

@@ -15,7 +15,6 @@ public:
     void set_num_brushes(uint8_t brushes);
     void set_num_encoders(uint16_t lines);
     void set_fault_time(uint16_t ms);
-    void set_max_voltage(double voltage);
 
     // Voltage Control
     void enable_voltage(void);

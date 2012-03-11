@@ -1,6 +1,6 @@
 #include <cassert>
-#include <endian.h>
 #include <vector>
+#include "jaguar_helper.h"
 #include "jaguar_bridge.h"
 
 #include <iomanip>

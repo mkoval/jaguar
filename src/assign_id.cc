@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 #include <stdint.h>
-#include "jaguar.h"
+#include "jaguar_broadcaster.h"
 #include "jaguar_bridge.h"
 
 template <typename T>
@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
 
     try {
         can::JaguarBridge can("/dev/ttyUSB0");
-        can::Jaguar jaguar(can, 0);
+        jaguar::JaguarBroadcaster broadcaster(can);
 
-        jaguar.device_assignment(new_id);
+        broadcaster.device_assignment(new_id);
 
         std::cout << "Press the button on the desired Jaguar.\n"
                   << ">>> Waiting... 5" << std::flush;
