@@ -35,10 +35,11 @@ public:
 private:
     static uint8_t const kSOF, kESC;
     static uint8_t const kSOFESC, kESCESC;
+    static size_t const kReceiveBufferLength;
 
     boost::asio::io_service  io_;
     boost::asio::serial_port serial_;
-    boost::asio::streambuf recv_buffer_;
+    std::vector<uint8_t> recv_buffer_;
 
     std::vector<uint8_t> packet_;
     ReceiveState state_;
