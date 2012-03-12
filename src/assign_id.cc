@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 #include <stdint.h>
-#include "jaguar.h"
+#include "jaguar_broadcaster.h"
 #include "jaguar_bridge.h"
 
 template <typename T>
@@ -19,20 +19,21 @@ int main(int argc, char *argv[])
 {
     if (argc <= 2) {
         std::cerr << "err: incorrect number of arguments\n"
-                  << "usage: ./assign_id <port> <device id>"
+                  << "usage: ./assign_id <path> <device id>"
                   << std::endl;
         return 1;
     }
 
-    std::string const port = argv[1];
+    std::string const path(argv[1]);
     uint8_t const new_id = convert<uint16_t>(argv[2]);
 
     try {
-        can::JaguarBridge can(port);
-        can::Jaguar jaguar(can, 5);
-        jaguar.set_voltage();
-#if 0
-        jaguar.device_assignment(new_id);
+        can::JaguarBridge can(path);
+        sleep(10);
+        return 0;
+
+        jaguar::JaguarBroadcaster broadcaster(can);
+        broadcaster.device_assignment(new_id);
 
         std::cout << "Press the button on the desired Jaguar.\n"
                   << ">>> Waiting... 5" << std::flush;
@@ -42,10 +43,9 @@ int main(int argc, char *argv[])
         }
 
         std::cout << " ...Done." << std::endl;
-#endif
-        return 0;
-    } catch (can::CANException const &e) {
-        std::cerr << "err: " << e.what() << std::endl;
+    } catch (can::CANException &e) {
+        std::cerr << "error " << e.code() << ": " << e.what() << std::endl;
         return 1;
     }
+    return 0;
 }
