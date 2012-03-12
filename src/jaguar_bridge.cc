@@ -16,7 +16,6 @@ size_t const JaguarBridge::kReceiveBufferLength = 1024;
 JaguarBridge::JaguarBridge(std::string port)
     : serial_(io_, port),
       recv_buffer_(kReceiveBufferLength),
-      halt_(false),
       state_(kWaiting),
       length_(0),
       escape_(false)
@@ -45,16 +44,15 @@ JaguarBridge::JaguarBridge(std::string port)
 
 JaguarBridge::~JaguarBridge(void)
 {
-    halt_ = true;
     serial_.cancel();
     recv_thread_.join();
     serial_.close();
 }
 
-void JaguarBridge::send(uint32_t id, void const *data, size_t length)
+void JaguarBridge::send(CANMessage const &message)
 {
-    assert(length <= 8);
-    assert((id & 0xE0000000) == 0);
+    assert(message.payload.size() <= 8);
+    assert((message.id & 0xE0000000) == 0);
 
     // Each message consists of two bytes of framing, a 29-bit CAN identifier
     // packed into four bytes, and a maximum of eight bytes of data. All of
@@ -68,14 +66,25 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     union {
         uint32_t id;
         uint8_t  bytes[4];
-    } id_conversion = { htole32(id) };
+    } id_conversion = { htole32(message.id) };
 
     buffer.push_back(kSOF);
-    buffer.push_back(length + 4);
+    buffer.push_back(message.payload.size() + 4);
     encode_bytes(id_conversion.bytes, 4, buffer);
-    encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
+    encode_bytes(&message.payload[0], message.payload.size(), buffer);
 
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
+}
+
+TokenPtr JaguarBridge::recv(uint32_t id)
+{
+    // We can't use boost::make_shared because JaguarToken's constructor is
+    // private, so we can only call it from a friend class.
+    std::pair<token_table::iterator, bool> it = tokens_.insert(
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken()))
+    );
+    assert(it.second);
+    return it.first->second;
 }
 
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
@@ -87,15 +96,15 @@ void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
     std::pair<callback_table::iterator, bool> old_callback = callbacks_.insert(
         std::make_pair(
             id,
-            boost::make_shared<boost::signal<void (CANMessage)> >()
+            boost::make_shared<callback_signal>()
         )
     );
 
-    boost::shared_ptr<boost::signal<void (CANMessage)> > signal = old_callback.first->second;
+    callback_signal_ptr signal = old_callback.first->second;
     signal->connect(cb);
 }
 
-boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
+boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
 {
     // Due to escaping, the SOF byte only appears at frame starts.
     if (byte == kSOF) {
@@ -137,28 +146,25 @@ boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     }
 
     // Emit a packet as soon as it is finished.
-    boost::optional<CANMessage> packet = boost::optional<CANMessage>();
+    boost::shared_ptr<CANMessage> message;
 
     if (state_ == kPayload && packet_.size() >= length_) {
-        CANMessage msg = unpack_packet(packet_);
-        packet = boost::optional<CANMessage>(msg);
-
+        message = unpack_packet(packet_);
         state_  = kWaiting;
         length_ = 0;
         escape_ = 0;
         packet_.clear();
     }
-
-    return packet;
+    return message;
 }
 
 void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t count)
 {
     if (error == boost::system::errc::success) {
         for (size_t i = 0; i < count; ++i) {
-            boost::optional<CANMessage> msg = recv_byte(recv_buffer_[i]);
+            boost::shared_ptr<CANMessage> msg = recv_byte(recv_buffer_[i]);
             if (msg) {
-                recv_message(*msg);
+                recv_message(msg);
             }
         }
     } else if (error == asio::error::operation_aborted) {
@@ -179,21 +185,26 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
-void JaguarBridge::recv_message(CANMessage const &msg)
+void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     // Invoke callbacks registered to this CAN identifier.
-    callback_table::iterator it = callbacks_.find(msg.id);
-    if (it != callbacks_.end()) {
-        (*it->second)(msg);
+    callback_table::iterator callback_it = callbacks_.find(msg->id);
+    if (callback_it != callbacks_.end()) {
+        (*callback_it->second)(msg);
     }    
 
     // Wake anyone who is blocking for a response.
-    // TODO: Implement this functionality.
+    token_table::iterator token_it = tokens_.find(msg->id);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        token->unblock(msg);
+        tokens_.erase(token_it);
+    }
 }
 
-CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
+boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
 {
     assert(4 <= packet.size() && packet.size() <= 12);
 
@@ -205,7 +216,7 @@ CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
     if (packet.size() > 4) {
         memcpy(&payload[0], &packet[4], packet.size() - 4);
     }
-    return CANMessage(id, payload);
+    return boost::make_shared<CANMessage>(id, payload);
 }
 
 size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer)
@@ -233,6 +244,50 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
         }
     }
     return emitted;
+}
+
+/*
+ * JaguarToken
+ */
+JaguarToken::JaguarToken(void)
+    : done_(false) 
+{
+}
+
+JaguarToken::~JaguarToken(void)
+{
+}
+
+void JaguarToken::block(void)
+{
+    if (done_) return;
+
+    boost::unique_lock<boost::mutex> lock(mutex_);
+    while (!done_) {
+        cond_.wait(lock);
+    }
+}
+
+bool JaguarToken::ready(void) const
+{
+    return done_;
+}
+
+boost::shared_ptr<CANMessage const> JaguarToken::message(void) const
+{
+    assert(done_);
+    return message_;
+}
+
+void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
+{
+    assert(!done_);
+    {
+        boost::lock_guard<boost::mutex> lock(mutex_);
+        message_ = message;
+        done_ = true;
+    }
+    cond_.notify_all();
 }
 
 };
