@@ -1,7 +1,7 @@
 #include <cassert>
 #include <limits>
 #include <stdint.h>
-
+#include <vector>
 #include <iomanip>
 #include <iostream>
 

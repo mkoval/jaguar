@@ -32,25 +32,25 @@ protected:
 		stream_.close();
 	}
 
-	void callback1a(can::CANMessage msg)
+	void callback1a(boost::shared_ptr<can::CANMessage> msg)
 	{
 		++called1a_;
-		ASSERT_EQ(msg.id, 0x00000001);
-		ASSERT_THAT(msg.payload, ElementsAre(0x01, 0x01));
+		ASSERT_EQ(msg->id, 0x00000001);
+		ASSERT_THAT(msg->payload, ElementsAre(0x01, 0x01));
 	}
 
-	void callback1b(can::CANMessage msg)
+	void callback1b(boost::shared_ptr<can::CANMessage> msg)
 	{
 		++called1b_;
-		ASSERT_EQ(msg.id, 0x00000001);
-		ASSERT_THAT(msg.payload, ElementsAre(0x01, 0x01));
+		ASSERT_EQ(msg->id, 0x00000001);
+		ASSERT_THAT(msg->payload, ElementsAre(0x01, 0x01));
 	}
 
-	void callback2(can::CANMessage msg)
+	void callback2(boost::shared_ptr<can::CANMessage> msg)
 	{
 		++called2_;
-		ASSERT_EQ(msg.id, 0x00000002);
-		ASSERT_THAT(msg.payload, ElementsAre(0x02, 0x02));
+		ASSERT_EQ(msg->id, 0x00000002);
+		ASSERT_THAT(msg->payload, ElementsAre(0x02, 0x02));
 	}
 
 	can::JaguarBridge *bridge_;
@@ -149,3 +149,30 @@ TEST_F(JaguarBridgeTest, attach_callbackMismatchedCallbackNotInvoked)
 	ASSERT_EQ(called1b_, 0);
 }
 
+TEST_F(JaguarBridgeTest, recvTokenBlocksUntilReady)
+{
+	std::vector<uint8_t> payload(8);
+	can::TokenPtr token = bridge_->recv(0x00000001, &payload[0], payload.size());
+	ASSERT_FALSE(token->ready());
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+
+	token->block();
+	ASSERT_TRUE(token->ready());
+}
+
+TEST_F(JaguarBridgeTest, tokenCopiesData)
+{
+	std::vector<uint8_t> payload(2);
+	can::TokenPtr token = bridge_->recv(0x00000001, &payload[0], payload.size());
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+
+	token->block();
+	char const *expected = "\x01\x01";
+	ASSERT_THAT(payload, ElementsAreArray(expected, 2));
+}
