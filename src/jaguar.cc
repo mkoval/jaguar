@@ -113,6 +113,7 @@ void Jaguar::set_speed(double speed)
 
 void Jaguar::set_speed(double speed, uint8_t group)
 {
+#if 0
     struct {
         int32_t speed;
         uint8_t group;
@@ -122,6 +123,8 @@ void Jaguar::set_speed(double speed, uint8_t group)
     payload.group = group;
 
     send(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
+#endif 
+    // FIXME: Implement this.
 }
 
 /*

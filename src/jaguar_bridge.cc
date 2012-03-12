@@ -5,8 +5,6 @@
 
 namespace asio = boost::asio;
 
-void handler(const boost::system::error_code& e, std::size_t size);
-
 namespace can {
 
 uint8_t const JaguarBridge::kSOF = 0xFF;
@@ -14,9 +12,11 @@ uint8_t const JaguarBridge::kESC = 0xFE;
 uint8_t const JaguarBridge::kSOFESC = 0xFE;
 uint8_t const JaguarBridge::kESCESC = 0xFD;
 size_t const JaguarBridge::kReceiveBufferLength = 1024;
+size_t const JaguarBridge::kReceiveQueueLength  = 16;
 
 JaguarBridge::JaguarBridge(std::string port)
     : serial_(io_, port),
+      recv_queue_(kReceiveQueueLength),
       recv_buffer_(kReceiveBufferLength),
       state_(kWaiting),
       length_(0),
@@ -25,11 +25,13 @@ JaguarBridge::JaguarBridge(std::string port)
     using asio::serial_port_base;
 
     serial_.set_option(serial_port_base::baud_rate(115200u));
+    serial_.set_option(serial_port_base::character_size(8));
     serial_.set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
     serial_.set_option(serial_port_base::parity(serial_port_base::parity::none));
+    serial_.set_option(serial_port_base::flow_control(serial_port_base::flow_control::none));
 
     // Four byte ID plus at most eight bytes of payload.
-    packet_.resize(12);
+    packet_.reserve(12);
 
     // Schedule an asynchronous read. This will persist for the entire
     // lifetime of the program.
@@ -39,11 +41,13 @@ JaguarBridge::JaguarBridge(std::string port)
                     asio::placeholders::bytes_transferred
         )
     );
-    io_.run();
+    recv_thread_ = boost::thread(boost::bind(&asio::io_service::run, &io_));
 }
 
 JaguarBridge::~JaguarBridge(void)
 {
+    serial_.cancel();
+    recv_thread_.join();
     serial_.close();
 }
 
@@ -72,6 +76,16 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
 
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
+}
+
+void JaguarBridge::recv_block(uint32_t id, void *data, size_t length)
+{
+    // FIXME: not implemented
+}
+
+void JaguarBridge::recv_async(uint32_t id, recv_callback cb)
+{
+    // FIXME: not implemented
 }
 
 boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
@@ -138,7 +152,7 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
             boost::optional<CANMessage> msg = recv_byte(recv_buffer_[i]);
             if (msg) {
                 // FIXME: This isn't thread safe.
-                queue_.push_back(*msg);
+                recv_queue_.push_back(*msg);
             }
         }
     } else {
@@ -165,8 +179,9 @@ CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
     id = le32toh(id);
 
     std::vector<uint8_t> payload(packet.size() - 4);
-    memcpy(&payload[0], &packet[4], packet.size() - 4);
-
+    if (packet.size() > 4) {
+        memcpy(&payload[0], &packet[4], packet.size() - 4);
+    }
     return std::make_pair(id, payload);
 }
 
