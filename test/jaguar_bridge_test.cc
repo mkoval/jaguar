@@ -43,7 +43,7 @@ protected:
 
 	void delay(void)
 	{
-		usleep(100);
+		usleep(1000);
 	}
 
 	void callback1a(boost::shared_ptr<can::CANMessage> msg)
@@ -181,10 +181,10 @@ TEST_F(JaguarBridgeTest, recvTokenContainsMessage)
 	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
 	token->block();
 
-	std::vector<uint8_t> const  payload_expected = list_of(0x01)(0x01);
-	std::vector<uint8_t> const &payload_actual   = token->message()->payload;
+	std::vector<uint8_t> const payload_expected = list_of(0x01)(0x01);
+	std::vector<uint8_t> const payload_actual   = token->message()->payload;
 	ASSERT_EQ(token->message()->id, 0x00000001);
-	//ASSERT_EQ(payload_actual, payload_expected);
+	ASSERT_THAT(payload_actual, ContainerEq(payload_expected));
 }
 
 TEST_F(JaguarBridgeTest, recvMismatchedTokensNotReady)
