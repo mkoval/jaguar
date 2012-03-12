@@ -12,11 +12,9 @@ uint8_t const JaguarBridge::kESC = 0xFE;
 uint8_t const JaguarBridge::kSOFESC = 0xFE;
 uint8_t const JaguarBridge::kESCESC = 0xFD;
 size_t const JaguarBridge::kReceiveBufferLength = 1024;
-size_t const JaguarBridge::kReceiveQueueLength  = 16;
 
 JaguarBridge::JaguarBridge(std::string port)
     : serial_(io_, port),
-      recv_queue_(kReceiveQueueLength),
       recv_buffer_(kReceiveBufferLength),
       state_(kWaiting),
       length_(0),
@@ -78,14 +76,27 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
 }
 
-void JaguarBridge::recv_block(uint32_t id, void *data, size_t length)
+void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
-    // FIXME: not implemented
+    boost::mutex::scoped_lock lock(callback_mutex_);
+    callbacks_.insert(std::pair<uint32_t, recv_callback>(id, cb));
 }
 
-void JaguarBridge::recv_async(uint32_t id, recv_callback cb)
+bool JaguarBridge::detach_callback(uint32_t id, recv_callback cb)
 {
-    // FIXME: not implemented
+    boost::mutex::scoped_lock lock(callback_mutex_);
+    std::pair<callback_table::iterator,
+              callback_table::iterator> matches = callbacks_.equal_range(id);
+    bool found = false;
+     
+    callback_table::iterator it;
+    for (it = matches.first; it != matches.second; ++it) {
+        if (it->second == cb) {
+            callbacks_.erase(it);
+            return true;
+        }
+    } 
+    return false;
 }
 
 boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
@@ -151,8 +162,7 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
         for (size_t i = 0; i < count; ++i) {
             boost::optional<CANMessage> msg = recv_byte(recv_buffer_[i]);
             if (msg) {
-                // FIXME: This isn't thread safe.
-                recv_queue_.push_back(*msg);
+                recv_message(*msg);
             }
         }
     } else {
@@ -170,6 +180,23 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
+void JaguarBridge::recv_message(CANMessage const &msg)
+{
+    boost::mutex::scoped_lock lock(callback_mutex_);
+
+    // Invoke callbacks registered to this CAN identifier.
+    std::pair<callback_table::iterator,
+              callback_table::iterator> matches = callbacks_.equal_range(msg.id);
+
+    callback_table::iterator it; 
+    for (it = matches.first; it != matches.second; ++it) {
+        it->second(msg);
+    }
+
+    // Wake anyone who is blocking for a response.
+
+}
+
 CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
 {
     assert(4 <= packet.size() && packet.size() <= 12);
@@ -182,7 +209,7 @@ CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
     if (packet.size() > 4) {
         memcpy(&payload[0], &packet[4], packet.size() - 4);
     }
-    return std::make_pair(id, payload);
+    return CANMessage(id, payload);
 }
 
 size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer)
