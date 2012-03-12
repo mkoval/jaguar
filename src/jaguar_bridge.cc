@@ -78,6 +78,22 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
 }
 
+size_t JaguarBridge::recv(uint32_t id, void *data, size_t length)
+{
+    std::pair<blocking_table::iterator, bool> it = blocks_.insert(
+        std::make_pair(id, boost::make_shared<Block>())
+    );
+    block_ptr block = it.first->second;
+
+    boost::unique_lock<boost::mutex> lock(blocking_mutex_);
+    block->cond.wait(lock);
+
+    size_t payload_length = block->message->payload.size();
+    size_t min_length = std::min(payload_length, length);
+    memcpy(data, &block->message->payload[0], min_length);
+    return min_length;
+}
+
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
@@ -87,15 +103,15 @@ void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
     std::pair<callback_table::iterator, bool> old_callback = callbacks_.insert(
         std::make_pair(
             id,
-            boost::make_shared<boost::signal<void (CANMessage)> >()
+            boost::make_shared<callback_signal>()
         )
     );
 
-    boost::shared_ptr<boost::signal<void (CANMessage)> > signal = old_callback.first->second;
+    callback_signal_ptr signal = old_callback.first->second;
     signal->connect(cb);
 }
 
-boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
+boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
 {
     // Due to escaping, the SOF byte only appears at frame starts.
     if (byte == kSOF) {
@@ -137,28 +153,25 @@ boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     }
 
     // Emit a packet as soon as it is finished.
-    boost::optional<CANMessage> packet = boost::optional<CANMessage>();
+    boost::shared_ptr<CANMessage> message;
 
     if (state_ == kPayload && packet_.size() >= length_) {
-        CANMessage msg = unpack_packet(packet_);
-        packet = boost::optional<CANMessage>(msg);
-
+        message = unpack_packet(packet_);
         state_  = kWaiting;
         length_ = 0;
         escape_ = 0;
         packet_.clear();
     }
-
-    return packet;
+    return message;
 }
 
 void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t count)
 {
     if (error == boost::system::errc::success) {
         for (size_t i = 0; i < count; ++i) {
-            boost::optional<CANMessage> msg = recv_byte(recv_buffer_[i]);
+            boost::shared_ptr<CANMessage> msg = recv_byte(recv_buffer_[i]);
             if (msg) {
-                recv_message(*msg);
+                recv_message(msg);
             }
         }
     } else if (error == asio::error::operation_aborted) {
@@ -179,21 +192,26 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
-void JaguarBridge::recv_message(CANMessage const &msg)
+void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     // Invoke callbacks registered to this CAN identifier.
-    callback_table::iterator it = callbacks_.find(msg.id);
-    if (it != callbacks_.end()) {
-        (*it->second)(msg);
+    callback_table::iterator cb = callbacks_.find(msg->id);
+    if (cb != callbacks_.end()) {
+        (*cb->second)(msg);
     }    
 
     // Wake anyone who is blocking for a response.
-    // TODO: Implement this functionality.
+    std::pair<blocking_table::iterator, bool> it = blocks_.insert(
+        std::make_pair(msg->id, boost::make_shared<Block>())
+    );
+    block_ptr block = it.first->second;
+    block->message = msg;
+    block->cond.notify_all();
 }
 
-CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
+boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
 {
     assert(4 <= packet.size() && packet.size() <= 12);
 
@@ -205,7 +223,7 @@ CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
     if (packet.size() > 4) {
         memcpy(&payload[0], &packet[4], packet.size() - 4);
     }
-    return CANMessage(id, payload);
+    return boost::make_shared<CANMessage>(id, payload);
 }
 
 size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer)

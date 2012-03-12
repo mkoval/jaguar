@@ -4,7 +4,6 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
-#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/signal.hpp>
 #include <boost/thread.hpp>
@@ -38,22 +37,34 @@ public:
     }
 };
 
+class Block {
+public:
+    boost::shared_ptr<CANMessage> message;
+    boost::condition_variable     cond;
+
+    Block(void) {}
+};
+
 class JaguarBridge : public CANBridge
 {
 public:
-    typedef boost::function<void (CANMessage)> recv_callback;
+    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
 
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
-    virtual void send(uint32_t id, void const *data, size_t length);
-    //virtual void recv(uint32_t id, void       *data, size_t length);
+    virtual void   send(uint32_t id, void const *data, size_t length);
+    virtual size_t recv(uint32_t id, void       *data, size_t length);
 
     virtual void attach_callback(uint32_t id, recv_callback cb);
     //virtual bool detach_callback(uint32_t id, recv_callback cb);
 
 private:
-    typedef std::map<uint32_t, boost::shared_ptr<boost::signal<void (CANMessage)> > > callback_table;
+    typedef boost::signal<void (boost::shared_ptr<CANMessage>)> callback_signal;
+    typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
+    typedef boost::shared_ptr<Block> block_ptr;
+    typedef std::map<uint32_t, callback_signal_ptr> callback_table;
+    typedef std::map<uint32_t, block_ptr>           blocking_table;
 
     static uint8_t const kSOF, kESC;
     static uint8_t const kSOFESC, kESCESC;
@@ -62,24 +73,24 @@ private:
     boost::asio::io_service  io_;
     boost::asio::serial_port serial_;
 
-    // Receiving asynchronous callbacks.
     boost::thread recv_thread_;
     std::vector<uint8_t> recv_buffer_;
+    blocking_table blocks_;
     callback_table callbacks_;
     boost::mutex callback_mutex_;
+    boost::mutex blocking_mutex_;
     bool halt_;
 
-    // State machine to decode the UART protocol's framing and escaping.
     std::vector<uint8_t> packet_;
     ReceiveState state_;
     size_t length_;
     bool escape_;
 
-    boost::optional<CANMessage> recv_byte(uint8_t byte);
+    boost::shared_ptr<CANMessage> recv_byte(uint8_t byte);
     void recv_handle(boost::system::error_code const& error, size_t count);
-    void recv_message(CANMessage const &msg);
+    void recv_message(boost::shared_ptr<CANMessage> msg);
 
-    CANMessage unpack_packet(std::vector<uint8_t> const &packet);
+    boost::shared_ptr<CANMessage> unpack_packet(std::vector<uint8_t> const &packet);
     size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
 };
 
