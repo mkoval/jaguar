@@ -179,3 +179,37 @@ TEST_F(JaguarBridgeTest, recvTokenContainsMessage)
 	ASSERT_EQ(token->message()->id, 0x00000001);
 	//ASSERT_EQ(payload_actual, payload_expected);
 }
+
+TEST_F(JaguarBridgeTest, recvMismatchedTokensNotReady)
+{
+	can::TokenPtr token1 = bridge_->recv(0x00000001);
+	can::TokenPtr token2 = bridge_->recv(0x00000002);
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+	token1->block();	
+
+	ASSERT_TRUE(token1->ready());
+	ASSERT_FALSE(token2->ready());
+}
+
+TEST_F(JaguarBridgeTest, recvResetsTokenStatus)
+{
+	can::TokenPtr token1 = bridge_->recv(0x00000001);
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+	token1->block();	
+
+	ASSERT_TRUE(token1->ready());
+	can::TokenPtr token2 = bridge_->recv(0x00000001);
+	ASSERT_FALSE(token2->ready());
+
+	stream_.write(packet, 8);
+	stream_.flush();
+	token2->block();	
+
+	ASSERT_TRUE(token2->ready());
+}
