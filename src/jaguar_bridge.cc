@@ -49,10 +49,10 @@ JaguarBridge::~JaguarBridge(void)
     serial_.close();
 }
 
-void JaguarBridge::send(uint32_t id, void const *data, size_t length)
+void JaguarBridge::send(CANMessage const &message)
 {
-    assert(length <= 8);
-    assert((id & 0xE0000000) == 0);
+    assert(message.payload.size() <= 8);
+    assert((message.id & 0xE0000000) == 0);
 
     // Each message consists of two bytes of framing, a 29-bit CAN identifier
     // packed into four bytes, and a maximum of eight bytes of data. All of
@@ -66,22 +66,22 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     union {
         uint32_t id;
         uint8_t  bytes[4];
-    } id_conversion = { htole32(id) };
+    } id_conversion = { htole32(message.id) };
 
     buffer.push_back(kSOF);
-    buffer.push_back(length + 4);
+    buffer.push_back(message.payload.size() + 4);
     encode_bytes(id_conversion.bytes, 4, buffer);
-    encode_bytes(static_cast<uint8_t const *>(data), length, buffer);
+    encode_bytes(&message.payload[0], message.payload.size(), buffer);
 
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
 }
 
-TokenPtr JaguarBridge::recv(uint32_t id, void *data, size_t length)
+TokenPtr JaguarBridge::recv(uint32_t id)
 {
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
-        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(data, length)))
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken()))
     );
     assert(it.second);
     return it.first->second;
@@ -249,10 +249,8 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
 /*
  * JaguarToken
  */
-JaguarToken::JaguarToken(void *buffer, size_t buffer_length)
-    : buffer_(buffer),
-      length_(buffer_length),
-      done_(false) 
+JaguarToken::JaguarToken(void)
+    : done_(false) 
 {
 }
 
@@ -275,13 +273,18 @@ bool JaguarToken::ready(void) const
     return done_;
 }
 
+boost::shared_ptr<CANMessage const> JaguarToken::message(void) const
+{
+    assert(done_);
+    return message_;
+}
+
 void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 {
     assert(!done_);
     {
         boost::lock_guard<boost::mutex> lock(mutex_);
-        size_t min_length = std::min(message->payload.size(), length_);
-        memcpy(buffer_, &message->payload[0], min_length);
+        message_ = message;
         done_ = true;
     }
     cond_.notify_all();

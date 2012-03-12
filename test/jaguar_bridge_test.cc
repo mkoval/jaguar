@@ -1,15 +1,18 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <boost/assign/list_of.hpp>
 #include <boost/shared_ptr.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "jaguar_bridge.h"
 
 using namespace testing;
+using boost::assign::list_of;
 
 static std::string const kPathReal = "/dev/ttys002";
 static std::string const kPathTest = "/dev/ttys003";
+static std::vector<uint8_t> const kEmptyPayload(0);
 
 class JaguarBridgeTest : public ::testing::Test
 {
@@ -60,7 +63,7 @@ protected:
 
 TEST_F(JaguarBridgeTest, sendIncludesSOF)
 {
-	bridge_->send(0, NULL, 0);
+	bridge_->send(can::CANMessage(0x00000000, kEmptyPayload));
 
 	char sof;
 	stream_.get(sof);
@@ -70,7 +73,7 @@ TEST_F(JaguarBridgeTest, sendIncludesSOF)
 
 TEST_F(JaguarBridgeTest, sendIncludesIdentifier)
 {
-	bridge_->send(0x11223344, NULL, 0);
+	bridge_->send(can::CANMessage(0x11223344, kEmptyPayload));
 
 	std::vector<char> packet(6);
 	stream_.read(&packet[0], packet.size());
@@ -81,8 +84,8 @@ TEST_F(JaguarBridgeTest, sendIncludesIdentifier)
 
 TEST_F(JaguarBridgeTest, sendIncludesPayload)
 {
-	uint8_t const payload[] = { '\x11', '\x22' };
-	bridge_->send(0x00000000, &payload, 2);
+	std::vector<uint8_t> payload = list_of(0x11)(0x22);
+	bridge_->send(can::CANMessage(0x00000000, payload));
 
 	std::vector<char> packet(8);
 	stream_.read(&packet[0], packet.size());
@@ -94,7 +97,7 @@ TEST_F(JaguarBridgeTest, sendIncludesPayload)
 
 TEST_F(JaguarBridgeTest, sendEscapesSOF)
 {
-	bridge_->send(0x000000FF, NULL, 0);
+	bridge_->send(can::CANMessage(0x000000FF, kEmptyPayload));
 
 	std::vector<char> packet(7);
 	stream_.read(&packet[0], packet.size());
@@ -105,7 +108,7 @@ TEST_F(JaguarBridgeTest, sendEscapesSOF)
 
 TEST_F(JaguarBridgeTest, sendEscapesESC)
 {
-	bridge_->send(0x000000FE, NULL, 0);
+	bridge_->send(can::CANMessage(0x000000FE, kEmptyPayload));
 
 	std::vector<char> packet(7);
 	stream_.read(&packet[0], packet.size());
@@ -151,28 +154,28 @@ TEST_F(JaguarBridgeTest, attach_callbackMismatchedCallbackNotInvoked)
 
 TEST_F(JaguarBridgeTest, recvTokenBlocksUntilReady)
 {
-	std::vector<uint8_t> payload(8);
-	can::TokenPtr token = bridge_->recv(0x00000001, &payload[0], payload.size());
+	can::TokenPtr token = bridge_->recv(0x00000001);
 	ASSERT_FALSE(token->ready());
 
 	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
 	stream_.write(packet, 8);
 	stream_.flush();
-
 	token->block();
+
 	ASSERT_TRUE(token->ready());
 }
 
-TEST_F(JaguarBridgeTest, tokenCopiesData)
+TEST_F(JaguarBridgeTest, recvTokenContainsMessage)
 {
-	std::vector<uint8_t> payload(2);
-	can::TokenPtr token = bridge_->recv(0x00000001, &payload[0], payload.size());
+	can::TokenPtr token = bridge_->recv(0x00000001);
 
 	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
 	stream_.write(packet, 8);
 	stream_.flush();
-
 	token->block();
-	char const *expected = "\x01\x01";
-	ASSERT_THAT(payload, ElementsAreArray(expected, 2));
+
+	std::vector<uint8_t> const  payload_expected = list_of(0x01)(0x01);
+	std::vector<uint8_t> const &payload_actual   = token->message()->payload;
+	ASSERT_EQ(token->message()->id, 0x00000001);
+	//ASSERT_EQ(payload_actual, payload_expected);
 }

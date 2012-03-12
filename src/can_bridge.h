@@ -13,12 +13,6 @@ class Token;
 
 typedef boost::shared_ptr<Token> TokenPtr;
 
-class CANBridge {
-public:
-    virtual void send(uint32_t id, void const *data, size_t length) = 0;
-    virtual TokenPtr recv(uint32_t id, void *data, size_t length) = 0;
-};
-
 class CANMessage {
 public:
     uint32_t id;
@@ -28,6 +22,16 @@ public:
         : id(p_id), payload(p_payload)
     {
     }
+
+    virtual ~CANMessage(void)
+    {
+    }
+};
+
+class CANBridge {
+public:
+    virtual void send(CANMessage const &message) = 0;
+    virtual TokenPtr recv(uint32_t id) = 0;
 };
 
 class Token : boost::noncopyable
@@ -37,6 +41,7 @@ public:
 	virtual ~Token(void) {}
 	virtual void block(void) = 0;
     virtual bool ready(void) const = 0;
+	virtual boost::shared_ptr<CANMessage const> message(void) const = 0;
 };
 
 class CANException : public std::exception {

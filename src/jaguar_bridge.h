@@ -36,8 +36,8 @@ public:
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
-    virtual void send(uint32_t id, void const *data, size_t length);
-    virtual TokenPtr recv(uint32_t id, void *data, size_t length);
+    virtual void send(CANMessage const &message);
+    virtual TokenPtr recv(uint32_t id);
 
     virtual void attach_callback(uint32_t id, recv_callback cb);
     //virtual bool detach_callback(uint32_t id, recv_callback cb);
@@ -80,16 +80,16 @@ class JaguarToken : public Token {
 public:
     virtual ~JaguarToken(void);
     virtual void block(void);
+    virtual boost::shared_ptr<CANMessage const> message(void) const;
     virtual bool ready(void) const;
 
 private:    
+    boost::shared_ptr<CANMessage> message_;
     boost::condition_variable cond_;
     boost::mutex mutex_;
-    void *buffer_;
-    size_t length_;
     bool done_;
 
-    JaguarToken(void *buffer, size_t buffer_length);
+    JaguarToken(void);
     virtual void unblock(boost::shared_ptr<CANMessage> message);
 
     friend class JaguarBridge;
