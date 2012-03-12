@@ -79,24 +79,18 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
-    callbacks_.insert(std::pair<uint32_t, recv_callback>(id, cb));
-}
 
-bool JaguarBridge::detach_callback(uint32_t id, recv_callback cb)
-{
-    boost::mutex::scoped_lock lock(callback_mutex_);
-    std::pair<callback_table::iterator,
-              callback_table::iterator> matches = callbacks_.equal_range(id);
-    bool found = false;
-     
-    callback_table::iterator it;
-    for (it = matches.first; it != matches.second; ++it) {
-        if (it->second == cb) {
-            callbacks_.erase(it);
-            return true;
-        }
-    } 
-    return false;
+    // Calling map::insert() is equivalent to map::find() if the key already
+    // exists; i.e. the map is not changed in any way.
+    std::pair<callback_table::iterator, bool> old_callback = callbacks_.insert(
+        std::make_pair(
+            id,
+            boost::make_shared<boost::signal<void (CANMessage)> >()
+        )
+    );
+
+    boost::shared_ptr<boost::signal<void (CANMessage)> > signal = old_callback.first->second;
+    signal->connect(cb);
 }
 
 boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
@@ -185,16 +179,13 @@ void JaguarBridge::recv_message(CANMessage const &msg)
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     // Invoke callbacks registered to this CAN identifier.
-    std::pair<callback_table::iterator,
-              callback_table::iterator> matches = callbacks_.equal_range(msg.id);
-
-    callback_table::iterator it; 
-    for (it = matches.first; it != matches.second; ++it) {
-        it->second(msg);
-    }
+    callback_table::iterator it = callbacks_.find(msg.id);
+    if (it != callbacks_.end()) {
+        (*it->second)(msg);
+    }    
 
     // Wake anyone who is blocking for a response.
-
+    // TODO: Implement this functionality.
 }
 
 CANMessage JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)

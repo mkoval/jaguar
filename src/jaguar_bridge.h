@@ -5,6 +5,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
+#include <boost/signal.hpp>
 #include <boost/thread.hpp>
 #include <map>
 #include <vector>
@@ -48,11 +49,10 @@ public:
     //virtual void recv(uint32_t id, void       *data, size_t length);
 
     virtual void attach_callback(uint32_t id, recv_callback cb);
-    virtual bool detach_callback(uint32_t id, recv_callback cb);
+    //virtual bool detach_callback(uint32_t id, recv_callback cb);
 
 private:
-    typedef std::multimap<uint32_t, recv_callback> callback_table;
-    typedef std::multimap<uint32_t, boost::condition_variable> blocking_table;
+    typedef std::map<uint32_t, boost::shared_ptr<boost::signal<void (CANMessage)> > > callback_table;
 
     static uint8_t const kSOF, kESC;
     static uint8_t const kSOFESC, kESCESC;
