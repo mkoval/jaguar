@@ -4,6 +4,7 @@
 #include <vector>
 #include <iomanip>
 #include <iostream>
+#include <cstring>
 
 #include "jaguar.h"
 #include "jaguar_helper.h"
