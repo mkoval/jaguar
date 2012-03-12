@@ -44,7 +44,7 @@ JaguarBridge::JaguarBridge(std::string port)
 
 JaguarBridge::~JaguarBridge(void)
 {
-    serial_.cancel();
+    //serial_.cancel();
     recv_thread_.join();
     serial_.close();
 }
@@ -159,8 +159,14 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
                 recv_message(*msg);
             }
         }
-    } else {
-        // TODO: Log an error message.
+    }
+    else if (error == asio::error::operation_aborted) {
+        // FIXME: Why doesn't the correct error code get passed when I call cancel()?
+        return;
+    }
+    else {
+        // TODO: Distinguish between an abort and actual errors.
+        return;
     }
 
     // Start the next asynchronous read. This chaining is necessary to avoid
