@@ -5,15 +5,17 @@
 #include <stdint.h>
 #include "jaguar_api.h"
 
-#ifdef BOOST_LITTLE_ENDIAN
-#define htole16(x) x
-#define htole32(x) x
-#define le16toh(x) x
-#define le32toh(x) x
-#elif BOOST_BIG_ENDIAN
-#error big endian architectures are unsupported
-#else
-#error unknown endiannes
+#ifndef __GLIBC__
+# ifdef BOOST_LITTLE_ENDIAN
+#  define htole16(x) x
+#  define htole32(x) x
+#  define le16toh(x) x
+#  define le32toh(x) x
+# elif BOOST_BIG_ENDIAN
+#  error big endian architectures are unsupported
+# else
+#  error unknown endiannes
+# endif
 #endif
 
 namespace jaguar {
