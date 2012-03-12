@@ -1,6 +1,7 @@
 *.pyc
 *~
 *.o
+.DS_Store
 /build/
 /CMakeCache.txt
 /CMakeFiles/
