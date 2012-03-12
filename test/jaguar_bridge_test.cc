@@ -8,16 +8,22 @@
 
 using namespace testing;
 
-static std::string const kPathInput  = "/dev/ptyp0";
-static std::string const kPathOutput = "/dev/ttyp0";
+static std::string const kPathReal = "/dev/ttys002";
+static std::string const kPathTest = "/dev/ttys003";
 
 class JaguarBridgeTest : public ::testing::Test
 {
 protected:
 	virtual void SetUp(void)
 	{
-		stream_.open(kPathInput.c_str(), std::ios::in | std::ios::ate);
-		bridge_ = new can::JaguarBridge(kPathOutput);
+		stream_.open(kPathTest.c_str(), std::ios::in  | std::ios::ate
+		                              | std::ios::out | std::ios::app
+		                              | std::ios::binary);
+		bridge_ = new can::JaguarBridge(kPathReal);
+
+		called1a_ = 0;
+		called1b_ = 0;
+		called2_  = 0;
 	}
 
 	virtual void TearDown(void)
@@ -26,8 +32,30 @@ protected:
 		stream_.close();
 	}
 
+	void callback1a(can::CANMessage msg)
+	{
+		++called1a_;
+		ASSERT_EQ(msg.id, 0x00000001);
+		ASSERT_THAT(msg.payload, ElementsAre(0x01, 0x01));
+	}
+
+	void callback1b(can::CANMessage msg)
+	{
+		++called1b_;
+		ASSERT_EQ(msg.id, 0x00000001);
+		ASSERT_THAT(msg.payload, ElementsAre(0x01, 0x01));
+	}
+
+	void callback2(can::CANMessage msg)
+	{
+		++called2_;
+		ASSERT_EQ(msg.id, 0x00000002);
+		ASSERT_THAT(msg.payload, ElementsAre(0x02, 0x02));
+	}
+
 	can::JaguarBridge *bridge_;
 	std::fstream stream_;
+	int called1a_, called1b_, called2_;
 };
 
 TEST_F(JaguarBridgeTest, sendIncludesSOF)
@@ -86,4 +114,38 @@ TEST_F(JaguarBridgeTest, sendEscapesESC)
 	ASSERT_TRUE(stream_.good());
 }
 
+TEST_F(JaguarBridgeTest, attach_callbackMatchingCallbackInvoked)
+{
+	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1a, this, _1));
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+	sleep(1);
+	ASSERT_EQ(called1a_, 1);
+}
+
+TEST_F(JaguarBridgeTest, attach_callbackMatchingMultipleCallbacksInvoked)
+{
+	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1a, this, _1));
+	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1b, this, _1));
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+	sleep(1);
+	ASSERT_EQ(called1a_, 1);
+	ASSERT_EQ(called1b_, 1);
+}
+
+TEST_F(JaguarBridgeTest, attach_callbackMismatchedCallbackNotInvoked)
+{
+	bridge_->attach_callback(0x00000002, boost::bind(&JaguarBridgeTest::callback2, this, _1));
+
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
+	stream_.write(packet, 8);
+	stream_.flush();
+	sleep(1);
+	ASSERT_EQ(called1b_, 0);
+}
 

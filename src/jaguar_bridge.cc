@@ -16,6 +16,7 @@ size_t const JaguarBridge::kReceiveBufferLength = 1024;
 JaguarBridge::JaguarBridge(std::string port)
     : serial_(io_, port),
       recv_buffer_(kReceiveBufferLength),
+      halt_(false),
       state_(kWaiting),
       length_(0),
       escape_(false)
@@ -44,7 +45,8 @@ JaguarBridge::JaguarBridge(std::string port)
 
 JaguarBridge::~JaguarBridge(void)
 {
-    //serial_.cancel();
+    halt_ = true;
+    serial_.cancel();
     recv_thread_.join();
     serial_.close();
 }
@@ -106,7 +108,7 @@ boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     else if (state_ == kLength) {
         assert(4 <= byte && byte <= 12);
         state_  = kPayload;
-        length_ = byte - 4;
+        length_ = byte;
     }
     // This is the second byte in a two-byte escape code.
     else if (state_ == kPayload && escape_) {
@@ -130,7 +132,7 @@ boost::optional<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
         escape_ = true;
     }
     // Normal data.
-    else {
+    else if (state_ == kPayload) {
         packet_.push_back(byte);
     }
 
@@ -159,19 +161,16 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
                 recv_message(*msg);
             }
         }
-    }
-    else if (error == asio::error::operation_aborted) {
-        // FIXME: Why doesn't the correct error code get passed when I call cancel()?
+    } else if (error == asio::error::operation_aborted) {
         return;
-    }
-    else {
-        // TODO: Distinguish between an abort and actual errors.
+    } else {
+        // TODO: properly log this error message
+        std::cerr << "error: " << error.message() << std::endl;
         return;
     }
 
     // Start the next asynchronous read. This chaining is necessary to avoid
     // explicit threading.
-    // TODO: Do I need to check for an abort error code?
     serial_.async_read_some(asio::buffer(recv_buffer_),
         boost::bind(&JaguarBridge::recv_handle, this,
                     asio::placeholders::error,

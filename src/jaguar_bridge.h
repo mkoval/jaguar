@@ -67,6 +67,7 @@ private:
     std::vector<uint8_t> recv_buffer_;
     callback_table callbacks_;
     boost::mutex callback_mutex_;
+    bool halt_;
 
     // State machine to decode the UART protocol's framing and escaping.
     std::vector<uint8_t> packet_;
