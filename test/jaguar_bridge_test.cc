@@ -35,6 +35,17 @@ protected:
 		stream_.close();
 	}
 
+	void write(char const *data, size_t length)
+	{
+		stream_.write(data, length);
+		stream_.flush();
+	}
+
+	void delay(void)
+	{
+		usleep(100);
+	}
+
 	void callback1a(boost::shared_ptr<can::CANMessage> msg)
 	{
 		++called1a_;
@@ -77,6 +88,7 @@ TEST_F(JaguarBridgeTest, sendIncludesIdentifier)
 
 	std::vector<char> packet(6);
 	stream_.read(&packet[0], packet.size());
+
 	char const *expected = "\xFF\x04\x44\x33\x22\x11";
 	ASSERT_THAT(packet, ElementsAreArray(expected, packet.size()));
 	ASSERT_TRUE(stream_.good());
@@ -89,6 +101,7 @@ TEST_F(JaguarBridgeTest, sendIncludesPayload)
 
 	std::vector<char> packet(8);
 	stream_.read(&packet[0], packet.size());
+
 	char const *expected = "\xFF\x06\x00\x00\x00\x00\x11\x22";
 	ASSERT_THAT(packet, ElementsAreArray(expected, packet.size()));
 	ASSERT_TRUE(stream_.good());
@@ -112,6 +125,7 @@ TEST_F(JaguarBridgeTest, sendEscapesESC)
 
 	std::vector<char> packet(7);
 	stream_.read(&packet[0], packet.size());
+
 	char const *expected = "\xFF\x04\xFE\xFD\x00\x00";
 	ASSERT_THAT(packet, ElementsAreArray(expected, packet.size()));
 	ASSERT_TRUE(stream_.good());
@@ -121,10 +135,9 @@ TEST_F(JaguarBridgeTest, attach_callbackMatchingCallbackInvoked)
 {
 	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1a, this, _1));
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
-	sleep(1);
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
+	delay();
+
 	ASSERT_EQ(called1a_, 1);
 }
 
@@ -133,10 +146,9 @@ TEST_F(JaguarBridgeTest, attach_callbackMatchingMultipleCallbacksInvoked)
 	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1a, this, _1));
 	bridge_->attach_callback(0x00000001, boost::bind(&JaguarBridgeTest::callback1b, this, _1));
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
-	sleep(1);
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
+	delay();
+
 	ASSERT_EQ(called1a_, 1);
 	ASSERT_EQ(called1b_, 1);
 }
@@ -145,10 +157,9 @@ TEST_F(JaguarBridgeTest, attach_callbackMismatchedCallbackNotInvoked)
 {
 	bridge_->attach_callback(0x00000002, boost::bind(&JaguarBridgeTest::callback2, this, _1));
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
-	sleep(1);
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
+	delay();
+
 	ASSERT_EQ(called1b_, 0);
 }
 
@@ -157,9 +168,7 @@ TEST_F(JaguarBridgeTest, recvTokenBlocksUntilReady)
 	can::TokenPtr token = bridge_->recv(0x00000001);
 	ASSERT_FALSE(token->ready());
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
 	token->block();
 
 	ASSERT_TRUE(token->ready());
@@ -169,9 +178,7 @@ TEST_F(JaguarBridgeTest, recvTokenContainsMessage)
 {
 	can::TokenPtr token = bridge_->recv(0x00000001);
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
 	token->block();
 
 	std::vector<uint8_t> const  payload_expected = list_of(0x01)(0x01);
@@ -185,9 +192,7 @@ TEST_F(JaguarBridgeTest, recvMismatchedTokensNotReady)
 	can::TokenPtr token1 = bridge_->recv(0x00000001);
 	can::TokenPtr token2 = bridge_->recv(0x00000002);
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
+	write("\xFF\x06\x01\x00\x00\x00\x01\x01", 8);
 	token1->block();	
 
 	ASSERT_TRUE(token1->ready());
@@ -196,19 +201,17 @@ TEST_F(JaguarBridgeTest, recvMismatchedTokensNotReady)
 
 TEST_F(JaguarBridgeTest, recvResetsTokenStatus)
 {
+	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
 	can::TokenPtr token1 = bridge_->recv(0x00000001);
 
-	char const *packet = "\xFF\x06\x01\x00\x00\x00\x01\x01";
-	stream_.write(packet, 8);
-	stream_.flush();
+	write(packet, 8);
 	token1->block();	
 
 	ASSERT_TRUE(token1->ready());
 	can::TokenPtr token2 = bridge_->recv(0x00000001);
 	ASSERT_FALSE(token2->ready());
 
-	stream_.write(packet, 8);
-	stream_.flush();
+	write(packet, 8);
 	token2->block();	
 
 	ASSERT_TRUE(token2->ready());
