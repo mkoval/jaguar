@@ -26,24 +26,7 @@ enum ReceiveState {
     kComplete
 };
 
-class CANMessage {
-public:
-    uint32_t id;
-    std::vector<uint8_t> payload;
-
-    CANMessage(uint32_t p_id, std::vector<uint8_t> const &p_payload)
-        : id(p_id), payload(p_payload)
-    {
-    }
-};
-
-class Block {
-public:
-    boost::shared_ptr<CANMessage> message;
-    boost::condition_variable     cond;
-
-    Block(void) {}
-};
+class JaguarToken;
 
 class JaguarBridge : public CANBridge
 {
@@ -53,8 +36,8 @@ public:
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
-    virtual void   send(uint32_t id, void const *data, size_t length);
-    virtual size_t recv(uint32_t id, void       *data, size_t length);
+    virtual void send(uint32_t id, void const *data, size_t length);
+    virtual TokenPtr recv(uint32_t id, void *data, size_t length);
 
     virtual void attach_callback(uint32_t id, recv_callback cb);
     //virtual bool detach_callback(uint32_t id, recv_callback cb);
@@ -62,9 +45,10 @@ public:
 private:
     typedef boost::signal<void (boost::shared_ptr<CANMessage>)> callback_signal;
     typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
-    typedef boost::shared_ptr<Block> block_ptr;
     typedef std::map<uint32_t, callback_signal_ptr> callback_table;
-    typedef std::map<uint32_t, block_ptr>           blocking_table;
+
+    typedef boost::shared_ptr<JaguarToken> token_ptr;
+    typedef std::map<uint32_t, token_ptr>  token_table;
 
     static uint8_t const kSOF, kESC;
     static uint8_t const kSOFESC, kESCESC;
@@ -75,11 +59,9 @@ private:
 
     boost::thread recv_thread_;
     std::vector<uint8_t> recv_buffer_;
-    blocking_table blocks_;
     callback_table callbacks_;
     boost::mutex callback_mutex_;
-    boost::mutex blocking_mutex_;
-    bool halt_;
+    token_table tokens_;
 
     std::vector<uint8_t> packet_;
     ReceiveState state_;
@@ -92,6 +74,25 @@ private:
 
     boost::shared_ptr<CANMessage> unpack_packet(std::vector<uint8_t> const &packet);
     size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
+};
+
+class JaguarToken : public Token {
+public:
+    virtual ~JaguarToken(void);
+    virtual void block(void);
+    virtual bool ready(void) const;
+
+private:    
+    boost::condition_variable cond_;
+    boost::mutex mutex_;
+    void *buffer_;
+    size_t length_;
+    bool done_;
+
+    JaguarToken(void *buffer, size_t buffer_length);
+    virtual void unblock(boost::shared_ptr<CANMessage> message);
+
+    friend class JaguarBridge;
 };
 
 };

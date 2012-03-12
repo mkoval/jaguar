@@ -16,7 +16,6 @@ size_t const JaguarBridge::kReceiveBufferLength = 1024;
 JaguarBridge::JaguarBridge(std::string port)
     : serial_(io_, port),
       recv_buffer_(kReceiveBufferLength),
-      halt_(false),
       state_(kWaiting),
       length_(0),
       escape_(false)
@@ -45,7 +44,6 @@ JaguarBridge::JaguarBridge(std::string port)
 
 JaguarBridge::~JaguarBridge(void)
 {
-    halt_ = true;
     serial_.cancel();
     recv_thread_.join();
     serial_.close();
@@ -78,20 +76,15 @@ void JaguarBridge::send(uint32_t id, void const *data, size_t length)
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
 }
 
-size_t JaguarBridge::recv(uint32_t id, void *data, size_t length)
+TokenPtr JaguarBridge::recv(uint32_t id, void *data, size_t length)
 {
-    std::pair<blocking_table::iterator, bool> it = blocks_.insert(
-        std::make_pair(id, boost::make_shared<Block>())
+    // We can't use boost::make_shared because JaguarToken's constructor is
+    // private, so we can only call it from a friend class.
+    std::pair<token_table::iterator, bool> it = tokens_.insert(
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(data, length)))
     );
-    block_ptr block = it.first->second;
-
-    boost::unique_lock<boost::mutex> lock(blocking_mutex_);
-    block->cond.wait(lock);
-
-    size_t payload_length = block->message->payload.size();
-    size_t min_length = std::min(payload_length, length);
-    memcpy(data, &block->message->payload[0], min_length);
-    return min_length;
+    assert(it.second);
+    return it.first->second;
 }
 
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
@@ -197,18 +190,18 @@ void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     // Invoke callbacks registered to this CAN identifier.
-    callback_table::iterator cb = callbacks_.find(msg->id);
-    if (cb != callbacks_.end()) {
-        (*cb->second)(msg);
+    callback_table::iterator callback_it = callbacks_.find(msg->id);
+    if (callback_it != callbacks_.end()) {
+        (*callback_it->second)(msg);
     }    
 
     // Wake anyone who is blocking for a response.
-    std::pair<blocking_table::iterator, bool> it = blocks_.insert(
-        std::make_pair(msg->id, boost::make_shared<Block>())
-    );
-    block_ptr block = it.first->second;
-    block->message = msg;
-    block->cond.notify_all();
+    token_table::iterator token_it = tokens_.find(msg->id);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        token->unblock(msg);
+        tokens_.erase(token_it);
+    }
 }
 
 boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
@@ -251,6 +244,47 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
         }
     }
     return emitted;
+}
+
+/*
+ * JaguarToken
+ */
+JaguarToken::JaguarToken(void *buffer, size_t buffer_length)
+    : buffer_(buffer),
+      length_(buffer_length),
+      done_(false) 
+{
+}
+
+JaguarToken::~JaguarToken(void)
+{
+}
+
+void JaguarToken::block(void)
+{
+    if (done_) return;
+
+    boost::unique_lock<boost::mutex> lock(mutex_);
+    while (!done_) {
+        cond_.wait(lock);
+    }
+}
+
+bool JaguarToken::ready(void) const
+{
+    return done_;
+}
+
+void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
+{
+    assert(!done_);
+    {
+        boost::lock_guard<boost::mutex> lock(mutex_);
+        size_t min_length = std::min(message->payload.size(), length_);
+        memcpy(buffer_, &message->payload[0], min_length);
+        done_ = true;
+    }
+    cond_.notify_all();
 }
 
 };
