@@ -21,37 +21,37 @@ Jaguar::Jaguar(can::CANBridge &can, uint8_t device_num)
 /*
  * Motor Control Configuration
  */
-void Jaguar::set_num_brushes(uint8_t brushes)
+can::TokenPtr Jaguar::set_num_brushes(uint8_t brushes)
 {
-    send(APIClass::kConfiguration, Configuration::kNumberOfBrushes, brushes);
+    return send_ack(APIClass::kConfiguration, Configuration::kNumberOfBrushes, brushes);
 }
 
-void Jaguar::set_num_encoders(uint16_t lines)
+can::TokenPtr Jaguar::set_num_encoders(uint16_t lines)
 {
     uint16_t const payload = htole16(lines);
-    send(APIClass::kConfiguration, Configuration::kNumberOfEncodersLines, payload);
+    return send_ack(APIClass::kConfiguration, Configuration::kNumberOfEncodersLines, payload);
 }
 
-void Jaguar::set_fault_time(uint16_t ms)
+can::TokenPtr Jaguar::set_fault_time(uint16_t ms)
 {
     uint16_t const payload = htole16(ms);
-    send(APIClass::kConfiguration, Configuration::kFaultTime, payload);
+    return send_ack(APIClass::kConfiguration, Configuration::kFaultTime, payload);
 }
 
 /*
  * Voltage Control
  */
-void Jaguar::enable_voltage(void)
+can::TokenPtr Jaguar::enable_voltage(void)
 {
-    send(APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable);
+    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable);
 }
 
-void Jaguar::disable_voltage(void)
+can::TokenPtr Jaguar::disable_voltage(void)
 {
-    send(APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable);
+    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable);
 }
 
-void Jaguar::set_voltage(double scale)
+can::TokenPtr Jaguar::set_voltage(double scale)
 {
     double constrained = std::min(std::max(scale, -1.0), +1.0);
     int16_t output;
@@ -65,66 +65,63 @@ void Jaguar::set_voltage(double scale)
     }
 
     int16_t const payload = htole16(output);
-    send(APIClass::kVoltageControl, VoltageControl::kVoltageSet, payload);
+    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageSet, payload);
 }
 
 /*
  * Speed Control
  */
-void Jaguar::enable_pid(void)
+can::TokenPtr Jaguar::enable_pid(void)
 {
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable);
 }
 
-void Jaguar::disable_pid(void)
+can::TokenPtr Jaguar::disable_pid(void)
 {
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable);
 }
 
-void Jaguar::set_p_constant(double p)
+can::TokenPtr Jaguar::set_p_constant(double p)
 {
     int32_t const payload = double_to_s16p16(p);
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedProportionalConstant, payload);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedProportionalConstant, payload);
 }
 
-void Jaguar::set_i_constant(double i)
+can::TokenPtr Jaguar::set_i_constant(double i)
 {
     int32_t const payload = double_to_s16p16(i);
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedIntegralConstant, payload);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedIntegralConstant, payload);
 }
 
-void Jaguar::set_d_constant(double d)
+can::TokenPtr Jaguar::set_d_constant(double d)
 {
     int32_t const payload = double_to_s16p16(d);
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedDifferentialConstant, payload);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedDifferentialConstant, payload);
 }
 
-void Jaguar::set_speed_reference(SpeedReference::Enum reference)
+can::TokenPtr Jaguar::set_speed_reference(SpeedReference::Enum reference)
 {
     uint8_t const payload = static_cast<uint8_t>(reference);
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedReference, payload);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedReference, payload);
 }
 
-void Jaguar::set_speed(double speed)
+can::TokenPtr Jaguar::set_speed(double speed)
 {
     int32_t const payload = double_to_s16p16(speed);
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
 }
 
-void Jaguar::set_speed(double speed, uint8_t group)
+can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
 {
-#if 0
     struct {
         int32_t speed;
         uint8_t group;
     } __attribute__((__packed__)) payload;
-
+    
     payload.speed = double_to_s16p16(speed);
     payload.group = group;
 
-    send(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
-#endif 
-    // FIXME: Implement this.
+    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
 }
 
 /*
@@ -133,14 +130,33 @@ void Jaguar::set_speed(double speed, uint8_t group)
 void Jaguar::send(APIClass::Enum api_class, uint8_t api_index)
 {
     uint32_t id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
-    can_.send(id, NULL, 0);
+    can_.send(can::CANMessage(id));
 }
 
 template <typename T>
 void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, T const &payload)
 {
     uint32_t id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
-    can_.send(id, &payload, sizeof payload);
+    std::vector<uint8_t> payload_raw(sizeof payload);
+    memcpy(&payload_raw[0], &payload, sizeof payload);
+    can_.send(can::CANMessage(id, payload_raw));
+}
+
+can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index)
+{
+    send(api_class, api_index);
+
+    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType, api_index);
+    return can_.recv(id);
+}
+
+template <typename T>
+can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, T const &payload)
+{
+    send(api_class, api_index, payload);
+
+    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType, api_index);
+    return can_.recv(id);
 }
 
 };

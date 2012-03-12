@@ -30,6 +30,8 @@ double s16p16_to_double(int32_t x);
 uint32_t pack_id(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type,
                  APIClass::Enum api_class, uint8_t api_index);
 
+uint32_t pack_ack(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type,
+                  uint8_t api_index);
 };
 
 #endif

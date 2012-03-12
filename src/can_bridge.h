@@ -15,17 +15,16 @@ typedef boost::shared_ptr<Token> TokenPtr;
 
 class CANMessage {
 public:
-    uint32_t id;
-    std::vector<uint8_t> payload;
+    CANMessage(uint32_t p_id)
+        : id(p_id) {}
 
     CANMessage(uint32_t p_id, std::vector<uint8_t> const &p_payload)
-        : id(p_id), payload(p_payload)
-    {
-    }
+        : id(p_id), payload(p_payload) {}
 
-    virtual ~CANMessage(void)
-    {
-    }
+    virtual ~CANMessage(void) {}
+
+    uint32_t id;
+    std::vector<uint8_t> payload;
 };
 
 class CANBridge {

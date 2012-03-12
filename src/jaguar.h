@@ -12,24 +12,24 @@ public:
     Jaguar(can::CANBridge &can, uint8_t device_num);
 
     // Motor Control Configuration
-    void set_num_brushes(uint8_t brushes);
-    void set_num_encoders(uint16_t lines);
-    void set_fault_time(uint16_t ms);
+    can::TokenPtr set_num_brushes(uint8_t brushes);
+    can::TokenPtr set_num_encoders(uint16_t lines);
+    can::TokenPtr set_fault_time(uint16_t ms);
 
     // Voltage Control
-    void enable_voltage(void);
-    void disable_voltage(void);
-    void set_voltage(double scale);
+    can::TokenPtr enable_voltage(void);
+    can::TokenPtr disable_voltage(void);
+    can::TokenPtr set_voltage(double scale);
 
     // Speed Control
-    void enable_pid(void);
-    void disable_pid(void);
-    void set_p_constant(double p);
-    void set_i_constant(double i);
-    void set_d_constant(double d);
-    void set_speed_reference(SpeedReference::Enum reference);
-    void set_speed(double speed);
-    void set_speed(double speed, uint8_t group);
+    can::TokenPtr enable_pid(void);
+    can::TokenPtr disable_pid(void);
+    can::TokenPtr set_p_constant(double p);
+    can::TokenPtr set_i_constant(double i);
+    can::TokenPtr set_d_constant(double d);
+    can::TokenPtr set_speed_reference(SpeedReference::Enum reference);
+    can::TokenPtr set_speed(double speed);
+    can::TokenPtr set_speed(double speed, uint8_t group);
 
 private:
     static Manufacturer::Enum const kManufacturer;
@@ -41,6 +41,10 @@ private:
     void send(APIClass::Enum api_class, uint8_t api_index);
     template <typename T>
     void send(APIClass::Enum api_class, uint8_t api_index, T const &payload);
+
+    can::TokenPtr send_ack(APIClass::Enum api_class, uint8_t api_index);
+    template <typename T>
+    can::TokenPtr send_ack(APIClass::Enum api_class, uint8_t api_index, T const &payload);
 };
 
 
