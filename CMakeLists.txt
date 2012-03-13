@@ -14,11 +14,16 @@ rosbuild_add_library(jaguar
 	src/jaguar_bridge.cc
 	src/jaguar_broadcaster.cc
 )
-rosbuild_link_boost(jaguar signals system thread)
 
-rosbuild_add_executable(assign_id src/assign_id.cc)
-rosbuild_add_gtest(jaguar_bridge_test test/jaguar_bridge_test.cc)
-rosbuild_add_gtest(jaguar_helper_test test/jaguar_helper_test.cc)
+rosbuild_add_executable(assign_id
+    src/assign_id.cc
+)
+
+rosbuild_add_gtest(utests
+    test/jaguar_bridge_test.cc
+    test/jaguar_helper_test.cc
+)
+
+rosbuild_link_boost(jaguar signals system thread)
 target_link_libraries(assign_id jaguar)
-target_link_libraries(jaguar_bridge_test jaguar gtest_main gmock)
-target_link_libraries(jaguar_helper_test jaguar gtest_main gmock)
+target_link_libraries(utests jaguar gtest_main gmock)
