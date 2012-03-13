@@ -8,11 +8,14 @@ set(ROS_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-rosbuild_add_executable(assign_id
-	src/assign_id.cc
+rosbuild_add_library(jaguar
 	src/jaguar.cc
-	src/jaguar_broadcaster.cc
-	src/jaguar_bridge.cc
 	src/jaguar_helper.cc
-)	
-rosbuild_link_boost(assign_id system)
+	src/jaguar_bridge.cc
+	src/jaguar_broadcaster.cc
+)
+rosbuild_link_boost(jaguar signals system thread)
+
+rosbuild_add_executable(assign_id src/assign_id.cc)
+rosbuild_add_gtest(jaguar_bridge_test test/jaguar_bridge_test.cc)
+rosbuild_add_gtest(jaguar_helper_test test/jaguar_helper_test.cc)
