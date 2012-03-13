@@ -1,6 +1,8 @@
 *~
 *.o
+*.sublime-workspace
 .DS_Store
+/bin/
 /build/
 /CMakeCache.txt
 /CMakeFiles/

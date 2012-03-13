@@ -1,0 +1,10 @@
+{
+	"folders":
+	[
+		{
+			"path": "/Volumes/Home/mckoval/Programming/jaguar",
+			"file_exclude_patterns": [ "*.o", "*.sublime-workspace", "CMakeCache.txt", "Makefile" ],
+			"folder_exclude_patterns": [ "bin", "build", "CMakeFiles" ]
+		}
+	]
+}
