@@ -5,7 +5,7 @@
 #include <boost/shared_ptr.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "jaguar_bridge.h"
+#include <jaguar/jaguar_bridge.h>
 
 using namespace testing;
 using boost::assign::list_of;
@@ -16,7 +16,7 @@ static std::vector<uint8_t> const kEmptyPayload(0);
 
 class JaguarBridgeTest : public ::testing::Test
 {
-protected:
+public:
 	virtual void SetUp(void)
 	{
 		stream_.open(kPathTest.c_str(), std::ios::in  | std::ios::ate

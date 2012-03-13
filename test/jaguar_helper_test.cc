@@ -5,9 +5,9 @@
 #include <boost/shared_ptr.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "jaguar_api.h"
-#include "jaguar_bridge.h"
-#include "jaguar_helper.h"
+#include <jaguar/jaguar_api.h>
+#include <jaguar/jaguar_bridge.h>
+#include <jaguar/jaguar_helper.h>
 
 using namespace jaguar;
 using namespace testing;

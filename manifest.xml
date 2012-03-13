@@ -6,6 +6,7 @@
   </description>
   <author>Michael Koval</author>
   <license>BSD</license>
+  <rosdep name="google-mock"/>
   <depend package="roscpp"/>
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib"/>
