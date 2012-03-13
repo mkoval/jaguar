@@ -1,7 +1,6 @@
 #include <cassert>
-#include "jaguar_bridge.h"
-
 #include <iostream>
+#include <jaguar/jaguar_bridge.h>
 
 namespace asio = boost::asio;
 

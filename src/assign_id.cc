@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 #include <stdint.h>
-#include "jaguar_broadcaster.h"
-#include "jaguar_bridge.h"
+#include <jaguar/jaguar_bridge.h>
+#include <jaguar/jaguar_broadcaster.h>
 
 template <typename T>
 static T convert(std::string str)

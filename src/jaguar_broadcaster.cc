@@ -1,4 +1,4 @@
-#include "jaguar_broadcaster.h"
+#include <jaguar/jaguar_broadcaster.h>
 
 namespace jaguar {
 

@@ -6,8 +6,8 @@
 #include <iostream>
 #include <cstring>
 
-#include "jaguar.h"
-#include "jaguar_helper.h"
+#include <jaguar/jaguar.h>
+#include <jaguar/jaguar_helper.h>
 
 namespace jaguar {
 

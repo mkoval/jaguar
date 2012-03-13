@@ -1,5 +1,5 @@
 #include <cassert>
-#include "jaguar_helper.h"
+#include <jaguar/jaguar_helper.h>
 
 namespace jaguar {
 
