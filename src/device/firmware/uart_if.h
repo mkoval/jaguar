@@ -1,8 +1,8 @@
 //*****************************************************************************
 //
-// math.h - Prototypes for the fixed-point arithmetic functions.
+// uart_if.h - Prototypes for the UART control interface functions.
 //
-// Copyright (c) 2008-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2009-2011 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -22,15 +22,17 @@
 //
 //*****************************************************************************
 
-#ifndef __MATH_H__
-#define __MATH_H__
+#ifndef __UART_IF_H__
+#define __UART_IF_H__
 
 //*****************************************************************************
 //
 // Function prototypes.
 //
 //*****************************************************************************
-extern long MathMul16x16(long lX, long lY);
-extern long MathDiv16x16(long lX, long lY);
+extern void UARTIFInit(void);
+extern void UARTIFEnumerate(void);
+extern void UARTIFSendMessage(unsigned long ulID, unsigned char *pucData,
+                              unsigned long ulDataLength);
 
-#endif // __MATH_H__
+#endif // __UART_IF_H__

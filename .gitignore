@@ -1,1 +1,7 @@
+*~
 *.o
+.DS_Store
+/build/
+/CMakeCache.txt
+/CMakeFiles/
+/cmake_install.cmake

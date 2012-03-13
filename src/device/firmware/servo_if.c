@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -310,7 +310,7 @@ ServoIFIntHandler(void)
     }
 
     //
-    // Delay the watchdog interrupt since a servo edge was received.
+    // Tell the controller that servo activity was detected.
     //
     ControllerWatchdog(LINK_TYPE_SERVO);
 }

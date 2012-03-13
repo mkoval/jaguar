@@ -19,7 +19,7 @@
 ; CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 ; DAMAGES, FOR ANY REASON WHATSOEVER.
 ; 
-; This is part of revision 8264 of the RDK-BDC Firmware Package.
+; This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 ;
 ;******************************************************************************
 
@@ -83,6 +83,7 @@ __heap_limit
         EXTERN  ServoIFIntHandler
         EXTERN  EncoderIntHandler
         EXTERN  ControllerIntHandler
+        EXTERN  UART0IntHandler
         EXTERN  WatchdogIntHandler
 
 ;******************************************************************************
@@ -113,7 +114,7 @@ __Vectors
         DCD     EncoderIntHandler           ; GPIO Port C
         DCD     IntDefaultHandler           ; GPIO Port D
         DCD     IntDefaultHandler           ; GPIO Port E
-        DCD     IntDefaultHandler           ; UART0 Rx and Tx
+        DCD     UART0IntHandler             ; UART0 Rx and Tx
         DCD     IntDefaultHandler           ; UART1 Rx and Tx
         DCD     IntDefaultHandler           ; SSI0 Rx and Tx
         DCD     IntDefaultHandler           ; I2C0 Master and Slave

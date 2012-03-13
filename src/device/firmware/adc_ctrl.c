@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -37,6 +37,7 @@
 #include "constants.h"
 #include "controller.h"
 #include "hbridge.h"
+#include "math.h"
 #include "pins.h"
 
 //*****************************************************************************
@@ -44,7 +45,7 @@
 // This function converts a current value into the corresponding ADC reading.
 //
 //*****************************************************************************
-#define CURRENT_TO_ADC(ulC)     ((unsigned long)((((ulC) * 3361) - 1856) /    \
+#define CURRENT_TO_ADC(ulC)     ((unsigned long)((((ulC) * 1944) - 1072) /    \
                                                  65536))
 
 //*****************************************************************************
@@ -53,8 +54,8 @@
 // 8.8 fixed-point value.
 //
 //*****************************************************************************
-#define ADC_TO_CURRENT(ulA)     ((unsigned long)((((ulA) * 4972) + 42018) /   \
-                                                 256))
+#define ADC_TO_CURRENT(ulA)     ((unsigned long)((((ulA) * 2202991) +         \
+                                                  10081885) / 65536))
 
 //*****************************************************************************
 //
@@ -63,9 +64,9 @@
 //
 //*****************************************************************************
 #define CURRENT_COUNTER_MAX     ((CURRENT_TO_ADC(CURRENT_SHUTOFF_LEVEL) -     \
-                                  CURRENT_TO_ADC(CURRENT_NOMINAL_LEVEL)) *    \
+                                  CURRENT_TO_ADC(CURRENT_MINIMUM_LEVEL)) *    \
                                  (CURRENT_TO_ADC(CURRENT_SHUTOFF_LEVEL) -     \
-                                  CURRENT_TO_ADC(CURRENT_NOMINAL_LEVEL)) *    \
+                                  CURRENT_TO_ADC(CURRENT_MINIMUM_LEVEL)) *    \
                                  CURRENT_SHUTOFF_TIME)
 
 //*****************************************************************************
@@ -73,14 +74,14 @@
 // Converts a bus voltage to an ADC reading.
 //
 //*****************************************************************************
-#define VBUS_TO_ADC(v)          (((v) * 1024) / (18 * 256))
+#define VBUS_TO_ADC(v)          (((v) * 1024) / (36 * 256))
 
 //*****************************************************************************
 //
 // Converts an ADC reading to a bus voltage.
 //
 //*****************************************************************************
-#define ADC_TO_VBUS(a)          (((a) * 18 * 256) / 1024)
+#define ADC_TO_VBUS(a)          (((a) * 36 * 256) / 1024)
 
 //*****************************************************************************
 //
@@ -98,13 +99,6 @@
 
 //*****************************************************************************
 //
-// The buffer where the ADC data is stored.
-//
-//*****************************************************************************
-static unsigned short g_pusADCData[4];
-
-//*****************************************************************************
-//
 // The location of each measurement element within the ADC data buffer.
 //
 //*****************************************************************************
@@ -112,6 +106,13 @@ static unsigned short g_pusADCData[4];
 #define VBUS                    1
 #define ANALOG_IN               2
 #define TEMP_SENSOR             3
+
+//*****************************************************************************
+//
+// The buffer where the ADC data is stored.
+//
+//*****************************************************************************
+static unsigned short g_pusADCData[4];
 
 //*****************************************************************************
 //
@@ -160,6 +161,22 @@ static unsigned short g_usCurrentZero;
 
 //*****************************************************************************
 //
+// The count of consecutive samples where the bus voltage is below the shutdown
+// threshold.
+//
+//*****************************************************************************
+static unsigned long g_ulVBusTimeout = 0;
+
+//*****************************************************************************
+//
+// The previous state of the temperature fault, which adjusts the temperature
+// compare value in order to provide hysteresis.
+//
+//*****************************************************************************
+static unsigned long g_ulTemperatureFault = 0;
+
+//*****************************************************************************
+//
 // Initializes the ADC.
 //
 //*****************************************************************************
@@ -175,10 +192,8 @@ ADCInit(void)
     // Configure the GPIOs used with the analog inputs.
     //
     GPIOPinTypeADC(ADC_POSITION_PORT, ADC_POSITION_PIN);
-    GPIOPinTypeADC(ADC_CURRENT_PORT, ADC_CURRENT_PIN);
     GPIOPinTypeADC(ADC_VBUS_PORT, ADC_VBUS_PIN);
-    GPIOPinTypeADC(ADC_VBOOTA_PORT, ADC_VBOOTA_PIN);
-    GPIOPinTypeADC(ADC_VBOOTB_PORT, ADC_VBOOTB_PIN);
+    GPIOPinTypeADC(ADC_CURRENT_PORT, ADC_CURRENT_PIN);
 
     //
     // Configure the ADC sample sequence that is triggered by PWM
@@ -463,21 +478,21 @@ ADCIntHandler(void)
     }
 
     //
-    // Track the current usage over time.  The amount of time spent above 40A
-    // and the excess over 40A is added to a counter that will cause an over
-    // current error when the counter gets too high.  The amount of time spent
-    // below 40A is subtracted from the counter in the same manner.  The values
-    // are tuned such that an over current error will be triggered after 2
-    // seconds at 60A.  First, see if the current is above or below 40A.
+    // Track the current usage over time.  The amount of time spent above the
+    // nominal level and the excess over the nominal level is added to a
+    // counter that will cause an over current error when the counter gets too
+    // high.  The amount of time spent below the nominal level is subtracted
+    // from the counter in the same manner.  First, see if the current is above
+    // or below the nominal level.
     //
     ulIdx = g_pusADCData[WINDING_CURRENT];
     if(ulIdx > CURRENT_TO_ADC(CURRENT_NOMINAL_LEVEL))
     {
         //
         // Compute the square of the different between the current reading and
-        // 40A.
+        // the minimum level.
         //
-        ulIdx -= CURRENT_TO_ADC(CURRENT_NOMINAL_LEVEL);
+        ulIdx -= CURRENT_TO_ADC(CURRENT_MINIMUM_LEVEL);
         ulIdx *= ulIdx;
 
         //
@@ -494,7 +509,7 @@ ADCIntHandler(void)
     {
         //
         // Compute the square of the difference between the current reading and
-        // 40A.
+        // the nominal level.
         //
         ulIdx = CURRENT_TO_ADC(CURRENT_NOMINAL_LEVEL) - ulIdx;
         ulIdx *= ulIdx;
@@ -516,12 +531,30 @@ ADCIntHandler(void)
     //
     // If the temperature exceeds the set limit, shut the system down.
     //
-    if(g_pusADCData[TEMP_SENSOR] < TEMPERATURE_TO_ADC(SHUTDOWN_TEMPERATURE))
+    ulIdx = ADC_TO_TEMPERATURE(g_pusADCData[TEMP_SENSOR]);
+    if(((g_ulTemperatureFault == 0) &&
+        (ulIdx > (SHUTDOWN_TEMPERATURE + SHUTDOWN_TEMPERATURE_HYSTERESIS))) ||
+       ((g_ulTemperatureFault == 1) &&
+        (ulIdx > (SHUTDOWN_TEMPERATURE - SHUTDOWN_TEMPERATURE_HYSTERESIS))))
     {
         //
         // Shut the motor down, the temperature has exceeded the limit.
         //
         ControllerFaultSignal(LM_FAULT_TEMP);
+
+        //
+        // Indicate that the system is in temperature fault so that the
+        // hysteresis can be properly applied to come out of temperature fault.
+        //
+        g_ulTemperatureFault = 1;
+    }
+    else
+    {
+        //
+        // Indicate that the system is not in temperature fault so that the
+        // hysteresis can be properly applied to go into temperature fault.
+        //
+        g_ulTemperatureFault = 0;
     }
 
     //
@@ -530,8 +563,29 @@ ADCIntHandler(void)
     if(g_pusADCData[VBUS] < VBUS_TO_ADC(SHUTDOWN_VOLTAGE))
     {
         //
-        // Shut the motor down, the Vbus has dropped too much.
+        // Increment the count of consecutive samples where Vbus is below the
+        // set limit.
         //
-        ControllerFaultSignal(LM_FAULT_VBUS);
+        g_ulVBusTimeout++;
+
+        //
+        // See there have been too many consecutive samples where Vbus is below
+        // the set limit.
+        //
+        if(g_ulVBusTimeout >= SHUTDOWN_VOLTAGE_TIME)
+        {
+            //
+            // Shut the motor down, the Vbus has dropped too much.
+            //
+            ControllerFaultSignal(LM_FAULT_VBUS);
+        }
+    }
+    else
+    {
+        //
+        // Reset the count of consecutive samples where Vbus is below the set
+        // limit since it is presently above the set limit.
+        //
+        g_ulVBusTimeout = 0;
     }
 }

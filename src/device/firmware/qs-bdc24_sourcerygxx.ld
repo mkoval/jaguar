@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * qs-bdc_sourcerygxx.ld - Scatter file for Sourcery CodeBench
+ * qs-bdc24_sourcerygxx.ld - Scatter file for Sourcery CodeBench
  *
  * Copyright (c) 2008-2011 Texas Instruments Incorporated.  All rights reserved.
  * Software License Agreement
@@ -18,7 +18,7 @@
  * CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
  * DAMAGES, FOR ANY REASON WHATSOEVER.
  * 
- * This is part of revision 8264 of the RDK-BDC Firmware Package.
+ * This is part of revision 8264 of the RDK-BDC24 Firmware Package.
  *
  *****************************************************************************/
 
@@ -39,6 +39,8 @@ EXTERN(ServoIFIntHandler)
 __cs3_isr_gpio_a = ServoIFIntHandler;
 EXTERN(EncoderIntHandler)
 __cs3_isr_gpio_c = EncoderIntHandler;
+EXTERN(UART0IntHandler)
+__cs3_isr_uart0 = UART0IntHandler;
 EXTERN(ControllerIntHandler)
 __cs3_isr_pwm2 = ControllerIntHandler;
 EXTERN(ADCIntHandler)

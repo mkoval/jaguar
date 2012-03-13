@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -30,14 +30,20 @@
 // Defines for the board connections to the Stellaris microcontroller.
 //
 //*****************************************************************************
-#define SERVO_PORT              GPIO_PORTA_BASE
-#define SERVO_PIN               GPIO_PIN_0
-#define SERVO_INT               INT_GPIOA
+#define UART_RX_PORT            GPIO_PORTA_BASE
+#define UART_RX_PIN             GPIO_PIN_0
+
+#define UART_TX_PORT            GPIO_PORTA_BASE
+#define UART_TX_PIN             GPIO_PIN_1
 
 #define LED_GREEN_PORT          GPIO_PORTA_BASE
 #define LED_GREEN_PIN           GPIO_PIN_2
 #define LED_GREEN_ON            LED_GREEN_PIN
 #define LED_GREEN_OFF           0
+
+#define SERVO_PORT              GPIO_PORTA_BASE
+#define SERVO_PIN               GPIO_PIN_3
+#define SERVO_INT               INT_GPIOA
 
 #define CAN_RX_PORT             GPIO_PORTA_BASE
 #define CAN_RX_PIN              GPIO_PIN_4
@@ -45,17 +51,17 @@
 #define CAN_TX_PORT             GPIO_PORTA_BASE
 #define CAN_TX_PIN              GPIO_PIN_5
 
-#define HBRIDGE_PWMA_PORT       GPIO_PORTA_BASE
-#define HBRIDGE_PWMA_PIN        GPIO_PIN_6
+#define HBRIDGE_AHI_PORT        GPIO_PORTA_BASE
+#define HBRIDGE_AHI_PIN         GPIO_PIN_6
 
-#define HBRIDGE_CTRLA_PORT      GPIO_PORTA_BASE
-#define HBRIDGE_CTRLA_PIN       GPIO_PIN_7
+#define HBRIDGE_ALO_PORT        GPIO_PORTA_BASE
+#define HBRIDGE_ALO_PIN         GPIO_PIN_7
 
-#define HBRIDGE_PWMB_PORT       GPIO_PORTB_BASE
-#define HBRIDGE_PWMB_PIN        GPIO_PIN_0
+#define HBRIDGE_BHI_PORT        GPIO_PORTB_BASE
+#define HBRIDGE_BHI_PIN         GPIO_PIN_0
 
-#define HBRIDGE_CTRLB_PORT      GPIO_PORTB_BASE
-#define HBRIDGE_CTRLB_PIN       GPIO_PIN_1
+#define HBRIDGE_BLO_PORT        GPIO_PORTB_BASE
+#define HBRIDGE_BLO_PIN         GPIO_PIN_1
 
 #define I2C_SCL_PORT            GPIO_PORTB_BASE
 #define I2C_SCL_PIN             GPIO_PIN_2
@@ -63,8 +69,8 @@
 #define I2C_SDA_PORT            GPIO_PORTB_BASE
 #define I2C_SDA_PIN             GPIO_PIN_3
 
-#define CAN_SENSE_PORT          GPIO_PORTB_BASE
-#define CAN_SENSE_PIN           GPIO_PIN_4
+#define GATE_RESET_PORT         GPIO_PORTB_BASE
+#define GATE_RESET_PIN          GPIO_PIN_4
 
 #define FAN_PORT                GPIO_PORTB_BASE
 #define FAN_PIN                 GPIO_PIN_5
@@ -85,6 +91,9 @@
 #define QEI_PHA_PIN             GPIO_PIN_4
 #define QEI_PHA_INT             INT_GPIOC
 
+#define GATE_FAULT_PORT         GPIO_PORTC_BASE
+#define GATE_FAULT_PIN          GPIO_PIN_5
+
 #define QEI_PHB_PORT            GPIO_PORTC_BASE
 #define QEI_PHB_PIN             GPIO_PIN_6
 
@@ -101,21 +110,13 @@
 #define BRAKECOAST_COAST        BRAKECOAST_PIN
 #define BRAKECOAST_BRAKE        0
 
-#define ADC_VBOOTB_PORT         GPIO_PORTD_BASE
-#define ADC_VBOOTB_PIN          GPIO_PIN_3
-#define ADC_VBOOTB_CH           ADC_CTL_CH4
-
-#define ADC_VBOOTA_PORT         GPIO_PORTE_BASE
-#define ADC_VBOOTA_PIN          GPIO_PIN_0
-#define ADC_VBOOTA_CH           ADC_CTL_CH3
+#define ADC_CURRENT_PORT        GPIO_PORTE_BASE
+#define ADC_CURRENT_PIN         GPIO_PIN_0
+#define ADC_CURRENT_CH          ADC_CTL_CH3
 
 #define ADC_POSITION_PORT       GPIO_PORTE_BASE
-#define ADC_POSITION_PIN        GPIO_PIN_1
-#define ADC_POSITION_CH         ADC_CTL_CH2
-
-#define ADC_CURRENT_PORT        GPIO_PORTE_BASE
-#define ADC_CURRENT_PIN         GPIO_PIN_2
-#define ADC_CURRENT_CH          ADC_CTL_CH1
+#define ADC_POSITION_PIN        GPIO_PIN_2
+#define ADC_POSITION_CH         ADC_CTL_CH1
 
 #define ADC_VBUS_PORT           GPIO_PORTE_BASE
 #define ADC_VBUS_PIN            GPIO_PIN_3

@@ -22,6 +22,8 @@
         <file name="led.h"/>
         <file name="limit.c"/>
         <file name="limit.h"/>
+        <file name="message.c"/>
+        <file name="message.h"/>
         <file name="math.c"/>
         <file name="math.h"/>
         <file name="param.c"/>
@@ -29,9 +31,11 @@
         <file name="pid.c"/>
         <file name="pid.h"/>
         <file name="pins.h"/>
-        <file name="qs-bdc.c"/>
+        <file name="qs-bdc24.c"/>
         <file name="servo_if.c"/>
         <file name="servo_if.h"/>
+        <file name="uart_if.c"/>
+        <file name="uart_if.h"/>
         <file name="wdog.c"/>
         <file name="wdog.h"/>
         <file regex=".*_ccs\.cmd"/>

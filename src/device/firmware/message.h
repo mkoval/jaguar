@@ -1,8 +1,8 @@
 //*****************************************************************************
 //
-// math.h - Prototypes for the fixed-point arithmetic functions.
+// message.h - Prototypes for the message handling functions.
 //
-// Copyright (c) 2008-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2009-2011 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -22,15 +22,23 @@
 //
 //*****************************************************************************
 
-#ifndef __MATH_H__
-#define __MATH_H__
+#ifndef __MESSAGE_H__
+#define __MESSAGE_H__
 
 //*****************************************************************************
 //
-// Function prototypes.
+// Prototypes for the message handling functions.
 //
 //*****************************************************************************
-extern long MathMul16x16(long lX, long lY);
-extern long MathDiv16x16(long lX, long lY);
+extern unsigned char g_pucResponse[12];
+extern unsigned long g_ulResponseLength;
+extern unsigned long MessageCommandHandler(unsigned long ulID,
+                                           unsigned char *pucData,
+                                           unsigned long ulMsgLen);
+extern unsigned long MessageUpdateHandler(unsigned long ulID,
+                                          unsigned char *pucData,
+                                          unsigned long ulMsgLen);
+extern void MessageTick(void);
+extern void MessageButtonPress(void);
 
-#endif // __MATH_H__
+#endif // __MESSAGE_H__

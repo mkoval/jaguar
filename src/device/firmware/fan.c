@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -66,9 +66,15 @@ FanInit(void)
                          GPIO_PIN_TYPE_STD);
 
     //
-    // Turn the fan off.
+    // Turn on the fan to test it.
     //
-    ROM_GPIOPinWrite(FAN_PORT, FAN_PIN, FAN_OFF);
+    g_ulFanState = 1;
+    ROM_GPIOPinWrite(FAN_PORT, FAN_PIN, FAN_ON);
+
+	//
+	// Set the fan time to FAN_TEST_TIME.
+	//
+	g_ulFanTime = FAN_TEST_TIME;
 }
 
 //*****************************************************************************

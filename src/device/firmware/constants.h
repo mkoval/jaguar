@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -39,6 +39,14 @@
 //
 //*****************************************************************************
 #define PWM_FREQUENCY           15625
+
+//*****************************************************************************
+//
+// The minimum pulse width of the PWM outputs, used to prevent runt pulses
+// being sent to the HBridge.
+//
+//*****************************************************************************
+#define PWM_MIN_WIDTH           ((unsigned long)(SYSCLK * 0.0000022))
 
 //*****************************************************************************
 //
@@ -97,10 +105,23 @@
 //*****************************************************************************
 //
 // The ambient temperature at which the motor controller will be forced into
-// neutral.  This value is the fixed-point 24.8 temperature in degrees Celcius.
+// neutral.  This value is the fixed-point 8.8 temperature in degrees Celcius.
 //
 //*****************************************************************************
 #define SHUTDOWN_TEMPERATURE    (60 * 256)
+
+//*****************************************************************************
+//
+// The amount of hysteresis to apply to the ambient temperature at which the
+// motor controller will be forced into neutral.  This amount is added to the
+// ambient temperature setpoint when determining if the motor controller should
+// be shut down and subtracted when determining if it should no longer be shut
+// down.  This value is the fixed-point 8.8 temperature delta in degrees
+// Celcius.
+//
+//*****************************************************************************
+#define SHUTDOWN_TEMPERATURE_HYSTERESIS \
+                                (1 * 256)
 
 //*****************************************************************************
 //
@@ -112,12 +133,28 @@
 
 //*****************************************************************************
 //
+// The amount of time the bus voltage must be below the shutdown voltage before
+// the motor controller will be forced into neutral.
+//
+//*****************************************************************************
+#define SHUTDOWN_VOLTAGE_TIME   ((unsigned long)(PWM_FREQUENCY * 0.1))
+
+//*****************************************************************************
+//
 // The length of time the fan is left on after the motor is put into neutral.
 // This time will be extended as required if the ambient temperature is too
 // high.
 //
 //*****************************************************************************
 #define FAN_COOLING_TIME        (10 * UPDATES_PER_SECOND)
+
+//*****************************************************************************
+//
+// This is the time the fan should turn on to test that it is operational.
+// Time is measured in UPDATES_PER_SECOND.
+//
+//*****************************************************************************
+#define FAN_TEST_TIME			1000
 
 //*****************************************************************************
 //
@@ -260,12 +297,22 @@
 
 //*****************************************************************************
 //
+// The minimum output current of the motor controller, specified as an 8.8
+// fixed-point value.  This value is simply the second control point on the
+// exponential curve used to control the over-current shutdown time; it does
+// not affect the output current capability of the motor controller in any way.
+//
+//*****************************************************************************
+#define CURRENT_MINIMUM_LEVEL   (40 * 256)
+
+//*****************************************************************************
+//
 // The nominal output current of the motor controller, specified as an 8.8
 // fixed-point value.  The motor controller will supply up to this current
 // level indefinitely.
 //
 //*****************************************************************************
-#define CURRENT_NOMINAL_LEVEL   (46 * 256)
+#define CURRENT_NOMINAL_LEVEL   (50 * 256)
 
 //*****************************************************************************
 //
@@ -274,7 +321,7 @@
 // current is at this level for the shutoff amount of time.
 //
 //*****************************************************************************
-#define CURRENT_SHUTOFF_LEVEL   (69 * 256)
+#define CURRENT_SHUTOFF_LEVEL   (60 * 256)
 
 //*****************************************************************************
 //
@@ -292,5 +339,12 @@
 //
 //*****************************************************************************
 #define ENCODER_WAIT_TIME       100
+
+//*****************************************************************************
+//
+// The Voltage mode ramp rate in steps/ms when Automatic Ramp mode is enabled.
+//
+//*****************************************************************************
+#define AUTO_RAMP_RATE 			524
 
 #endif // __CONSTANTS_H__

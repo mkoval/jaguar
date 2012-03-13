@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -28,100 +28,19 @@
 #include "inc/hw_nvic.h"
 #include "inc/hw_types.h"
 #include "driverlib/can.h"
-#include "driverlib/debug.h"
 #include "driverlib/gpio.h"
 #include "driverlib/interrupt.h"
-#include "driverlib/pin_map.h"
 #include "driverlib/rom.h"
-#include "driverlib/systick.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/watchdog.h"
 #include "shared/can_proto.h"
-#include "adc_ctrl.h"
 #include "can_if.h"
-#include "commands.h"
 #include "constants.h"
 #include "controller.h"
-#include "encoder.h"
-#include "hbridge.h"
-#include "led.h"
-#include "limit.h"
+#include "message.h"
 #include "param.h"
-
-extern void CallBootloader(void);
-
-//*****************************************************************************
-//
-// The firmware version.
-//
-//*****************************************************************************
-const unsigned long g_ulFirmwareVersion = 8264;
-
-//*****************************************************************************
-//
-// The hardware version.
-//
-//*****************************************************************************
-unsigned char g_ucHardwareVersion = 0;
-
-//*****************************************************************************
-//
-// This structure holds any pending updates.
-//
-//*****************************************************************************
-static struct
-{
-    //
-    // The pending voltage update.
-    //
-    short sVoltage;
-
-    //
-    // The pending voltage compensation update.
-    //
-    short sVComp;
-
-    //
-    // The pending current update.
-    //
-    short sCurrent;
-
-    //
-    // The pending position update.
-    //
-    long lPosition;
-
-    //
-    // The pending speed update.
-    //
-    long lSpeed;
-
-    //
-    // The group number for a pending voltage update.
-    //
-    unsigned char ucVoltageGroup;
-
-    //
-    // The group number for a pending voltage compensation update.
-    //
-    unsigned char ucVCompGroup;
-
-    //
-    // The group number for a pending current update.
-    //
-    unsigned char ucCurrentGroup;
-
-    //
-    // The group number for a pending position update.
-    //
-    unsigned char ucPositionGroup;
-
-    //
-    // The group number for a pending speed update.
-    //
-    unsigned char ucSpeedGroup;
-}
-g_sPendingUpdates;
+#include "pins.h"
+#include "uart_if.h"
 
 //*****************************************************************************
 //
@@ -161,49 +80,20 @@ static const tCANBitClkParms CANBitClkSettings =
 
 //*****************************************************************************
 //
-// These states are used to determine the mode during enumeration.
+// A set of flags to indicate additional actions that need to be taken during a
+// CAN interrupt.
 //
 //*****************************************************************************
-static enum
-{
-    //
-    // This is the normal operating state.
-    //
-    STATE_IDLE,
-
-    //
-    // The controller has received a device assignement command and is waiting
-    // to accept or reject the change.
-    //
-    STATE_ASSIGNMENT,
-
-    //
-    // The assignment delay has expired, or the button has been pressed, and
-    // the CAN interface is ready to be reconfigured appropriately.
-    //
-    STATE_ASSIGN_END,
-
-    //
-    // The controller has received an enumeration request and is waiting to
-    // send out the response.
-    //
-    STATE_ENUMERATE,
-
-    //
-    // The enumeration delay has expired and the response is ready to be sent.
-    //
-    STATE_ENUM_END
-}
-g_eCANState;
+static unsigned long g_ulCANFlags;
+#define CAN_FLAG_ENUM           1
+#define CAN_FLAG_ASSIGN         2
 
 //*****************************************************************************
 //
-// These globals hold the Event tick information to CAN related timing
-// functions.
+// The new CAN ID to be used after an assignment.
 //
 //*****************************************************************************
-static unsigned long g_ulTickCount;
-static unsigned long g_ulEventTick;
+static unsigned long g_ulCANNewID;
 
 //*****************************************************************************
 //
@@ -223,7 +113,29 @@ static unsigned long g_ulEventTick;
 #define MSG_OBJ_FIRM_VER_ID     (MSG_OBJ_FIRM_VER + 1)
 #define MSG_OBJ_UPD_RX          5
 #define MSG_OBJ_UPD_RX_ID       (MSG_OBJ_UPD_RX + 1)
-#define MSG_OBJ_NUM_OBJECTS     6
+#define MSG_OBJ_BRIDGE_QUERY    6
+#define MSG_OBJ_BRIDGE_QUERY_ID (MSG_OBJ_BRIDGE_QUERY + 1)
+#define MSG_OBJ_BRIDGE_VER      7
+#define MSG_OBJ_BRIDGE_VER_ID   (MSG_OBJ_BRIDGE_VER + 1)
+#define MSG_OBJ_BRIDGE_TX       8
+#define MSG_OBJ_BRIDGE_TX_ID    (MSG_OBJ_BRIDGE_TX + 1)
+#define MSG_OBJ_BRIDGE_RX0      9
+#define MSG_OBJ_BRIDGE_RX0_ID   (MSG_OBJ_BRIDGE_RX0 + 1)
+#define MSG_OBJ_BRIDGE_RX1      10
+#define MSG_OBJ_BRIDGE_RX1_ID   (MSG_OBJ_BRIDGE_RX1 + 1)
+#define MSG_OBJ_BRIDGE_RX2      11
+#define MSG_OBJ_BRIDGE_RX2_ID   (MSG_OBJ_BRIDGE_RX2 + 1)
+#define MSG_OBJ_BRIDGE_RX3      12
+#define MSG_OBJ_BRIDGE_RX3_ID   (MSG_OBJ_BRIDGE_RX3 + 1)
+#define MSG_OBJ_BRIDGE_RX4      13
+#define MSG_OBJ_BRIDGE_RX4_ID   (MSG_OBJ_BRIDGE_RX4 + 1)
+#define MSG_OBJ_BRIDGE_RX5      14
+#define MSG_OBJ_BRIDGE_RX5_ID   (MSG_OBJ_BRIDGE_RX5 + 1)
+#define MSG_OBJ_BRIDGE_RX6      15
+#define MSG_OBJ_BRIDGE_RX6_ID   (MSG_OBJ_BRIDGE_RX6 + 1)
+#define MSG_OBJ_BRIDGE_RX7      16
+#define MSG_OBJ_BRIDGE_RX7_ID   (MSG_OBJ_BRIDGE_RX7 + 1)
+#define MSG_OBJ_NUM_OBJECTS     17
 
 //*****************************************************************************
 //
@@ -231,7 +143,7 @@ static unsigned long g_ulEventTick;
 // to send traffic on the CAN network.
 //
 //*****************************************************************************
-static tCANMsgObject g_MsgObject[MSG_OBJ_NUM_OBJECTS];
+static tCANMsgObject g_psMsgObject[MSG_OBJ_NUM_OBJECTS];
 
 //*****************************************************************************
 //
@@ -256,23 +168,55 @@ static unsigned char g_pucUPDData[8];
 
 //*****************************************************************************
 //
-// This holds the pending device number during the assignement state.
+// This is the buffer for data received by the bridged query message object.
 //
 //*****************************************************************************
-static unsigned char g_ucDevNumPending;
+static unsigned char g_pucBridgeQueryData[8];
 
 //*****************************************************************************
 //
-// This holds the pending device number during the assignement state.
+// This is the buffer for data received by the bridged firmware version message
+// object.
 //
 //*****************************************************************************
-static unsigned char g_ucFlags;
+static unsigned char g_pucBridgeVersionData[4];
 
+//*****************************************************************************
 //
-// This flag is set during startup and can be cleared only by another device
-// sending a Power Status command.
+// This is the buffer for data received by the bridge RX message objects.
 //
-#define CAN_FLAGS_POR           0x01
+//*****************************************************************************
+static unsigned long g_pulBridgeRXData[16];
+
+//*****************************************************************************
+//
+// A local copy of CANMessageClear that does not use paced reads/writes since
+// they are not needed on the LM3S2616.
+//
+//*****************************************************************************
+static void
+CANIFMessageClear(unsigned long ulObjID)
+{
+    //
+    // Wait for busy bit to clear
+    //
+    while(HWREG(CAN0_BASE + CAN_O_IF1CRQ) & CAN_IF1CRQ_BUSY)
+    {
+    }
+
+    //
+    // Clear the message value bit in the arbitration register.  This indicates
+    // the message is not valid.
+    //
+    HWREG(CAN0_BASE + CAN_O_IF1CMSK) = CAN_IF1CMSK_WRNRD | CAN_IF1CMSK_ARB;
+    HWREG(CAN0_BASE + CAN_O_IF1ARB1) = 0;
+    HWREG(CAN0_BASE + CAN_O_IF1ARB2) = 0;
+
+    //
+    // Initiate programming the message object
+    //
+    HWREG(CAN0_BASE + CAN_O_IF1CRQ) = ulObjID & CAN_IF1CRQ_MNUM_M;
+}
 
 //*****************************************************************************
 //
@@ -287,7 +231,7 @@ CANIFDataRegRead(unsigned char *pucData, unsigned long ulRegister,
     unsigned long ulValue, ulIdx;
 
     //
-    // Loop always copies 1 or 2 bytes per iteration.
+    // Loop over the data buffer.
     //
     for(ulIdx = 0; ulIdx < ulSize; ulIdx += 2)
     {
@@ -299,7 +243,7 @@ CANIFDataRegRead(unsigned char *pucData, unsigned long ulRegister,
         ulRegister += 4;
 
         //
-        // Store the first byte.
+        // Store the byte.
         //
         *pucData++ = (unsigned char)ulValue;
         *pucData++ = (unsigned char)(ulValue >> 8);
@@ -319,7 +263,7 @@ CANIFDataRegWrite(unsigned char *pucData, unsigned long ulRegister,
     unsigned long ulValue, ulIdx;
 
     //
-    // Loop always copies 1 or 2 bytes per iteration.
+    // Loop over the data buffer.
     //
     for(ulIdx = 0; ulIdx < ulSize; ulIdx += 2)
     {
@@ -825,48 +769,117 @@ CANIFMessageSet(unsigned long ulObjID, tCANMsgObject *pMsgObject,
 static void
 CANConfigureNetwork(void)
 {
+    unsigned long ulIdx;
+
     //
     // This message object will be used to send broadcast messages on the
     // CAN network.
     //
-    g_MsgObject[MSG_OBJ_BCAST_TX].ulMsgID = 0;
-    g_MsgObject[MSG_OBJ_BCAST_TX].ulMsgIDMask = 0;
-    g_MsgObject[MSG_OBJ_BCAST_TX].ulFlags = MSG_OBJ_EXTENDED_ID;
-    g_MsgObject[MSG_OBJ_BCAST_TX].ulMsgLen = 0;
-    g_MsgObject[MSG_OBJ_BCAST_TX].pucMsgData = (unsigned char *)0xffffffff;
+    g_psMsgObject[MSG_OBJ_BCAST_TX].ulMsgID = 0;
+    g_psMsgObject[MSG_OBJ_BCAST_TX].ulMsgIDMask = 0;
+    g_psMsgObject[MSG_OBJ_BCAST_TX].ulFlags = MSG_OBJ_EXTENDED_ID;
+    g_psMsgObject[MSG_OBJ_BCAST_TX].ulMsgLen = 0;
+    g_psMsgObject[MSG_OBJ_BCAST_TX].pucMsgData = (unsigned char *)0xffffffff;
 
     //
     // This message object will be used to receive broadcast traffic on the
     // CAN network.
     //
-    g_MsgObject[MSG_OBJ_BCAST_RX].ulMsgID = 0;
+    g_psMsgObject[MSG_OBJ_BCAST_RX].ulMsgID = 0;
 
     //
     // Any API targeted at a devno of 0, manufacturer of 0, and device type
     // of 0.
     //
-    g_MsgObject[MSG_OBJ_BCAST_RX].ulMsgIDMask =
+    g_psMsgObject[MSG_OBJ_BCAST_RX].ulMsgIDMask =
         CAN_MSGID_DTYPE_M | CAN_MSGID_MFR_M | CAN_MSGID_DEVNO_M;
 
     //
     // Enable extended identifiers, interrupt and using extended message id
     // filtering.
     //
-    g_MsgObject[MSG_OBJ_BCAST_RX].ulFlags =
-        MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID | MSG_OBJ_USE_ID_FILTER |
-        MSG_OBJ_USE_EXT_FILTER;
+    g_psMsgObject[MSG_OBJ_BCAST_RX].ulFlags =
+        (MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID | MSG_OBJ_USE_ID_FILTER |
+         MSG_OBJ_USE_EXT_FILTER);
 
     //
     // No data will be read automatically, it will be read when it is received.
     //
-    g_MsgObject[MSG_OBJ_BCAST_RX].ulMsgLen = 8;
-    g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData = g_pucBcastData;
+    g_psMsgObject[MSG_OBJ_BCAST_RX].ulMsgLen = 8;
+    g_psMsgObject[MSG_OBJ_BCAST_RX].pucMsgData = g_pucBcastData;
 
     //
     // Configure the broadcast receive message object.
     //
-    CANIFMessageSet(MSG_OBJ_BCAST_RX_ID, &g_MsgObject[MSG_OBJ_BCAST_RX],
+    CANIFMessageSet(MSG_OBJ_BCAST_RX_ID, &g_psMsgObject[MSG_OBJ_BCAST_RX],
                     MSG_OBJ_TYPE_RX);
+
+    //
+    // This message object will be used to send bridged messages on the CAN
+    // network.
+    //
+    g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulMsgID = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulMsgIDMask = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulFlags = MSG_OBJ_EXTENDED_ID;
+    g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulMsgLen = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_TX].pucMsgData = (unsigned char *)0xffffffff;
+
+    //
+    // This message object will be used to send bridged device query messages
+    // on the CAN network.
+    //
+    g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].ulMsgID = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].ulMsgIDMask = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].ulFlags =
+        MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID;
+    g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].ulMsgLen = 8;
+    g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].pucMsgData = g_pucBridgeQueryData;
+
+    //
+    // This message object will be used to send bridged firmware version
+    // messages on the CAN network.
+    //
+    g_psMsgObject[MSG_OBJ_BRIDGE_VER].ulMsgID = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_VER].ulMsgIDMask = 0;
+    g_psMsgObject[MSG_OBJ_BRIDGE_VER].ulFlags =
+        MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID;
+    g_psMsgObject[MSG_OBJ_BRIDGE_VER].ulMsgLen = 4;
+    g_psMsgObject[MSG_OBJ_BRIDGE_VER].pucMsgData = g_pucBridgeVersionData;
+
+    //
+    // Setup the message FIFO used to receive bridge messages from the CAN
+    // network.
+    //
+    for(ulIdx = 0; ulIdx < 8; ulIdx++)
+    {
+        //
+        // Configure this message object.
+        //
+        g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].ulMsgID = 0;
+        g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].ulMsgIDMask = 0;
+        g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].ulFlags =
+            (MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID |
+             MSG_OBJ_USE_ID_FILTER | MSG_OBJ_USE_EXT_FILTER);
+        g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].ulMsgLen = 8;
+        g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].pucMsgData =
+            (unsigned char *)(g_pulBridgeRXData + (ulIdx * 2));
+
+        //
+        // If this is not the last message object in the FIFO, then set the
+        // FIFO indicator.
+        //
+        if(ulIdx != 7)
+        {
+            g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx].ulFlags |= MSG_OBJ_FIFO;
+        }
+
+        //
+        // Configure this bridge receive message object.
+        //
+        CANIFMessageSet(MSG_OBJ_BRIDGE_RX0_ID + ulIdx,
+                        &(g_psMsgObject[MSG_OBJ_BRIDGE_RX0 + ulIdx]),
+                        MSG_OBJ_TYPE_RX);
+    }
 }
 
 //*****************************************************************************
@@ -909,7 +922,12 @@ CANSendBroadcastMsg(unsigned long ulId,  unsigned char *pucData,
         // Wait for the transmit status to indicate that the previous message
         // was transmitted.
         //
-        ulStatus = CANStatusGet(CAN0_BASE, CAN_STS_TXREQUEST);
+#if MSG_OBJ_BCAST_TX < 16
+        ulStatus = (HWREG(CAN0_BASE + CAN_O_TXRQ1) & (1 << MSG_OBJ_BCAST_TX));
+#else
+        ulStatus = (HWREG(CAN0_BASE + CAN_O_TXRQ2) &
+                    (1 << (MSG_OBJ_BCAST_TX - 16)));
+#endif
 
         //
         // If the status ever goes to zero then exit the loop.
@@ -936,10 +954,10 @@ CANSendBroadcastMsg(unsigned long ulId,  unsigned char *pucData,
         //
         // Send the response packet.
         //
-        g_MsgObject[MSG_OBJ_BCAST_TX].pucMsgData = pucData;
-        g_MsgObject[MSG_OBJ_BCAST_TX].ulMsgLen = ulSize;
-        g_MsgObject[MSG_OBJ_BCAST_TX].ulMsgID = ulId;
-        CANIFMessageSet(MSG_OBJ_BCAST_TX_ID, &g_MsgObject[MSG_OBJ_BCAST_TX],
+        g_psMsgObject[MSG_OBJ_BCAST_TX].pucMsgData = pucData;
+        g_psMsgObject[MSG_OBJ_BCAST_TX].ulMsgLen = ulSize;
+        g_psMsgObject[MSG_OBJ_BCAST_TX].ulMsgID = ulId;
+        CANIFMessageSet(MSG_OBJ_BCAST_TX_ID, &g_psMsgObject[MSG_OBJ_BCAST_TX],
                         MSG_OBJ_TYPE_TX);
     }
     else
@@ -949,6 +967,7 @@ CANSendBroadcastMsg(unsigned long ulId,  unsigned char *pucData,
         //
         return(0xffffffff);
     }
+
     return(0);
 }
 
@@ -982,126 +1001,127 @@ CANDeviceNumSet(unsigned char ucDevNum)
         // This message object will be used to receive Motor control messages
         // on the CAN network.
         //
-        g_MsgObject[MSG_OBJ_MC_RX].ulMsgID =
+        g_psMsgObject[MSG_OBJ_MC_RX].ulMsgID =
             CAN_MSGID_MFR_LM | CAN_MSGID_DTYPE_MOTOR | ucDevNum;
 
         //
         // Set the filter mask to look at the device identifier, manufacturer,
         // and the device type.
         //
-        g_MsgObject[MSG_OBJ_MC_RX].ulMsgIDMask =
+        g_psMsgObject[MSG_OBJ_MC_RX].ulMsgIDMask =
             CAN_MSGID_DEVNO_M | CAN_MSGID_MFR_M | CAN_MSGID_DTYPE_M;
 
         //
         // Enable filtering based on the mask.
         //
-        g_MsgObject[MSG_OBJ_MC_RX].ulFlags =
-            MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID |
-            MSG_OBJ_USE_ID_FILTER | MSG_OBJ_USE_EXT_FILTER;
-
-        //
-        // This just initializes the data pointer and does nothing else.
-        //
-        g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen = 8;
-        g_MsgObject[MSG_OBJ_MC_RX].pucMsgData = g_pucMCData;
-
-        //
-        // Configure the motor control message receive message object.
-        //
-        CANIFMessageSet(MSG_OBJ_MC_RX_ID, &g_MsgObject[MSG_OBJ_MC_RX],
-                        MSG_OBJ_TYPE_RX);
-
-        //
-        // This message object will be used to receive update related
-        // messages on the CAN network.
-        //
-        g_MsgObject[MSG_OBJ_UPD_RX].ulMsgID = LM_API_UPD | ucDevNum;
-
-        //
-        // Set the filter mask to look at the device identifier, manufacturer,
-        // and the device type.
-        //
-        g_MsgObject[MSG_OBJ_UPD_RX].ulMsgIDMask =
-            CAN_MSGID_DEVNO_M | CAN_MSGID_MFR_M | CAN_MSGID_DTYPE_M;
-
-        //
-        // Enable filtering based on the mask.
-        //
-        g_MsgObject[MSG_OBJ_UPD_RX].ulFlags =
+        g_psMsgObject[MSG_OBJ_MC_RX].ulFlags =
             (MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID |
              MSG_OBJ_USE_ID_FILTER | MSG_OBJ_USE_EXT_FILTER);
 
         //
         // This just initializes the data pointer and does nothing else.
         //
-        g_MsgObject[MSG_OBJ_UPD_RX].ulMsgLen = 8;
-        g_MsgObject[MSG_OBJ_UPD_RX].pucMsgData = g_pucUPDData;
+        g_psMsgObject[MSG_OBJ_MC_RX].ulMsgLen = 8;
+        g_psMsgObject[MSG_OBJ_MC_RX].pucMsgData = g_pucMCData;
 
         //
         // Configure the motor control message receive message object.
         //
-        CANIFMessageSet(MSG_OBJ_UPD_RX_ID, &g_MsgObject[MSG_OBJ_UPD_RX],
+        CANIFMessageSet(MSG_OBJ_MC_RX_ID, &g_psMsgObject[MSG_OBJ_MC_RX],
+                        MSG_OBJ_TYPE_RX);
+
+        //
+        // This message object will be used to receive update related
+        // messages on the CAN network.
+        //
+        g_psMsgObject[MSG_OBJ_UPD_RX].ulMsgID = LM_API_UPD | ucDevNum;
+
+        //
+        // Set the filter mask to look at the device identifier, manufacturer,
+        // and the device type.
+        //
+        g_psMsgObject[MSG_OBJ_UPD_RX].ulMsgIDMask =
+            CAN_MSGID_DEVNO_M | CAN_MSGID_MFR_M | CAN_MSGID_DTYPE_M;
+
+        //
+        // Enable filtering based on the mask.
+        //
+        g_psMsgObject[MSG_OBJ_UPD_RX].ulFlags =
+            (MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_EXTENDED_ID |
+             MSG_OBJ_USE_ID_FILTER | MSG_OBJ_USE_EXT_FILTER);
+
+        //
+        // This just initializes the data pointer and does nothing else.
+        //
+        g_psMsgObject[MSG_OBJ_UPD_RX].ulMsgLen = 8;
+        g_psMsgObject[MSG_OBJ_UPD_RX].pucMsgData = g_pucUPDData;
+
+        //
+        // Configure the motor control message receive message object.
+        //
+        CANIFMessageSet(MSG_OBJ_UPD_RX_ID, &g_psMsgObject[MSG_OBJ_UPD_RX],
                         MSG_OBJ_TYPE_RX);
 
         //
         // Configure the auto-responding device indentification data message
         // object.
         //
-        g_MsgObject[MSG_OBJ_DEV_QUERY].ulMsgID = CAN_MSGID_API_DEVQUERY |
-                                                 ucDevNum;
+        g_psMsgObject[MSG_OBJ_DEV_QUERY].ulMsgID = (CAN_MSGID_API_DEVQUERY |
+                                                    ucDevNum);
 
         //
         // Only look at the API and Device identifier.
         //
-        g_MsgObject[MSG_OBJ_DEV_QUERY].ulMsgIDMask = CAN_MSGID_FULL_M;
+        g_psMsgObject[MSG_OBJ_DEV_QUERY].ulMsgIDMask = CAN_MSGID_FULL_M;
 
         //
         // Enable filtering based on the mask.
         //
-        g_MsgObject[MSG_OBJ_DEV_QUERY].ulFlags = MSG_OBJ_EXTENDED_ID |
-                                                 MSG_OBJ_USE_ID_FILTER |
-                                                 MSG_OBJ_USE_EXT_FILTER;
+        g_psMsgObject[MSG_OBJ_DEV_QUERY].ulFlags = (MSG_OBJ_EXTENDED_ID |
+                                                    MSG_OBJ_USE_ID_FILTER |
+                                                    MSG_OBJ_USE_EXT_FILTER);
 
         //
         // The identification data has 8 bytes of data so initialize the values.
         //
-        g_MsgObject[MSG_OBJ_DEV_QUERY].ulMsgLen = 8;
-        g_MsgObject[MSG_OBJ_DEV_QUERY].pucMsgData =
+        g_psMsgObject[MSG_OBJ_DEV_QUERY].ulMsgLen = 8;
+        g_psMsgObject[MSG_OBJ_DEV_QUERY].pucMsgData =
             (unsigned char *)g_pucEnumData;
 
         //
         // Send the configuration to the device identification message object.
         //
-        CANIFMessageSet(MSG_OBJ_DEV_QUERY_ID, &g_MsgObject[MSG_OBJ_DEV_QUERY],
+        CANIFMessageSet(MSG_OBJ_DEV_QUERY_ID,
+                        &g_psMsgObject[MSG_OBJ_DEV_QUERY],
                         MSG_OBJ_TYPE_RXTX_REMOTE);
 
         //
         // Configure the auto-responding firmware version message object to
         // look for a fully specified message identifier.
         //
-        g_MsgObject[MSG_OBJ_FIRM_VER].ulMsgID =
+        g_psMsgObject[MSG_OBJ_FIRM_VER].ulMsgID =
             CAN_MSGID_API_FIRMVER | ucDevNum;
-        g_MsgObject[MSG_OBJ_FIRM_VER].ulMsgIDMask = CAN_MSGID_FULL_M;
+        g_psMsgObject[MSG_OBJ_FIRM_VER].ulMsgIDMask = CAN_MSGID_FULL_M;
 
         //
         // Enable filtering based on the mask.
         //
-        g_MsgObject[MSG_OBJ_FIRM_VER].ulFlags = MSG_OBJ_EXTENDED_ID |
-                                                MSG_OBJ_USE_ID_FILTER |
-                                                MSG_OBJ_USE_EXT_FILTER;
+        g_psMsgObject[MSG_OBJ_FIRM_VER].ulFlags = (MSG_OBJ_EXTENDED_ID |
+                                                   MSG_OBJ_USE_ID_FILTER |
+                                                   MSG_OBJ_USE_EXT_FILTER);
 
         //
         // Set the firmware version response to 4 bytes long and initialize
         // the data to the value in g_ulFirmwareVerion.
         //
-        g_MsgObject[MSG_OBJ_FIRM_VER].ulMsgLen = 4;
-        g_MsgObject[MSG_OBJ_FIRM_VER].pucMsgData =
+        g_psMsgObject[MSG_OBJ_FIRM_VER].ulMsgLen = 4;
+        g_psMsgObject[MSG_OBJ_FIRM_VER].pucMsgData =
             (unsigned char *)&g_ulFirmwareVersion;
 
         //
         // Send the configuration to the Firmware message object.
         //
-        CANIFMessageSet(MSG_OBJ_FIRM_VER_ID, &g_MsgObject[MSG_OBJ_FIRM_VER],
+        CANIFMessageSet(MSG_OBJ_FIRM_VER_ID, &g_psMsgObject[MSG_OBJ_FIRM_VER],
                         MSG_OBJ_TYPE_RXTX_REMOTE);
     }
     else
@@ -1128,1951 +1148,225 @@ CANDeviceNumSet(unsigned char ucDevNum)
         //
         CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR);
     }
-
-    //
-    // If the value has changed then it needs to be saved.
-    //
-    if(ucDevNum != g_sParameters.ucDeviceNumber)
-    {
-        //
-        // Save the pending change.
-        //
-        g_sParameters.ucDeviceNumber = ucDevNum;
-
-        //
-        // Save the new a new ID.
-        //
-        ParamSave();
-    }
 }
 
 //*****************************************************************************
 //
-// This function handles CAN Status API messages.
+// The CAN interface interrupt handler.
 //
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
+// This function handles all interrupts from the can controller and parses out
+// the various commands to their appropriate handlers.
 //
-// This function is called when a CAN status API message is received.  If
-// necessary, it will retrieve the information requested from the board and
-// return it to the requestor.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
+// \return None.
 //
 //*****************************************************************************
-static unsigned long
-StatusHandler(unsigned long ulID, unsigned char *pucData,
-              unsigned long ulMsgLen)
+void
+CAN0IntHandler(void)
 {
-    unsigned long ulData;
-    unsigned char ucData;
+    unsigned long ulStatus, ulAck;
 
     //
-    // Mask out the device number and see what the command is.
+    // Find the cause of the interrupt, if it is a status interrupt then just
+    // acknowledge the interrupt by reading the status register.
     //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
+    ulStatus = HWREG(CAN0_BASE + CAN_O_INT);
+
+    //
+    // Clear the interrupt.
+    //
+    CANIntClear(CAN0_BASE, ulStatus);
+
+    //
+    // See if the enumeration delay has expired.
+    //
+    if(HWREGBITW(&g_ulCANFlags, CAN_FLAG_ENUM) == 1)
     {
         //
-        // Read the output voltage in percent.
+        // Send out the enumeration data.
         //
-        case LM_API_STATUS_VOLTOUT:
-        {
-            //
-            // Get the output voltage.
-            //
-            ulData = ControllerVoltageGet();
-
-            //
-            // Send a message back with the output voltage.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
+        CANSendBroadcastMsg((CAN_MSGID_API_ENUMERATE |
+                             g_sParameters.ucDeviceNumber), 0, 0);
 
         //
-        // Read the input bus voltage.
+        // Clear the enumeration flag.
         //
-        case LM_API_STATUS_VOLTBUS:
-        {
-            //
-            // Get the input bus voltage.
-            //
-            ulData = ADCVBusGet();
-
-            //
-            // Send a message back with the input bus voltage.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the fault status.
-        //
-        case LM_API_STATUS_FAULT:
-        {
-            //
-            // Get the fault status.
-            //
-            ulData = ControllerFaultsActive();
-
-            //
-            // Send a message back with the fault status.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the motor current.
-        //
-        case LM_API_STATUS_CURRENT:
-        {
-            //
-            // Get the motor current.
-            //
-            ulData = ADCCurrentGet();
-
-            //
-            // Send a message back with the motor current.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the temperature.
-        //
-        case LM_API_STATUS_TEMP:
-        {
-            //
-            // Get the temperature.
-            //
-            ulData = ADCTemperatureGet();
-
-            //
-            // Send a message back with the temperature.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the motor position.
-        //
-        case LM_API_STATUS_POS:
-        {
-            //
-            // Get the motor position.
-            //
-            ulData = ControllerPositionGet();
-
-            //
-            // Send a message back with the motor position.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 4);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the motor speed.
-        //
-        case LM_API_STATUS_SPD:
-        {
-            //
-            // Get the motor speed.
-            //
-            ulData = ControllerSpeedGet();
-
-            //
-            // Send a message back with the motor speed.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 4);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the state of the limit switches.
-        //
-        case LM_API_STATUS_LIMIT:
-        {
-            //
-            // Default is that the limits are not "good".
-            //
-            ucData = 0;
-
-            //
-            // See if the forward limit is in a "good" state.
-            //
-            if(LimitForwardOK())
-            {
-                ucData |= LM_STATUS_LIMIT_FWD;
-            }
-
-            //
-            // See if the reverse limit is in a "good" state.
-            //
-            if(LimitReverseOK())
-            {
-                ucData |= LM_STATUS_LIMIT_REV;
-            }
-
-            //
-            // Send a message back with the limit switch status.
-            //
-            CANSendBroadcastMsg(ulID, &ucData, 1);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the power status.
-        //
-        case LM_API_STATUS_POWER:
-        {
-            //
-            // See if this is a get or set request.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send back the power state flags.
-                //
-                CANSendBroadcastMsg(ulID, &g_ucFlags, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Only POR can be cleared at this time.
-                //
-                if(pucData[0] & CAN_FLAGS_POR)
-                {
-                    g_ucFlags &= ~CAN_FLAGS_POR;
-                }
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the current control mode.
-        //
-        case LM_API_STATUS_CMODE:
-        {
-            //
-            // Get the current control mode.
-            //
-            ucData = ControllerControlModeGet();
-
-            //
-            // Send a message back with the control mode.
-            //
-            CANSendBroadcastMsg(ulID, &ucData, 1);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Read the output voltage in volts.
-        //
-        case LM_API_STATUS_VOUT:
-        {
-            //
-            // Get the output voltage.
-            //
-            ulData = (ControllerVoltageGet() * ADCVBusGet()) / 32768;
-
-            //
-            // Send a message back with the output voltage.
-            //
-            CANSendBroadcastMsg(ulID, (unsigned char *)&ulData, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // An unknown command was received.
-        //
-        default:
-        {
-            //
-            // This message should not be ACKed.
-            //
-            return(0);
-        }
+        HWREGBITW(&g_ulCANFlags, CAN_FLAG_ENUM) = 0;
     }
 
     //
-    // This message should be ACKed.
+    // See if the device ID has changed.
     //
-    return(1);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN Voltage API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN voltage API message is received.  This
-// function will parse the voltage command and call the appropriate motor
-// controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-VoltageHandler(unsigned long ulID, unsigned char *pucData,
-               unsigned long ulMsgLen)
-{
-    unsigned long ulValue, ulAck;
-    unsigned short *pusData;
-    short *psData;
-
-    //
-    // Create local pointers of different types to the message data to avoid
-    // later type casting.
-    //
-    pusData = (unsigned short *)pucData;
-    psData = (short *)pucData;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
+    if(HWREGBITW(&g_ulCANFlags, CAN_FLAG_ASSIGN) == 1)
     {
         //
-        // Enable voltage control mode.
+        // Set the configuration of the message objects.
         //
-        case LM_API_VOLT_EN:
-        {
-            //
-            // Ignore this command if the controller is halted.
-            //
-            if(!ControllerHalted())
-            {
-                //
-                // Enable voltage control mode.
-                //
-                CommandVoltageMode(true);
-
-                //
-                // Reset pending updates when switching modes.
-                //
-                g_sPendingUpdates.ucCurrentGroup = 0;
-                g_sPendingUpdates.ucVoltageGroup = 0;
-                g_sPendingUpdates.ucVCompGroup = 0;
-                g_sPendingUpdates.ucPositionGroup = 0;
-                g_sPendingUpdates.ucSpeedGroup = 0;
-            }
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
+        CANDeviceNumSet(g_ulCANNewID);
 
         //
-        // Disable voltage control mode.
+        // Clear the assign flag.
         //
-        case LM_API_VOLT_DIS:
-        {
-            //
-            // Disable voltage control mode.
-            //
-            CommandVoltageMode(false);
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Set the output voltage.
-        //
-        case LM_API_VOLT_SET:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the target output voltage in response.
-                //
-                ulValue = ControllerVoltageTargetGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if((ulMsgLen == 2) || (ulMsgLen == 3))
-            {
-                //
-                // Ignore this command if the controller is halted.
-                //
-                if(!ControllerHalted())
-                {
-                    //
-                    // If there was either no group specified or if the value
-                    // specified was zero then update the voltage, otherwise
-                    // the voltage update is pending until it is committed.
-                    //
-                    if((ulMsgLen == 2) || (pucData[2] == 0))
-                    {
-                        //
-                        // Send the voltage on to the handler.
-                        //
-                        CommandVoltageSet(psData[0]);
-                    }
-                    else
-                    {
-                        //
-                        // Save the voltage setting and the group.
-                        //
-                        g_sPendingUpdates.sVoltage = psData[0];
-                        g_sPendingUpdates.ucVoltageGroup = pucData[2];
-                    }
-                }
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Motor controller Set Voltage Ramp Rate received.
-        //
-        case LM_API_VOLT_SET_RAMP:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the voltage ramp rate in response.
-                //
-                ulValue = ControllerVoltageRateGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Send the voltage ramp rate to the handler.
-                //
-                CommandVoltageRateSet(pusData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // An unknown command was received.
-        //
-        default:
-        {
-            //
-            // This message has been handled.
-            //
-            break;
-        }
+        HWREGBITW(&g_ulCANFlags, CAN_FLAG_ASSIGN) = 0;
     }
 
     //
-    // Return the ACK indicator.
+    // The ulStatus variable will be the message identifier that cause the
+    // interrupt or it will indicate a status interrupt.
     //
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN Voltage Compensation API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN voltage compensation API message is
-// received.  This function will parse the voltage compensation command and
-// call the appropriate motor controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-VCompHandler(unsigned long ulID, unsigned char *pucData,
-             unsigned long ulMsgLen)
-{
-    unsigned long ulValue, ulAck;
-    unsigned short *pusData;
-    short *psData;
-
-    //
-    // Create local pointers of different types to the message data to avoid
-    // later type casting.
-    //
-    pusData = (unsigned short *)pucData;
-    psData = (short *)pucData;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
+    switch(ulStatus)
     {
         //
-        // Enable voltage compensation control mode.
+        // This message object is used to receive broadcast messages.
         //
-        case LM_API_VCOMP_EN:
+        case MSG_OBJ_BCAST_RX_ID:
         {
             //
-            // Ignore this command if the controller is halted.
+            // This is a valid CAN message received and not a bridge message.
             //
-            if(!ControllerHalted())
+            ControllerLinkGood(LINK_TYPE_CAN);
+
+            //
+            // Retrieve the CAN message and process it.
+            //
+            CANIFMessageGet(MSG_OBJ_BCAST_RX_ID,
+                            &g_psMsgObject[MSG_OBJ_BCAST_RX]);
+
+            //
+            // Handle this system command.
+            //
+            MessageCommandHandler(g_psMsgObject[MSG_OBJ_BCAST_RX].ulMsgID,
+                                  g_psMsgObject[MSG_OBJ_BCAST_RX].pucMsgData,
+                                  g_psMsgObject[MSG_OBJ_BCAST_RX].ulMsgLen);
+
+            //
+            // Send back the response if one was generated.
+            //
+            if(g_ulResponseLength != 0)
             {
-                //
-                // Enable voltage compensation control mode.
-                //
-                CommandVCompMode(true);
-
-                //
-                // Reset pending updates when switching modes.
-                //
-                g_sPendingUpdates.ucVoltageGroup = 0;
-                g_sPendingUpdates.ucVCompGroup = 0;
-                g_sPendingUpdates.ucCurrentGroup = 0;
-                g_sPendingUpdates.ucSpeedGroup = 0;
-                g_sPendingUpdates.ucPositionGroup = 0;
-            }
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Disable voltage compensation control mode.
-        //
-        case LM_API_VCOMP_DIS:
-        {
-            //
-            // Disable voltage compensation control mode.
-            //
-            CommandVCompMode(false);
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Set the output voltage.
-        //
-        case LM_API_VCOMP_SET:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the target output voltage in response.
-                //
-                ulValue = ControllerVCompTargetGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if((ulMsgLen == 2) || (ulMsgLen == 3))
-            {
-                //
-                // Ignore this command if the controller is halted.
-                //
-                if(!ControllerHalted())
-                {
-                    //
-                    // If there was either no group specified or if the value
-                    // specified was zero then update the voltage, otherwise
-                    // the voltage update is pending until it is committed.
-                    //
-                    if((ulMsgLen == 2) || (pucData[2] == 0))
-                    {
-                        //
-                        // Send the voltage on to the handler.
-                        //
-                        CommandVCompSet(psData[0]);
-                    }
-                    else
-                    {
-                        //
-                        // Save the voltage compenstaion setting and the group.
-                        //
-                        g_sPendingUpdates.sVComp = psData[0];
-                        g_sPendingUpdates.ucVCompGroup = pucData[2];
-                    }
-                }
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Motor controller set input voltage ramp rate received.
-        //
-        case LM_API_VCOMP_IN_RAMP:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the input voltage ramp rate in response.
-                //
-                ulValue = ControllerVCompInRateGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Send the input voltage ramp rate to the handler.
-                //
-                CommandVCompInRampSet(pusData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Motor controller set compensation voltage ramp rate received.
-        //
-        case LM_API_VCOMP_COMP_RAMP:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the compensation voltage ramp rate in response.
-                //
-                ulValue = ControllerVCompCompRateGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Send the compensation voltage ramp rate to the handler.
-                //
-                CommandVCompCompRampSet(pusData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // An unknown command was received.
-        //
-        default:
-        {
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-    }
-
-    //
-    // Return the ACK indicator.
-    //
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN Speed API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN speed API message is received.  This
-// function will parse the speed command and call the appropriate motor
-// controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-SpeedHandler(unsigned long ulID, unsigned char *pucData,
-             unsigned long ulMsgLen)
-{
-    unsigned long ulValue, ulAck;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
-    {
-        //
-        // Enable speed control mode.
-        //
-        case LM_API_SPD_EN:
-        {
-            //
-            // Ignore this command if the controller is halted.
-            //
-            if(!ControllerHalted())
-            {
-                //
-                // Enable speed mode.
-                //
-                CommandSpeedMode(true);
-
-                //
-                // Reset pending updates when switching modes.
-                //
-                g_sPendingUpdates.ucCurrentGroup = 0;
-                g_sPendingUpdates.ucVoltageGroup = 0;
-                g_sPendingUpdates.ucVCompGroup = 0;
-                g_sPendingUpdates.ucPositionGroup = 0;
-                g_sPendingUpdates.ucSpeedGroup = 0;
-            }
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Disable speed control mode.
-        //
-        case LM_API_SPD_DIS:
-        {
-            //
-            // Disable speed mode.
-            //
-            CommandSpeedMode(false);
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Set the Speed.
-        //
-        case LM_API_SPD_SET:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the target speed in response.
-                //
-                ulValue = ControllerSpeedTargetGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if((ulMsgLen == 4) || (ulMsgLen == 5))
-            {
-                //
-                // Ignore this command if the controller is halted.
-                //
-                if(!ControllerHalted())
-                {
-                    //
-                    // If there was either no group specified or if the value
-                    // specified was zero then update the speed, otherwise the
-                    // speed update is pending until it is committed.
-                    //
-                    if((ulMsgLen <= 4) || (pucData[4] == 0))
-                    {
-                        //
-                        // When read as an unsigned short the value in pucData
-                        // is the rotational speed in revolution per second.
-                        //
-                        CommandSpeedSet(*(unsigned long *)pucData);
-                    }
-                    else
-                    {
-                        //
-                        // Save the speed setting and the group.
-                        //
-                        g_sPendingUpdates.lSpeed = *(long *)pucData;
-                        g_sPendingUpdates.ucSpeedGroup = pucData[4];
-                    }
-                }
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
+                CANSendBroadcastMsg(*(unsigned long *)g_pucResponse,
+                                    g_pucResponse + 4, g_ulResponseLength - 4);
             }
 
             break;
         }
 
         //
-        // Set the proportional constant used in the PID algorithm.
+        // This message object is used to receive motor control commands.
         //
-        case LM_API_SPD_PC:
+        case MSG_OBJ_MC_RX_ID:
         {
             //
-            // See if any data was supplied.
+            // This is a valid CAN message received and not a bridge message.
             //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the proportional constant in response.
-                //
-                ulValue = ControllerSpeedPGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the proportional constant.
-                //
-                CommandSpeedPSet(*(unsigned long *)pucData);
+            ControllerLinkGood(LINK_TYPE_CAN);
 
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
+            //
+            // Retrieve the CAN message and process it.
+            //
+            CANIFMessageGet(MSG_OBJ_MC_RX_ID, &g_psMsgObject[MSG_OBJ_MC_RX]);
+
+            //
+            // Handle this device-specific command.
+            //
+            ulAck =
+                MessageCommandHandler(g_psMsgObject[MSG_OBJ_MC_RX].ulMsgID,
+                                      g_psMsgObject[MSG_OBJ_MC_RX].pucMsgData,
+                                      g_psMsgObject[MSG_OBJ_MC_RX].ulMsgLen);
+
+            //
+            // Send back the response if one was generated.
+            //
+            if(g_ulResponseLength != 0)
+            {
+                CANSendBroadcastMsg(*(unsigned long *)g_pucResponse,
+                                    g_pucResponse + 4, g_ulResponseLength - 4);
+            }
+
+            //
+            // Send back an ACK if required.
+            //
+            if(ulAck == 1)
+            {
+                CANSendBroadcastMsg(LM_API_ACK | g_sParameters.ucDeviceNumber,
+                                    0, 0);
             }
 
             break;
         }
 
         //
-        // Set the integral constant used in the PID algorithm.
+        // Handle the update class commands.
         //
-        case LM_API_SPD_IC:
+        case MSG_OBJ_UPD_RX_ID:
         {
             //
-            // See if any data was supplied.
+            // This is a valid CAN message received and not a bridge message.
             //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the integral constant in response.
-                //
-                ulValue = ControllerSpeedIGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the integral constant.
-                //
-                CommandSpeedISet(*(unsigned long *)pucData);
+            ControllerLinkGood(LINK_TYPE_CAN);
 
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
+            //
+            // Retrieve the CAN message and process it.
+            //
+            CANIFMessageGet(MSG_OBJ_UPD_RX_ID, &g_psMsgObject[MSG_OBJ_UPD_RX]);
+
+            //
+            // Handle this device-specific command.
+            //
+            ulAck = MessageUpdateHandler(
+                        g_psMsgObject[MSG_OBJ_UPD_RX].ulMsgID,
+                        g_psMsgObject[MSG_OBJ_UPD_RX].pucMsgData,
+                        g_psMsgObject[MSG_OBJ_UPD_RX].ulMsgLen);
+
+            //
+            // Send back the response if one was generated.
+            //
+            if(g_ulResponseLength != 0)
+            {
+                CANSendBroadcastMsg(*(unsigned long *)g_pucResponse,
+                                    g_pucResponse + 4, g_ulResponseLength - 4);
             }
 
+            //
+            // Send back an ACK if required.
+            //
+            if(ulAck == 1)
+            {
+                CANSendBroadcastMsg(LM_API_ACK | g_sParameters.ucDeviceNumber,
+                                    0, 0);
+            }
             break;
         }
 
         //
-        // Set the differential constant used in the PID algorithm.
+        // These message objects are used to receive other traffic that should
+        // be bridged to the UART.
         //
-        case LM_API_SPD_DC:
+        case MSG_OBJ_BRIDGE_QUERY_ID:
+        case MSG_OBJ_BRIDGE_VER_ID:
+        case MSG_OBJ_BRIDGE_RX0_ID:
+        case MSG_OBJ_BRIDGE_RX1_ID:
+        case MSG_OBJ_BRIDGE_RX2_ID:
+        case MSG_OBJ_BRIDGE_RX3_ID:
+        case MSG_OBJ_BRIDGE_RX4_ID:
+        case MSG_OBJ_BRIDGE_RX5_ID:
+        case MSG_OBJ_BRIDGE_RX6_ID:
+        case MSG_OBJ_BRIDGE_RX7_ID:
         {
             //
-            // See if any data was supplied.
+            // Retrieve the CAN message.
             //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the differential constant in response.
-                //
-                ulValue = ControllerSpeedDGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the differential constant.
-                //
-                CommandSpeedDSet(*(unsigned long *)pucData);
+            CANIFMessageGet(ulStatus, &g_psMsgObject[ulStatus - 1]);
 
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
+            //
+            // Send this message out on the UART.
+            //
+            UARTIFSendMessage(g_psMsgObject[ulStatus - 1].ulMsgID,
+                              g_psMsgObject[ulStatus - 1].pucMsgData,
+                              g_psMsgObject[ulStatus - 1].ulMsgLen);
 
             break;
         }
 
-        //
-        // Set the speed measurement reference.
-        //
-        case LM_API_SPD_REF:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the speed reference in response.
-                //
-                ulValue = ControllerSpeedSrcGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Set the speed reference.
-                //
-                CommandSpeedSrcSet(*pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-    }
-
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN position API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN position API message is received.  This
-// function will parse the position command and call the appropriate motor
-// controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-PositionHandler(unsigned long ulID, unsigned char *pucData,
-                unsigned long ulMsgLen)
-{
-    unsigned long ulValue, ulAck;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
-    {
-        //
-        // Enable position control mode.
-        //
-        case LM_API_POS_EN:
-        {
-            //
-            // Ignore this command if the controller is halted.
-            //
-            if(!ControllerHalted())
-            {
-                //
-                // The 32 bit value in pucData holds the initial position.
-                // The motor controller should set its output voltage to
-                // 0V(neutral)
-                //
-                CommandPositionMode(true, *(long *)pucData);
-
-                //
-                // Reset pending updates when switching modes.
-                //
-                g_sPendingUpdates.ucCurrentGroup = 0;
-                g_sPendingUpdates.ucVoltageGroup = 0;
-                g_sPendingUpdates.ucVCompGroup = 0;
-                g_sPendingUpdates.ucPositionGroup = 0;
-                g_sPendingUpdates.ucSpeedGroup = 0;
-            }
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Disable position control mode.
-        //
-        case LM_API_POS_DIS:
-        {
-            //
-            // Switch out of position mode and back to the default mode.
-            //
-            CommandPositionMode(false, 0);
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Set the target shaft position.
-        //
-        case LM_API_POS_SET:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the target position in response.
-                //
-                ulValue = ControllerPositionTargetGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if((ulMsgLen == 4) || (ulMsgLen == 5))
-            {
-                //
-                // Ignore this command if the controller is halted.
-                //
-                if(!ControllerHalted())
-                {
-                    //
-                    // If there was either no group specified or if the value
-                    // specified was zero then update the position, otherwise
-                    // the position update is pending until it is committed.
-                    //
-                    if((ulMsgLen <= 4) || (pucData[4] == 0))
-                    {
-                        //
-                        // Send the 32 bit position to move to.
-                        //
-                        CommandPositionSet(*(long *)pucData);
-                    }
-                    else
-                    {
-                        //
-                        // Save the position setting and the group.
-                        //
-                        g_sPendingUpdates.lPosition = *(long *)pucData;
-                        g_sPendingUpdates.ucPositionGroup = pucData[4];
-                    }
-                }
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the proportional constant used in the PID algorithm.
-        //
-        case LM_API_POS_PC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the proportional constant in response.
-                //
-                ulValue = ControllerPositionPGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the proportional constant.
-                //
-                CommandPositionPSet(*(long *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the integral constant used in the PID algorithm.
-        //
-        case LM_API_POS_IC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the integral constant in response.
-                //
-                ulValue = ControllerPositionIGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the integral constant.
-                //
-                CommandPositionISet(*(long *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the differential constant used in the PID algorithm.
-        //
-        case LM_API_POS_DC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the differential constant in response.
-                //
-                ulValue = ControllerPositionDGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the differential constant.
-                //
-                CommandPositionDSet(*(long *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the the reference measurement source for position measurement.
-        //
-        case LM_API_POS_REF:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the position reference in response.
-                //
-                ulValue = ControllerPositionSrcGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Set the position reference.
-                //
-                CommandPositionSrcSet(*pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-    }
-
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN current API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN current API message is received.  This
-// function will parse the current command and call the appropriate motor
-// controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-CurrentHandler(unsigned long ulID, unsigned char *pucData,
-                  unsigned long ulMsgLen)
-{
-    unsigned long *pulData, ulValue, ulAck;
-    short *psData;
-
-    //
-    // Create some local pointers to avoid later type casting.
-    //
-    pulData = (unsigned long *)pucData;
-    psData = (short *)pucData;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
-    {
-        //
-        // Enable the current control mode.
-        //
-        case LM_API_ICTRL_EN:
-        {
-            //
-            // Ignore this command if the controller is halted.
-            //
-            if(!ControllerHalted())
-            {
-                //
-                // Enable current control mode.
-                //
-                CommandCurrentMode(true);
-
-                //
-                // Reset pending updates when switching modes.
-                //
-                g_sPendingUpdates.ucCurrentGroup = 0;
-                g_sPendingUpdates.ucVoltageGroup = 0;
-                g_sPendingUpdates.ucVCompGroup = 0;
-                g_sPendingUpdates.ucPositionGroup = 0;
-                g_sPendingUpdates.ucSpeedGroup = 0;
-            }
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Disable the current control mode.
-        //
-        case LM_API_ICTRL_DIS:
-        {
-            //
-            // Disable current control mode and return to the default mode.
-            //
-            CommandCurrentMode(false);
-
-            //
-            // Ack this command.
-            //
-            ulAck = 1;
-
-            break;
-        }
-
-        //
-        // Set the target winding current for the motor.
-        //
-        case LM_API_ICTRL_SET:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the target current in response.
-                //
-                ulValue = ControllerCurrentTargetGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 2);
-            }
-            else if((ulMsgLen == 2) || (ulMsgLen == 3))
-            {
-                //
-                // Ignore this command if the controller is halted.
-                //
-                if(!ControllerHalted())
-                {
-                    //
-                    // If there was either no group specified or if the value
-                    // specified was zero then update the current, otherwise
-                    // the current update is pending until it is committed.
-                    //
-                    if((ulMsgLen <= 2) || (pucData[2] == 0))
-                    {
-                        //
-                        // The value is a 8.8 fixed-point value that specifies
-                        // the current in Amperes.
-                        //
-                        CommandCurrentSet(psData[0]);
-                    }
-                    else
-                    {
-                        //
-                        // Save the current setting and the group.
-                        //
-                        g_sPendingUpdates.sCurrent = psData[0];
-                        g_sPendingUpdates.ucCurrentGroup = pucData[2];
-                    }
-                }
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the proportional constant used in the PID algorithm.
-        //
-        case LM_API_ICTRL_PC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the proportional constant in response.
-                //
-                ulValue = ControllerCurrentPGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the proportional constant.
-                //
-                CommandCurrentPSet(pulData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the integral constant used in the PID algorithm.
-        //
-        case LM_API_ICTRL_IC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the integral constant in response.
-                //
-                ulValue = ControllerCurrentIGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the integral constant.
-                //
-                CommandCurrentISet(pulData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the differential constant used in the PID algorithm.
-        //
-        case LM_API_ICTRL_DC:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the differential constant in response.
-                //
-                ulValue = ControllerCurrentDGainGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)&ulValue, 4);
-            }
-            else if(ulMsgLen == 4)
-            {
-                //
-                // Set the differential constant.
-                //
-                CommandCurrentDSet(pulData[0]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-    }
-
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN configuration API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN configuration API message is received.
-// This function will parse the configuration command and call the appropriate
-// motor controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-ConfigHandler(unsigned long ulID, unsigned char * pucData,
-              unsigned long ulMsgLen)
-{
-    unsigned long pulValue[2], ulAck;
-
-    //
-    // By default, no ACK should be supplied.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
-    {
-        //
-        // Set the number of brushes in the motor.
-        //
-        case LM_API_CFG_NUM_BRUSHES:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the number of brushes in response.
-                //
-                pulValue[0] = 0;
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Set the number of brushes.
-                //
-                CommandNumBrushesSet(*pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the number of lines in the encoder.
-        //
-        case LM_API_CFG_ENC_LINES:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the number of encoder lines in response.
-                //
-                pulValue[0] = EncoderLinesGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Set the number of encoder lines.
-                //
-                CommandEncoderLinesSet(*(unsigned short *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the number of turns in the potentiometer.
-        //
-        case LM_API_CFG_POT_TURNS:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the number of potentiometer turns in response.
-                //
-                pulValue[0] = ADCPotTurnsGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Set the number of potentiometer turns.
-                //
-                CommandPotTurnsSet(*(unsigned short *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the braking mode to brake, coast, or jumper select.
-        //
-        case LM_API_CFG_BRAKE_COAST:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the brake/coast mode in response.
-                //
-                pulValue[0] = HBridgeBrakeCoastGet();;
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Set the brake/coast mode.
-                //
-                CommandBrakeCoastSet(*pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the mode of the position limit switches.
-        //
-        case LM_API_CFG_LIMIT_MODE:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the position limit switch configuration in response.
-                //
-                pulValue[0] = LimitPositionActive();
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 1);
-            }
-            else if(ulMsgLen == 1)
-            {
-                //
-                // Configure the position limit switches.
-                //
-                CommandPositionLimitMode(*pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the configuration of the forward position limit switch.
-        //
-        case LM_API_CFG_LIMIT_FWD:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the forward position limit switch configuration in
-                // response.
-                //
-                LimitPositionForwardGet((long *)pulValue, pulValue + 1);
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 5);
-            }
-            else if(ulMsgLen == 5)
-            {
-                //
-                // Set the forward position limit switch.
-                //
-                CommandPositionLimitForwardSet(*(unsigned long *)pucData,
-                                               pucData[4]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the configuration of the reverse position limit switch.
-        //
-        case LM_API_CFG_LIMIT_REV:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the reverse position limit switch configuration in
-                // response.
-                //
-                LimitPositionReverseGet((long *)pulValue, pulValue + 1);
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 5);
-            }
-            else if(ulMsgLen == 5)
-            {
-                //
-                // Set the reverse position limit switch.
-                //
-                CommandPositionLimitReverseSet(*(unsigned long *)pucData,
-                                               pucData[4]);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the maximum output voltage.
-        //
-        case LM_API_CFG_MAX_VOUT:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the maximum output voltage in response.
-                //
-                pulValue[0] = HBridgeVoltageMaxGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Set the maximum output voltage.
-                //
-                CommandMaxVoltageSet(*(unsigned short *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-
-        //
-        // Set the fault time.
-        //
-        case LM_API_CFG_FAULT_TIME:
-        {
-            //
-            // See if any data was supplied.
-            //
-            if(ulMsgLen == 0)
-            {
-                //
-                // Send the fault time in response.
-                //
-                pulValue[0] = ControllerFaultTimeGet();
-                CANSendBroadcastMsg(ulID, (unsigned char *)pulValue, 2);
-            }
-            else if(ulMsgLen == 2)
-            {
-                //
-                // Set the fault time.
-                //
-                ControllerFaultTimeSet(*(unsigned short *)pucData);
-
-                //
-                // Ack this command.
-                //
-                ulAck = 1;
-            }
-
-            break;
-        }
-    }
-
-    return(ulAck);
-}
-
-//*****************************************************************************
-//
-// This function handles CAN update API messages.
-//
-// \param ulID is the fully specified ID that was received.
-// \param pucData is a buffer that holds the data that was received.
-// \param ulMsgLen is the number of valid bytes of data in pucData buffer.
-//
-// This function is called when a CAN update API message is received.
-// This function will parse the update commands and call the appropriate
-// motor controller function.
-//
-// \return The function will return one if the command should be ACKed and zero
-// if it should not be ACKed.
-//
-//*****************************************************************************
-static unsigned long
-UpdateHandler(unsigned long ulID, unsigned char * pucData,
-              unsigned long ulMsgLen)
-{
-    unsigned long ulAck;
-    unsigned char pucResponse[2];
-
-    //
-    // Do not send Ack by default.
-    //
-    ulAck = 0;
-
-    //
-    // Mask out the device number and see what the command is.
-    //
-    switch(ulID & (~CAN_MSGID_DEVNO_M))
-    {
-        //
-        // Handle the firmware version command.
-        //
-        case LM_API_HWVER:
-        {
-            //
-            // Respond with the device number and the hardware version.
-            //
-            pucResponse[0] = g_sParameters.ucDeviceNumber;
-            pucResponse[1] = g_ucHardwareVersion;
-
-            //
-            // Send back the firmware version.
-            //
-            CANSendBroadcastMsg(ulID, pucResponse, 2);
-
-            //
-            // This message has been handled.
-            //
-            break;
-        }
-
-        //
-        // Unknown command so just return.
-        //
         default:
         {
             break;
@@ -3080,9 +1374,9 @@ UpdateHandler(unsigned long ulID, unsigned char * pucData,
     }
 
     //
-    // Return if the calling function should ack the command.
+    // Tell the controller that CAN activity was detected.
     //
-    return(ulAck);
+    ControllerWatchdog(LINK_TYPE_CAN);
 }
 
 //*****************************************************************************
@@ -3098,34 +1392,19 @@ void
 CANIFInit(void)
 {
     //
-    // Default state is idle.
+    // Configure the CAN pins.
     //
-    g_eCANState = STATE_IDLE;
-
-    //
-    // Configure CAN Pins
-    //
-    ROM_SysCtlPeripheralEnable(CAN0RX_PERIPH);
-    ROM_GPIOPinTypeCAN(CAN0RX_PORT, CAN0RX_PIN | CAN0TX_PIN);
+#if CAN_RX_PORT == CAN_TX_PORT
+    ROM_GPIOPinTypeCAN(CAN_RX_PORT, CAN_RX_PIN | CAN_TX_PIN);
+#else
+    ROM_GPIOPinTypeCAN(CAN_TX_PORT, CAN_TX_PIN);
+    ROM_GPIOPinTypeCAN(CAN_RX_PORT, CAN_RX_PIN);
+#endif
 
     //
     // Enable the CAN controllers.
     //
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
-
-    //
-    // Make sure all pending updates are canceled.
-    //
-    g_sPendingUpdates.ucCurrentGroup = 0;
-    g_sPendingUpdates.ucVoltageGroup = 0;
-    g_sPendingUpdates.ucVCompGroup = 0;
-    g_sPendingUpdates.ucPositionGroup = 0;
-    g_sPendingUpdates.ucSpeedGroup = 0;
-
-    //
-    // Reset the global flags.
-    //
-    g_ucFlags = CAN_FLAGS_POR;
 
     //
     // Reset the state of all the message object and the state of the CAN
@@ -3187,696 +1466,143 @@ CANIFInit(void)
 
 //*****************************************************************************
 //
-// This function is called by external functions when a button press has been
-// detected.  If the communication link is via CAN bus and the interface was in
-// the Assignment state, then the CAN controller will accept the current
-// device identifier assignment and store the value in the parameter block.
-//
-// \return None.
+// Sets a new device ID into the CAN interface.
 //
 //*****************************************************************************
 void
-CANIFButtonPress(void)
+CANIFSetID(unsigned long ulID)
 {
     //
-    // If the device was in the assignment state then save the new value.
+    // Save the new ID.
     //
-    if(g_eCANState == STATE_ASSIGNMENT)
+    g_ulCANNewID = ulID;
+
+    //
+    // Set the assign flag.
+    //
+    HWREGBITW(&g_ulCANFlags, CAN_FLAG_ASSIGN) = 1;
+
+    //
+    // Trigger a fake CAN interrupt, during which the CAN interface will be
+    // reconfigured for the new device ID.
+    //
+    HWREG(NVIC_SW_TRIG) = INT_CAN0 - 16;
+}
+
+//*****************************************************************************
+//
+// Indicates that an enumeration response should be sent for this device.
+//
+//*****************************************************************************
+void
+CANIFEnumerate(void)
+{
+    //
+    // Set the enumerate flag.
+    //
+    HWREGBITW(&g_ulCANFlags, CAN_FLAG_ENUM) = 1;
+
+    //
+    // Trigger a fake CAN interrupt, during which the enumeration data will be
+    // sent back.
+    //
+    HWREG(NVIC_SW_TRIG) = INT_CAN0 - 16;
+}
+
+//*****************************************************************************
+//
+// Sends a bridged message on the CAN bus.  This must only be called from the
+// UART interrupt handler, where the interrupt priority is the same as the CAN
+// interrupt (therefore providing the required mutual exclusion between the
+// UART interrupt access to the CAN module and the CAN interrupt access to the
+// CAN module).  Failure to meet this requirement will result in unpredictable
+// behavior of the CAN module.
+//
+//*****************************************************************************
+void
+CANIFSendBridgeMessage(unsigned long ulID, unsigned char *pucData,
+                       unsigned long ulMsgLen)
+{
+    unsigned long ulCount;
+
+    if((ulID & ~(CAN_MSGID_DEVNO_M)) == CAN_MSGID_API_DEVQUERY)
     {
-        //
-        // Move to the assignment end state.
-        //
-        g_eCANState = STATE_ASSIGN_END;
-
-        //
-        // Trigger a fake CAN interrupt, during which the CAN interface will be
-        // reconfigured for the new device ID.
-        //
-        HWREG(NVIC_SW_TRIG) = INT_CAN0 - 16;
-
-        //
-        // Blink the new device ID.
-        //
-        LEDBlinkID(g_ucDevNumPending);
+        g_psMsgObject[MSG_OBJ_BRIDGE_QUERY].ulMsgID = ulID;
+        CANIFMessageSet(MSG_OBJ_BRIDGE_QUERY_ID,
+                        &g_psMsgObject[MSG_OBJ_BRIDGE_QUERY],
+                        MSG_OBJ_TYPE_TX_REMOTE);
+    }
+    else if((ulID & ~(CAN_MSGID_DEVNO_M)) == CAN_MSGID_API_FIRMVER)
+    {
+        g_psMsgObject[MSG_OBJ_BRIDGE_VER].ulMsgID = ulID;
+        CANIFMessageSet(MSG_OBJ_BRIDGE_VER_ID,
+                        &g_psMsgObject[MSG_OBJ_BRIDGE_VER],
+                        MSG_OBJ_TYPE_TX_REMOTE);
     }
     else
     {
         //
-        // Blink the device ID.
+        // Setup the message object with the data for this message.
         //
-        LEDBlinkID(g_sParameters.ucDeviceNumber);
-    }
-}
-
-//*****************************************************************************
-//
-// The CAN interface interrupt handler.
-//
-// This function handles all interrupts from the can controller and parses out
-// the various commands to their appropriate handlers.
-//
-// \return None.
-//
-//*****************************************************************************
-void
-CAN0IntHandler(void)
-{
-    unsigned long ulStatus, ulAck, ulGroup;
-
-    //
-    // Find the cause of the interrupt, if it is a status interrupt then just
-    // acknowledge the interrupt by reading the status register.
-    //
-    ulStatus = CANIntStatus(CAN0_BASE, CAN_INT_STS_CAUSE);
-
-    //
-    // Clear the interrupt.
-    //
-    CANIntClear(CAN0_BASE, ulStatus);
-
-    //
-    // This resets the watchdog timeout for CAN messages.
-    //
-    ControllerLinkGood(LINK_TYPE_CAN);
-
-    //
-    // See if the enumeration delay has expired.
-    //
-    if(g_eCANState == STATE_ENUM_END)
-    {
-        //
-        // Send out the enumeration data.
-        //
-        CANSendBroadcastMsg((CAN_MSGID_API_ENUMERATE |
-                             g_sParameters.ucDeviceNumber), 0, 0);
+        g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulMsgID = ulID;
+        g_psMsgObject[MSG_OBJ_BRIDGE_TX].pucMsgData = pucData;
+        g_psMsgObject[MSG_OBJ_BRIDGE_TX].ulMsgLen = ulMsgLen;
 
         //
-        // Return to the idle state.
+        // If there is a pending transmit request on the bridge transmit
+        // message object, then assume that it has taken too long and cancel it
+        // now.
         //
-        g_eCANState = STATE_IDLE;
+#if MSG_OBJ_BRIDGE_TX < 16
+        if((HWREG(CAN0_BASE + CAN_O_TXRQ1) & (1 << MSG_OBJ_BRIDGE_TX)) != 0)
+        {
+            CANIFMessageClear(MSG_OBJ_BRIDGE_TX_ID);
+        }
+#else
+        if((HWREG(CAN0_BASE + CAN_O_TXRQ2) &
+            (1 << (MSG_OBJ_BRIDGE_TX - 16))) != 0)
+        {
+            CANIFMessageClear(MSG_OBJ_BRIDGE_TX_ID);
+        }
+#endif
+
+        //
+        // Send this message.
+        //
+        CANIFMessageSet(MSG_OBJ_BRIDGE_TX_ID,
+                        &g_psMsgObject[MSG_OBJ_BRIDGE_TX], MSG_OBJ_TYPE_TX);
     }
 
     //
-    // See if the assignment mode has ended.
+    // If this was a reset, wait around to let it go so that we don't reset
+    // before sending on the message.
     //
-    if(g_eCANState == STATE_ASSIGN_END)
+    if((ulID & ~(CAN_MSGID_DEVNO_M)) == CAN_MSGID_API_SYSRST)
     {
         //
-        // Set the configuration of the message objects.
+        // Number of times to read the status before timeout and resetting
+        // the controller.  Since each pass through the loop was taking around
+        // 60us, a count of 100 is around a 6ms timeout before allowing a
+        // reset.
         //
-        CANDeviceNumSet(g_ucDevNumPending);
+        ulCount = 100;
 
         //
-        // Return to the idle state.
+        // Wait while the transfer is still pending and the timeout count
+        // has not reached zero.
         //
-        g_eCANState = STATE_IDLE;
-    }
-
-    //
-    // The ulStatus variable will be the message identifier that cause the
-    // interrupt or it will indicate a status interrupt.
-    //
-    switch(ulStatus)
-    {
-        //
-        // This message object is used to receive broadcast messages.
-        //
-        case MSG_OBJ_BCAST_RX_ID:
+#if MSG_OBJ_BRIDGE_TX < 16
+        while((HWREG(CAN0_BASE + CAN_O_TXRQ1) & (1 << MSG_OBJ_BRIDGE_TX)) &&
+              (ulCount != 0))
         {
-            //
-            // Retrieve the CAN message and process it.
-            //
-            CANIFMessageGet(MSG_OBJ_BCAST_RX_ID,
-                            &g_MsgObject[MSG_OBJ_BCAST_RX]);
-
-            //
-            // The API requested is determined based on the message identifier
-            // that was received.
-            //
-            switch(g_MsgObject[MSG_OBJ_BCAST_RX].ulMsgID)
-            {
-                //
-                // A system halt request was received.
-                //
-                case CAN_MSGID_API_SYSHALT:
-                {
-                    //
-                    // Reset pending updates on a system halt.
-                    //
-                    g_sPendingUpdates.ucCurrentGroup = 0;
-                    g_sPendingUpdates.ucVoltageGroup = 0;
-                    g_sPendingUpdates.ucVCompGroup = 0;
-                    g_sPendingUpdates.ucPositionGroup = 0;
-                    g_sPendingUpdates.ucSpeedGroup = 0;
-
-                    //
-                    // Force the motor to neutral.
-                    //
-                    CommandForceNeutral();
-
-                    //
-                    // Set the halt flag so that further motion commands are
-                    // ignored until a resume.
-                    //
-                    ControllerHaltSet();
-
-                    break;
-                }
-
-                //
-                // A system resume request was received.
-                //
-                case CAN_MSGID_API_SYSRESUME:
-                {
-                    //
-                    // Clear the halt flag so that further motion commands can
-                    // be received.
-                    //
-                    ControllerHaltClear();
-
-                    break;
-                }
-
-                //
-                // A system reset request was received.
-                //
-                case CAN_MSGID_API_SYSRST:
-                {
-                    //
-                    // Reset the microcontroller.
-                    //
-                    SysCtlReset();
-
-                    //
-                    // Control should never get here, but just in case...
-                    //
-                    while(1)
-                    {
-                    }
-                }
-
-                //
-                // A enumeration request was received.
-                //
-                case CAN_MSGID_API_ENUMERATE:
-                {
-                    //
-                    // Enumeration should be ignored if in assignment state or
-                    // if there is no device number set.
-                    //
-                    if((g_eCANState == STATE_IDLE) &&
-                       (g_sParameters.ucDeviceNumber != 0))
-                    {
-                        //
-                        // Switch to the enumeration state to wait to send
-                        // out the enumeration data.
-                        //
-                        g_eCANState = STATE_ENUMERATE;
-
-                        //
-                        // Wait 1ms * the current device number.
-                        //
-                        g_ulEventTick = g_ulTickCount +
-                            ((UPDATES_PER_SECOND *
-                              g_sParameters.ucDeviceNumber) / 1000);
-                    }
-                    break;
-                }
-
-                //
-                // This was a request to assign a new device identifier.
-                //
-                case CAN_MSGID_API_DEVASSIGN:
-                {
-                    //
-                    // If an out of bounds device ID was specified then ignore
-                    // the request.
-                    //
-                    if(g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData[0] >
-                       CAN_MSGID_DEVNO_M)
-                    {
-                    }
-                    else if(g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData[0] != 0)
-                    {
-                        //
-                        // Save the pending address.
-                        //
-                        g_ucDevNumPending =
-                            g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData[0];
-
-                        //
-                        // This is pending until committed.
-                        //
-                        g_eCANState = STATE_ASSIGNMENT;
-
-                        //
-                        // Force the motor to neutral.
-                        //
-                        CommandForceNeutral();
-
-                        //
-                        // Set the tick that will trigger leaving assignment
-                        // mode.
-                        //
-                        g_ulEventTick = g_ulTickCount +
-                            (UPDATES_PER_SECOND * CAN_ASSIGN_WAIT_SECONDS);
-
-                        //
-                        // Let the world know that assignment state has started.
-                        //
-                        LEDAssignStart();
-                    }
-                    else
-                    {
-                        //
-                        // Set the configuration of the message objects and
-                        // the device identifier to zero immediately.
-                        //
-                        CANDeviceNumSet(0);
-
-                        //
-                        // Force the CAN state machine into the idle state.
-                        //
-                        g_eCANState = STATE_IDLE;
-                    }
-
-                    break;
-                }
-
-                //
-                // This was a request to start a firmware update.
-                //
-                case CAN_MSGID_API_UPDATE:
-                {
-                    //
-                    // Check if there is an ID to update and if it belongs to
-                    // this board.
-                    //
-                    if((g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData[0] !=
-                        g_sParameters.ucDeviceNumber) ||
-                       (g_MsgObject[MSG_OBJ_BCAST_RX].ulMsgLen != 1))
-                    {
-                        break;
-                    }
-
-                    //
-                    // Call the boot loader, this call will not return.
-                    //
-                    CallBootloader();
-                }
-
-                //
-                // Handle the sync commands.
-                //
-                case CAN_MSGID_API_SYNC:
-                {
-                    //
-                    // Retrieve the group identifier.
-                    //
-                    ulGroup = g_MsgObject[MSG_OBJ_BCAST_RX].pucMsgData[0];
-
-                    //
-                    // If there are pending voltage updates then set the
-                    // values now.
-                    //
-                    if((g_sPendingUpdates.ucVoltageGroup & ulGroup) != 0)
-                    {
-                        //
-                        // Send the volatage on to the handler.
-                        //
-                        CommandVoltageSet(g_sPendingUpdates.sVoltage);
-
-                        //
-                        // Update is no longer pending.
-                        //
-                        g_sPendingUpdates.ucVoltageGroup = 0;
-                    }
-
-                    //
-                    // If there is a pending voltage compensation update then
-                    // set the value now.
-                    //
-                    if((g_sPendingUpdates.ucVCompGroup & ulGroup) != 0)
-                    {
-                        //
-                        // Send the voltage on to the handler.
-                        //
-                        CommandVCompSet(g_sPendingUpdates.sVComp);
-
-                        //
-                        // Update is no longer pending.
-                        //
-                        g_sPendingUpdates.ucVCompGroup = 0;
-                    }
-
-                    //
-                    // If there are pending current updates then set the
-                    // values now.
-                    //
-                    if((g_sPendingUpdates.ucCurrentGroup & ulGroup) != 0)
-                    {
-                        //
-                        // Send the current on to the handler.
-                        //
-                        CommandCurrentSet(g_sPendingUpdates.sCurrent);
-
-                        //
-                        // Update is no longer pending.
-                        //
-                        g_sPendingUpdates.ucCurrentGroup = 0;
-                    }
-
-                    //
-                    // If there are pending speed updates then set the
-                    // values now.
-                    //
-                    if((g_sPendingUpdates.ucSpeedGroup & ulGroup) != 0)
-                    {
-                        //
-                        // Send the speed setting to the handler.
-                        //
-                        CommandSpeedSet(g_sPendingUpdates.lSpeed);
-
-                        //
-                        // Update is no longer pending.
-                        //
-                        g_sPendingUpdates.ucSpeedGroup = 0;
-                    }
-
-                    //
-                    // If there are pending position updates then set the
-                    // values now.
-                    //
-                    if((g_sPendingUpdates.ucPositionGroup & ulGroup) != 0)
-                    {
-                        //
-                        // Send the speed setting to the handler.
-                        //
-                        CommandPositionSet(g_sPendingUpdates.lPosition);
-
-                        //
-                        // Update is no longer pending.
-                        //
-                        g_sPendingUpdates.ucPositionGroup = 0;
-                    }
-
-                    break;
-                }
-
-                //
-                // Nothing is done in response to a heartbeat command, this
-                // just causes the controller to hit the watchdog below.
-                //
-                case CAN_MSGID_API_HEARTBEAT:
-                {
-                    break;
-                }
-
-                default:
-                {
-                    break;
-                }
-            }
-            break;
+            ulCount--;
         }
-
-        //
-        // The broadcast Transmit interrupt was received.  This is a stub as
-        // this interrupt should not occur.
-        //
-        case MSG_OBJ_BCAST_TX_ID:
+#else
+        while((HWREG(CAN0_BASE + CAN_O_TXRQ2) &
+               (1 << (MSG_OBJ_BRIDGE_TX - 16))) && (ulCount != 0))
         {
-            break;
+            ulCount--;
         }
-
-        //
-        // This message object is used to receive motor control commands.
-        //
-        case MSG_OBJ_MC_RX_ID:
-        {
-            //
-            // Retrieve the CAN message and process it.
-            //
-            CANIFMessageGet(MSG_OBJ_MC_RX_ID, &g_MsgObject[MSG_OBJ_MC_RX]);
-
-            switch(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID & CAN_MSGID_API_CLASS_M)
-            {
-                //
-                // Voltage motor control commands.
-                //
-                case CAN_API_MC_VOLTAGE:
-                {
-                    //
-                    // Call the Voltage handler.
-                    //
-                    ulAck =
-                        VoltageHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                       g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                       g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Voltage compensation motor control commands.
-                //
-                case CAN_API_MC_VCOMP:
-                {
-                    //
-                    // Call the voltage compensation handler.
-                    //
-                    ulAck =
-                        VCompHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                     g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                     g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Handle the Speed commands.
-                //
-                case CAN_API_MC_SPD:
-                {
-                    //
-                    // Call the speed handler.
-                    //
-                    ulAck =
-                        SpeedHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                     g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                     g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Handle the position control class commands.
-                //
-                case CAN_API_MC_POS:
-                {
-                    //
-                    // Call the position command handler.
-                    //
-                    ulAck =
-                        PositionHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                        g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                        g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Handle the Current control class commands.
-                //
-                case CAN_API_MC_ICTRL:
-                {
-                    //
-                    // Call the current command handler.
-                    //
-                    ulAck =
-                        CurrentHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                       g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                       g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Handle the Get status command.
-                //
-                case CAN_API_MC_STATUS:
-                {
-                    //
-                    // Call the status command handler.
-                    //
-                    ulAck =
-                        StatusHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                      g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                      g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Handle the Get status command.
-                //
-                case CAN_API_MC_CFG:
-                {
-                    //
-                    // Call the status command handler.
-                    //
-                    ulAck =
-                        ConfigHandler(g_MsgObject[MSG_OBJ_MC_RX].ulMsgID,
-                                      g_MsgObject[MSG_OBJ_MC_RX].pucMsgData,
-                                      g_MsgObject[MSG_OBJ_MC_RX].ulMsgLen);
-                    break;
-                }
-
-                //
-                // Unknown command class.
-                //
-                default:
-                {
-                    ulAck = 0;
-                    break;
-                }
-            }
-
-            //
-            // See if an ACK needs to be sent.
-            //
-            if(ulAck != 0)
-            {
-                //
-                // Send out the ACK.
-                //
-                CANSendBroadcastMsg((LM_API_ACK |
-                                     (g_MsgObject[MSG_OBJ_MC_RX].ulMsgID &
-                                      CAN_MSGID_DEVNO_M)), 0, 0);
-            }
-
-            break;
-        }
-
-        //
-        // Handle the update class commands.
-        //
-        case MSG_OBJ_UPD_RX_ID:
-        {
-            //
-            // Retrieve the CAN message and process it.
-            //
-            CANIFMessageGet(MSG_OBJ_UPD_RX_ID, &g_MsgObject[MSG_OBJ_UPD_RX]);
-
-            //
-            // Handle this device-specific command.
-            //
-            ulAck = UpdateHandler(g_MsgObject[MSG_OBJ_UPD_RX].ulMsgID,
-                                  g_MsgObject[MSG_OBJ_UPD_RX].pucMsgData,
-                                  g_MsgObject[MSG_OBJ_UPD_RX].ulMsgLen);
-
-            //
-            // Send back an ACK if required.
-            //
-            if(ulAck != 0)
-            {
-                CANSendBroadcastMsg(LM_API_ACK | g_sParameters.ucDeviceNumber,
-                                    0, 0);
-            }
-            break;
-        }
-
-        default:
-        {
-            break;
-        }
-    }
-
-    //
-    // Delay the watchdog interrupt since a CAN command was received.
-    //
-    ControllerWatchdog(LINK_TYPE_CAN);
-}
-
-//*****************************************************************************
-//
-// This performs any timing related operations needed by the CAN interface.
-//
-// When the CAN controller is in STATE_ASSIGNMENT, this allows the controller
-// to time out after CAN_ASSIGN_WAIT_SECONDS seconds and resume normal
-// operation.  When the CAN controller is in STATE_ENUMERATE state this allows
-// the controller to wait the specified time before responding to the
-// enumeration request to prevent all controllers on a network from responding
-// at once.
-//
-//*****************************************************************************
-void
-CANIFTick(void)
-{
-    //
-    // Increment the tick count.
-    //
-    g_ulTickCount++;
-
-    //
-    // Assignment state is handled in this case.
-    //
-    if(g_eCANState == STATE_ASSIGNMENT)
-    {
-        //
-        // Wait for the correct tick time.
-        //
-        if(g_ulEventTick == g_ulTickCount)
-        {
-            //
-            // Return to the idle state.
-            //
-            g_eCANState = STATE_IDLE;
-
-            //
-            // If the pending change was not accepted and was the the same as
-            // it was before then set the device number to 0 and accept it.
-            //
-            if(g_ucDevNumPending == g_sParameters.ucDeviceNumber)
-            {
-                //
-                // Reset the pending device number.
-                //
-                g_ucDevNumPending = 0;
-
-                //
-                // Move to the assignment end state.
-                //
-                g_eCANState = STATE_ASSIGN_END;
-
-                //
-                // Trigger a fake CAN interrupt, during which the CAN interface
-                // will be reconfigured for the new device ID.
-                //
-                HWREG(NVIC_SW_TRIG) = INT_CAN0 - 16;
-            }
-
-            //
-            // Indicate that the CAN controller has left assignment mode.
-            //
-            LEDAssignStop();
-        }
-    }
-
-    //
-    // Enumeration state is handled in this case.
-    //
-    else if(g_eCANState == STATE_ENUMERATE)
-    {
-        //
-        // Wait for the correct tick time.
-        //
-        if(g_ulEventTick == g_ulTickCount)
-        {
-            //
-            // Move to the enumeration end state.
-            //
-            g_eCANState = STATE_ENUM_END;
-
-            //
-            // Trigger a fake CAN interrupt, during which the enumeration
-            // response will be sent.
-            //
-            HWREG(NVIC_SW_TRIG) = INT_CAN0 - 16;
-        }
+#endif
     }
 }

@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -28,9 +28,9 @@
 #include "driverlib/rom.h"
 #include "driverlib/sysctl.h"
 #include "button.h"
-#include "can_if.h"
 #include "constants.h"
 #include "led.h"
+#include "message.h"
 #include "param.h"
 #include "pins.h"
 #include "servo_if.h"
@@ -198,9 +198,9 @@ ButtonTick(void)
                 g_ulHoldCount = 0;
 
                 //
-                // Inform the CAN module that the button was just pressed.
+                // Inform the message module that the button was just pressed.
                 //
-                CANIFButtonPress();
+                MessageButtonPress();
             }
 
             //

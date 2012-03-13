@@ -496,7 +496,7 @@
         </option>
         <option>
           <name>OOCOutputFile</name>
-          <state>qs-bdc.bin</state>
+          <state>qs-bdc24.bin</state>
         </option>
         <option>
           <name>OOCCommandLineProducer</name>
@@ -550,7 +550,7 @@
         </option>
         <option>
           <name>IlinkOutputFile</name>
-          <state>qs-bdc.out</state>
+          <state>qs-bdc24.out</state>
         </option>
         <option>
           <name>IlinkDebugInfoEnable</name>
@@ -614,7 +614,7 @@
         </option>
         <option>
           <name>IlinkIcfFile</name>
-          <state>$PROJ_DIR$\qs-bdc.icf</state>
+          <state>$PROJ_DIR$\qs-bdc24.icf</state>
         </option>
         <option>
           <name>IlinkIcfFileSlave</name>
@@ -813,19 +813,25 @@
       <name>$PROJ_DIR$\math.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\message.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\param.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\pid.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\qs-bdc.c</name>
+      <name>$PROJ_DIR$\qs-bdc24.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\servo_if.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\startup_ewarm.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\uart_if.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\wdog.c</name>

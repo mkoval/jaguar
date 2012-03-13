@@ -18,24 +18,17 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
-#include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
-#include "driverlib/adc.h"
-#include "driverlib/interrupt.h"
-#include "driverlib/gpio.h"
 #include "driverlib/pwm.h"
 #include "driverlib/rom.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/systick.h"
 #include "shared/can_proto.h"
 #include "adc_ctrl.h"
 #include "button.h"
-#include "can_if.h"
 #include "commands.h"
 #include "constants.h"
 #include "controller.h"
@@ -45,10 +38,9 @@
 #include "led.h"
 #include "limit.h"
 #include "math.h"
-#include "param.h"
+#include "message.h"
 #include "pid.h"
 #include "servo_if.h"
-#include "wdog.h"
 
 //*****************************************************************************
 //
@@ -173,16 +165,18 @@ static tPIDState g_sCurrentPID;
 #define FLAG_HAVE_LINK          2
 #define FLAG_SERVO_LINK         3
 #define FLAG_CAN_LINK           4
-#define FLAG_VCOMP_MODE         5
-#define FLAG_CURRENT_MODE       6
-#define FLAG_SPEED_MODE         7
-#define FLAG_POSITION_MODE      8
-#define FLAG_SPEED_SRC_ENCODER  9
-#define FLAG_SPEED_SRC_INV_ENC  10
-#define FLAG_SPEED_SRC_QUAD_ENC 11
-#define FLAG_POS_SRC_ENCODER    12
-#define FLAG_POS_SRC_POT        13
-#define FLAG_HALTED             14
+#define FLAG_UART_LINK          5
+#define FLAG_VCOMP_MODE         6
+#define FLAG_CURRENT_MODE       7
+#define FLAG_SPEED_MODE         8
+#define FLAG_POSITION_MODE      9
+#define FLAG_SPEED_SRC_ENCODER  10
+#define FLAG_SPEED_SRC_INV_ENC  11
+#define FLAG_SPEED_SRC_QUAD_ENC 12
+#define FLAG_POS_SRC_ENCODER    13
+#define FLAG_POS_SRC_POT        14
+#define FLAG_POWER_STATUS       15
+#define FLAG_HALTED             16
 static unsigned long g_ulFlags = 0;
 
 //*****************************************************************************
@@ -257,7 +251,17 @@ ControllerLinkGood(unsigned long ulType)
         // Indicate that the control link is CAN.
         //
         HWREGBITW(&g_ulFlags, FLAG_SERVO_LINK) = 0;
+        HWREGBITW(&g_ulFlags, FLAG_UART_LINK) = 0;
         HWREGBITW(&g_ulFlags, FLAG_CAN_LINK) = 1;
+    }
+    else if(ulType == LINK_TYPE_UART)
+    {
+        //
+        // Indicate that the control link is UART.
+        //
+        HWREGBITW(&g_ulFlags, FLAG_SERVO_LINK) = 0;
+        HWREGBITW(&g_ulFlags, FLAG_CAN_LINK) = 0;
+        HWREGBITW(&g_ulFlags, FLAG_UART_LINK) = 1;
     }
     else if(ulType == LINK_TYPE_SERVO)
     {
@@ -265,6 +269,7 @@ ControllerLinkGood(unsigned long ulType)
         // Indicate that the control link is servo.
         //
         HWREGBITW(&g_ulFlags, FLAG_CAN_LINK) = 0;
+        HWREGBITW(&g_ulFlags, FLAG_UART_LINK) = 0;
         HWREGBITW(&g_ulFlags, FLAG_SERVO_LINK) = 1;
     }
 
@@ -308,12 +313,23 @@ ControllerLinkLost(unsigned long ulType)
         }
 
         //
+        // Clear the UART link flag.
+        //
+        case LINK_TYPE_UART:
+        {
+            HWREGBITW(&g_ulFlags, FLAG_UART_LINK) = 0;
+
+            break;
+        }
+
+        //
         // Clear all link flags.
         //
         default:
         {
             HWREGBITW(&g_ulFlags, FLAG_SERVO_LINK) = 0;
             HWREGBITW(&g_ulFlags, FLAG_CAN_LINK) = 0;
+            HWREGBITW(&g_ulFlags, FLAG_UART_LINK) = 0;
             break;
         }
     }
@@ -343,6 +359,10 @@ ControllerLinkType(void)
     {
         return(LINK_TYPE_CAN);
     }
+    else if(HWREGBITW(&g_ulFlags, FLAG_UART_LINK) == 1)
+    {
+        return(LINK_TYPE_UART);
+    }
     else
     {
         return(LINK_TYPE_NONE);
@@ -354,7 +374,8 @@ ControllerLinkType(void)
 // This function returns whether or not the link is still active.
 //
 //*****************************************************************************
-unsigned long ControllerLinkActive(void)
+unsigned long
+ControllerLinkActive(void)
 {
     return(HWREGBITW(&g_ulFlags, FLAG_HAVE_LINK));
 }
@@ -1773,7 +1794,7 @@ ControllerSpeedMode(void)
         //
         // See if an inverted single-channel encoder is being used.
         //
-        if(HWREGBITW(&g_ulFlags, FLAG_SPEED_SRC_INV_ENC) == 1)
+        else if(HWREGBITW(&g_ulFlags, FLAG_SPEED_SRC_INV_ENC) == 1)
         {
             //
             // Do not drive the motor if the desired output voltage is the same
@@ -1870,6 +1891,34 @@ ControllerPositionMode(void)
 
 //*****************************************************************************
 //
+// This function returns the current power status.
+//
+//*****************************************************************************
+unsigned long
+ControllerPowerStatus(void)
+{
+    //
+    // Return the state of the power status flag.
+    //
+    return(HWREGBITW(&g_ulFlags, FLAG_POWER_STATUS));
+}
+
+//*****************************************************************************
+//
+// This function clears the power status.
+//
+//*****************************************************************************
+void
+ControllerPowerStatusClear(void)
+{
+    //
+    // Clear the power status flag.
+    //
+    HWREGBITW(&g_ulFlags, FLAG_POWER_STATUS) = 0;
+}
+
+//*****************************************************************************
+//
 // This function set the halted flag.
 //
 //*****************************************************************************
@@ -1924,6 +1973,12 @@ ControllerInit(void)
     PIDInitialize(&g_sCurrentPID, 0, 0, 0, 0, 0);
     PIDInitialize(&g_sSpeedPID, 0, 0, 0, 0, 0);
     PIDInitialize(&g_sPositionPID, 0, 0, 0, 0, 0);
+
+    //
+    // Set the power status flag to indicate that the device was just powered
+    // up.
+    //
+    HWREGBITW(&g_ulFlags, FLAG_POWER_STATUS) = 1;
 }
 
 //*****************************************************************************
@@ -2153,6 +2208,11 @@ ControllerIntHandler(void)
                 g_ulFaultFlags = 0;
 
                 //
+                // Reset the gate driver to clear any latched fault conditions.
+                //
+                HBridgeGateDriverReset();
+
+                //
                 // If there is not a control link, then go to the wait for link
                 // state.  Otherwise, go to the run state.
                 //
@@ -2195,7 +2255,7 @@ ControllerIntHandler(void)
     LEDTick();
 
     //
-    // Call the CAN tick function.
+    // Call the message tick function.
     //
-    CANIFTick();
+    MessageTick();
 }

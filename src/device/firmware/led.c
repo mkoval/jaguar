@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -364,7 +364,7 @@ CheckDeviceNumber(unsigned long ulLink)
         // See if the CAN link is being used but no device ID has been
         // assigned.
         //
-        if(ulLink == LINK_TYPE_CAN)
+        if((ulLink == LINK_TYPE_CAN) || (ulLink == LINK_TYPE_UART))
         {
             //
             // Override the link check because we are getting network

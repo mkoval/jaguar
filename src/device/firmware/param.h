@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the RDK-BDC Firmware Package.
+// This is part of revision 8264 of the RDK-BDC24 Firmware Package.
 //
 //*****************************************************************************
 
@@ -93,6 +93,7 @@ tParameters;
 // Prototypes.
 //
 //*****************************************************************************
+extern const unsigned long g_ulFirmwareVersion;
 extern unsigned char g_ucHardwareVersion;
 extern tParameters g_sParameters;
 extern void ParamInit(void);

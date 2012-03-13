@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * qs-bdc_codered.ld - Code Red linker configuration file for qs-bdc.
+ * qs-bdc24_codered.ld - Code Red linker configuration file for qs-bdc24.
  *
  * Copyright (c) 2008-2011 Texas Instruments Incorporated.  All rights reserved.
  * Software License Agreement
@@ -18,7 +18,7 @@
  * CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
  * DAMAGES, FOR ANY REASON WHATSOEVER.
  * 
- * This is part of revision 8264 of the RDK-BDC Firmware Package.
+ * This is part of revision 8264 of the RDK-BDC24 Firmware Package.
  *
  *****************************************************************************/
 

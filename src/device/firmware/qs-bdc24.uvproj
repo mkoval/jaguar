@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>qs-bdc</TargetName>
+      <TargetName>qs-bdc24</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <TargetOption>
@@ -43,7 +43,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\rvmdk\</OutputDirectory>
-          <OutputName>qs-bdc</OutputName>
+          <OutputName>qs-bdc24</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -72,7 +72,7 @@
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name>fromelf --bin --output .\rvmdk\qs-bdc.bin .\rvmdk\qs-bdc.axf</UserProg1Name>
+            <UserProg1Name>fromelf --bin --output .\rvmdk\qs-bdc24.bin .\rvmdk\qs-bdc24.axf</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
@@ -372,7 +372,7 @@
             <useFile>0</useFile>
             <TextAddressRange>0x00000000</TextAddressRange>
             <DataAddressRange>0x20000000</DataAddressRange>
-            <ScatterFile>qs-bdc.sct</ScatterFile>
+            <ScatterFile>qs-bdc24.sct</ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
             <Misc>--entry Reset_Handler</Misc>
@@ -446,6 +446,11 @@
               <FilePath>.\math.c</FilePath>
             </File>
             <File>
+              <FileName>message.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\message.c</FilePath>
+            </File>
+            <File>
               <FileName>param.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\param.c</FilePath>
@@ -456,9 +461,9 @@
               <FilePath>.\pid.c</FilePath>
             </File>
             <File>
-              <FileName>qs-bdc.c</FileName>
+              <FileName>qs-bdc24.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\qs-bdc.c</FilePath>
+              <FilePath>.\qs-bdc24.c</FilePath>
             </File>
             <File>
               <FileName>servo_if.c</FileName>
@@ -469,6 +474,11 @@
               <FileName>startup_rvmdk.S</FileName>
               <FileType>2</FileType>
               <FilePath>.\startup_rvmdk.S</FilePath>
+            </File>
+            <File>
+              <FileName>uart_if.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\uart_if.c</FilePath>
             </File>
             <File>
               <FileName>wdog.c</FileName>
