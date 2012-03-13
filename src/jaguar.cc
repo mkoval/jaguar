@@ -14,6 +14,11 @@ namespace jaguar {
 Manufacturer::Enum const Jaguar::kManufacturer = Manufacturer::kTexasInstruments;
 DeviceType::Enum   const Jaguar::kDeviceType   = DeviceType::kMotorController;
 
+struct speed_group_t {
+    int32_t speed;
+    uint8_t group;
+} __attribute__((__packed__));
+
 Jaguar::Jaguar(can::CANBridge &can, uint8_t device_num)
     : num_(device_num), can_(can)
 {
@@ -114,11 +119,7 @@ can::TokenPtr Jaguar::set_speed(double speed)
 
 can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
 {
-    struct {
-        int32_t speed;
-        uint8_t group;
-    } __attribute__((__packed__)) payload;
-
+    speed_group_t payload;
     payload.speed = double_to_s16p16(speed);
     payload.group = group;
 

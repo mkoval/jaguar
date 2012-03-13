@@ -2,6 +2,7 @@
 #define CANBRIDGE_H_
 
 #include <exception>
+#include <stdint.h>
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>

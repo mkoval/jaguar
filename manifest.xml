@@ -6,7 +6,6 @@
   </description>
   <author>Michael Koval</author>
   <license>BSD</license>
-  <depend 
   <depend package="roscpp"/>
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib"/>
