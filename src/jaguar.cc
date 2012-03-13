@@ -117,7 +117,7 @@ can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
         int32_t speed;
         uint8_t group;
     } __attribute__((__packed__)) payload;
-    
+
     payload.speed = double_to_s16p16(speed);
     payload.group = group;
 
@@ -127,6 +127,12 @@ can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
 /*
  * Helpers
  */
+can::TokenPtr Jaguar::recv_ack(void)
+{
+    token_ = can_.recv(pack_ack(num_, kManufacturer, kDeviceType));
+    return token_;
+}
+
 void Jaguar::send(APIClass::Enum api_class, uint8_t api_index)
 {
     uint32_t id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
@@ -144,18 +150,18 @@ void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, T const &payload)
 
 can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index)
 {
+    assert(!token_ || token_->ready());
     send(api_class, api_index);
-
-    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType, api_index);
+    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType);
     return can_.recv(id);
 }
 
 template <typename T>
 can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, T const &payload)
 {
+    assert(!token_ || token_->ready());
     send(api_class, api_index, payload);
-
-    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType, api_index);
+    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType);
     return can_.recv(id);
 }
 

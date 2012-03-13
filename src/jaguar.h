@@ -32,19 +32,21 @@ public:
     can::TokenPtr set_speed(double speed, uint8_t group);
 
 private:
-    static Manufacturer::Enum const kManufacturer;
-    static DeviceType::Enum   const kDeviceType;
-
-    uint8_t const num_;
-    can::CANBridge &can_;
-
     void send(APIClass::Enum api_class, uint8_t api_index);
     template <typename T>
     void send(APIClass::Enum api_class, uint8_t api_index, T const &payload);
 
+    can::TokenPtr recv_ack(void);
     can::TokenPtr send_ack(APIClass::Enum api_class, uint8_t api_index);
     template <typename T>
     can::TokenPtr send_ack(APIClass::Enum api_class, uint8_t api_index, T const &payload);
+
+    uint8_t const num_;
+    can::CANBridge &can_;
+    can::TokenPtr token_;
+
+    static Manufacturer::Enum const kManufacturer;
+    static DeviceType::Enum   const kDeviceType;
 };
 
 
