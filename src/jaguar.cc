@@ -17,6 +17,7 @@ using boost::spirit::little_word;
 using boost::spirit::little_dword;
 typedef boost::spirit::unused_type no_payload;
 
+// This 
 namespace boost { namespace spirit { namespace traits
 {
     template <>
@@ -76,7 +77,7 @@ can::TokenPtr Jaguar::set_fault_time(uint16_t ms)
 /*
  * Voltage Control
  */
-can::TokenPtr Jaguar::enable_voltage(void)
+can::TokenPtr Jaguar::voltage_enable(void)
 {
     return send_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable,
@@ -84,7 +85,7 @@ can::TokenPtr Jaguar::enable_voltage(void)
     );
 }
 
-can::TokenPtr Jaguar::disable_voltage(void)
+can::TokenPtr Jaguar::voltage_disable(void)
 {
     return send_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable,
@@ -92,25 +93,38 @@ can::TokenPtr Jaguar::disable_voltage(void)
     );
 }
 
-can::TokenPtr Jaguar::set_voltage(double scale)
+can::TokenPtr Jaguar::voltage_set(double voltage)
 {
-    double constrained = std::min(std::max(scale, -1.0), +1.0);
-    int16_t output;
-
-    if (constrained < 0) {
-        output = static_cast<int16_t>(std::numeric_limits<int16_t>::min() * -constrained);
-    } else if (constrained > 0) {
-        output = static_cast<int16_t>(std::numeric_limits<int16_t>::max() * +constrained);
-    } else {
-        output = 0;
-    }
-
     return send_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageSet,
-        little_word(output)
+        little_word(rescale<int16_t>(voltage))
     );
 }
-    
+
+can::TokenPtr Jaguar::voltage_set(double voltage, uint8_t group)
+{
+    return send_ack(
+        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        little_word(rescale<int16_t>(voltage)) << byte_(group)
+    );
+}
+
+void Jaguar::voltage_set_noack(double voltage)
+{
+    send(
+        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        little_word(rescale<int16_t>(voltage))
+    );
+}
+
+void Jaguar::voltage_set_noack(double voltage, uint8_t group)
+{
+    send(
+        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        little_word(rescale<int16_t>(voltage)) << byte_(group)
+    );
+}
+
 /*
  * Speed Control
  */
@@ -181,6 +195,21 @@ can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
 /*
  * Helpers
  */
+template <typename T>
+T Jaguar::rescale(double x)
+{
+    assert(-1.0 <= x && x <= +1.0);
+
+    if (x < 0) {
+        return static_cast<T>(std::numeric_limits<T>::min() * -x);
+    } else if (x > 0) {
+        return static_cast<T>(std::numeric_limits<T>::max() *  x);
+    } else {
+        return 0;
+    }
+
+}
+
 template <typename G>
 void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, G const &generator)
 {

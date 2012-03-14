@@ -17,9 +17,12 @@ public:
     can::TokenPtr set_fault_time(uint16_t ms);
 
     // Voltage Control
-    can::TokenPtr enable_voltage(void);
-    can::TokenPtr disable_voltage(void);
-    can::TokenPtr set_voltage(double scale);
+    can::TokenPtr voltage_enable(void);
+    can::TokenPtr voltage_disable(void);
+    can::TokenPtr voltage_set(double scale);
+    can::TokenPtr voltage_set(double scale, uint8_t group);
+    void          voltage_set_noack(double scale);
+    void          voltage_set_noack(double scale, uint8_t group);
 
     // Speed Control
     can::TokenPtr enable_pid(void);
@@ -32,6 +35,9 @@ public:
     can::TokenPtr set_speed(double speed, uint8_t group);
 
 private:
+    template <typename T>
+    T rescale(double x);
+
     template <typename G>
     void send(APIClass::Enum api_class, uint8_t api_index, G const &generator);
     template <typename G>
