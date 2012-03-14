@@ -25,14 +25,16 @@ public:
     void          voltage_set_noack(double scale, uint8_t group);
 
     // Speed Control
-    can::TokenPtr enable_pid(void);
-    can::TokenPtr disable_pid(void);
-    can::TokenPtr set_p_constant(double p);
-    can::TokenPtr set_i_constant(double i);
-    can::TokenPtr set_d_constant(double d);
-    can::TokenPtr set_speed_reference(SpeedReference::Enum reference);
-    can::TokenPtr set_speed(double speed);
-    can::TokenPtr set_speed(double speed, uint8_t group);
+    can::TokenPtr speed_enable(void);
+    can::TokenPtr speed_disable(void);
+    can::TokenPtr speed_set_p(double p);
+    can::TokenPtr speed_set_i(double i);
+    can::TokenPtr speed_set_d(double d);
+    can::TokenPtr speed_set_reference(SpeedReference::Enum reference);
+    can::TokenPtr speed_set(double speed);
+    can::TokenPtr speed_set(double speed, uint8_t group);
+    void          speed_set_noack(double speed);
+    void          speed_set_noack(double speed, uint8_t group);
 
 private:
     template <typename T>

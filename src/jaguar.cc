@@ -112,7 +112,7 @@ can::TokenPtr Jaguar::voltage_set(double voltage, uint8_t group)
 void Jaguar::voltage_set_noack(double voltage)
 {
     send(
-        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        APIClass::kVoltageControl, VoltageControl::kVoltageSetNoACK,
         little_word(rescale<int16_t>(voltage))
     );
 }
@@ -120,7 +120,7 @@ void Jaguar::voltage_set_noack(double voltage)
 void Jaguar::voltage_set_noack(double voltage, uint8_t group)
 {
     send(
-        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        APIClass::kVoltageControl, VoltageControl::kVoltageSetNoACK,
         little_word(rescale<int16_t>(voltage)) << byte_(group)
     );
 }
@@ -128,7 +128,7 @@ void Jaguar::voltage_set_noack(double voltage, uint8_t group)
 /*
  * Speed Control
  */
-can::TokenPtr Jaguar::enable_pid(void)
+can::TokenPtr Jaguar::speed_enable(void)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable,
@@ -136,7 +136,7 @@ can::TokenPtr Jaguar::enable_pid(void)
     );
 }
 
-can::TokenPtr Jaguar::disable_pid(void)
+can::TokenPtr Jaguar::speed_disable(void)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable,
@@ -144,7 +144,7 @@ can::TokenPtr Jaguar::disable_pid(void)
     );
 }
 
-can::TokenPtr Jaguar::set_p_constant(double p)
+can::TokenPtr Jaguar::speed_set_p(double p)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedProportionalConstant,
@@ -152,7 +152,7 @@ can::TokenPtr Jaguar::set_p_constant(double p)
     );
 }
 
-can::TokenPtr Jaguar::set_i_constant(double i)
+can::TokenPtr Jaguar::speed_set_i(double i)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedIntegralConstant,
@@ -160,7 +160,7 @@ can::TokenPtr Jaguar::set_i_constant(double i)
     );
 }
 
-can::TokenPtr Jaguar::set_d_constant(double d)
+can::TokenPtr Jaguar::speed_set_d(double d)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedDifferentialConstant,
@@ -168,7 +168,7 @@ can::TokenPtr Jaguar::set_d_constant(double d)
     );
 }
 
-can::TokenPtr Jaguar::set_speed_reference(SpeedReference::Enum reference)
+can::TokenPtr Jaguar::speed_set_reference(SpeedReference::Enum reference)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedReference,
@@ -176,7 +176,7 @@ can::TokenPtr Jaguar::set_speed_reference(SpeedReference::Enum reference)
     );
 }
 
-can::TokenPtr Jaguar::set_speed(double speed)
+can::TokenPtr Jaguar::speed_set(double speed)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedSet,
@@ -184,10 +184,26 @@ can::TokenPtr Jaguar::set_speed(double speed)
     );
 }
 
-can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
+can::TokenPtr Jaguar::speed_set(double speed, uint8_t group)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedSet,
+        little_dword(double_to_s16p16(speed)) << byte_(group)
+    );
+}
+
+void Jaguar::speed_set_noack(double speed)
+{
+    send(
+        APIClass::kSpeedControl, SpeedControl::kSpeedSetNoACK,
+        little_dword(double_to_s16p16(speed))
+    );
+}
+
+void Jaguar::speed_set_noack(double speed, uint8_t group)
+{
+    send(
+        APIClass::kSpeedControl, SpeedControl::kSpeedSetNoACK,
         little_dword(double_to_s16p16(speed)) << byte_(group)
     );
 }
