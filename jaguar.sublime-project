@@ -6,5 +6,15 @@
 			"file_exclude_patterns": [ "*.o", "*.sublime-workspace", "CMakeCache.txt", "Makefile" ],
 			"folder_exclude_patterns": [ "bin", "build", "CMakeFiles" ]
 		}
-	]
+	],
+    "settings": {
+        "sublimeclang_options": [
+             "-Wall",
+             "-I/usr/lib/clang/3.0/include/",
+             "-I/usr/lib/clang/2.1/include/",
+             "-I/usr/lib/gcc/i686-apple-darwin10/4.2.1/include/",
+             "-I/usr/lib/gcc/i686-apple-darwin11/4.2.1/include/",
+             "-I/Volumes/Home/mckoval/Programming/jaguar/include/"
+        ]
+    }
 }

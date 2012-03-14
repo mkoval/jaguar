@@ -5,9 +5,31 @@
 #include <iomanip>
 #include <iostream>
 #include <cstring>
-
+#include <boost/spirit/include/karma.hpp>
+#include <boost/spirit/include/phoenix_core.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+#include <boost/fusion/include/std_pair.hpp>
 #include <jaguar/jaguar.h>
 #include <jaguar/jaguar_helper.h>
+
+using boost::spirit::byte_;
+using boost::spirit::little_word;
+using boost::spirit::little_dword;
+typedef boost::spirit::unused_type no_payload;
+
+namespace boost { namespace spirit { namespace traits
+{
+    template <>
+    struct create_generator<no_payload>
+    {
+        typedef spirit::karma::eps_type type;
+
+        static type call()
+        {
+            return spirit::karma::eps;
+        }
+    };
+}}}
 
 namespace jaguar {
 
@@ -29,19 +51,26 @@ Jaguar::Jaguar(can::CANBridge &can, uint8_t device_num)
  */
 can::TokenPtr Jaguar::set_num_brushes(uint8_t brushes)
 {
-    return send_ack(APIClass::kConfiguration, Configuration::kNumberOfBrushes, brushes);
+    return send_ack(
+        APIClass::kConfiguration, Configuration::kNumberOfBrushes,
+        byte_(brushes)
+    );
 }
 
 can::TokenPtr Jaguar::set_num_encoders(uint16_t lines)
 {
-    uint16_t const payload = htole16(lines);
-    return send_ack(APIClass::kConfiguration, Configuration::kNumberOfEncodersLines, payload);
+    return send_ack(
+        APIClass::kConfiguration, Configuration::kNumberOfEncodersLines,
+        little_word(lines)
+    );
 }
 
 can::TokenPtr Jaguar::set_fault_time(uint16_t ms)
 {
-    uint16_t const payload = htole16(ms);
-    return send_ack(APIClass::kConfiguration, Configuration::kFaultTime, payload);
+    return send_ack(
+        APIClass::kConfiguration,Configuration::kFaultTime,
+        little_word(ms)
+    );
 }
 
 /*
@@ -49,12 +78,18 @@ can::TokenPtr Jaguar::set_fault_time(uint16_t ms)
  */
 can::TokenPtr Jaguar::enable_voltage(void)
 {
-    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable);
+    return send_ack(
+        APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable,
+        no_payload()
+    );
 }
 
 can::TokenPtr Jaguar::disable_voltage(void)
 {
-    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable);
+    return send_ack(
+        APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable,
+        no_payload()
+    );
 }
 
 can::TokenPtr Jaguar::set_voltage(double scale)
@@ -70,102 +105,110 @@ can::TokenPtr Jaguar::set_voltage(double scale)
         output = 0;
     }
 
-    int16_t const payload = htole16(output);
-    return send_ack(APIClass::kVoltageControl, VoltageControl::kVoltageSet, payload);
+    return send_ack(
+        APIClass::kVoltageControl, VoltageControl::kVoltageSet,
+        little_word(output)
+    );
 }
-
+    
 /*
  * Speed Control
  */
 can::TokenPtr Jaguar::enable_pid(void)
 {
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable,
+        no_payload()
+    );
 }
 
 can::TokenPtr Jaguar::disable_pid(void)
 {
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable,
+        no_payload()
+    );
 }
 
 can::TokenPtr Jaguar::set_p_constant(double p)
 {
-    int32_t const payload = double_to_s16p16(p);
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedProportionalConstant, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedProportionalConstant,
+        little_dword(double_to_s16p16(p))
+    );
 }
 
 can::TokenPtr Jaguar::set_i_constant(double i)
 {
-    int32_t const payload = double_to_s16p16(i);
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedIntegralConstant, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedIntegralConstant,
+        little_dword(double_to_s16p16(i))
+    );
 }
 
 can::TokenPtr Jaguar::set_d_constant(double d)
 {
-    int32_t const payload = double_to_s16p16(d);
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedDifferentialConstant, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedDifferentialConstant,
+        little_dword(double_to_s16p16(d))
+    );
 }
 
 can::TokenPtr Jaguar::set_speed_reference(SpeedReference::Enum reference)
 {
-    uint8_t const payload = static_cast<uint8_t>(reference);
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedReference, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedReference,
+        byte_(reference)
+    );
 }
 
 can::TokenPtr Jaguar::set_speed(double speed)
 {
-    int32_t const payload = double_to_s16p16(speed);
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedSet,
+        little_dword(double_to_s16p16(speed))
+    );
 }
 
 can::TokenPtr Jaguar::set_speed(double speed, uint8_t group)
 {
-    speed_group_t payload;
-    payload.speed = double_to_s16p16(speed);
-    payload.group = group;
-
-    return send_ack(APIClass::kSpeedControl, SpeedControl::kSpeedSet, payload);
+    return send_ack(
+        APIClass::kSpeedControl, SpeedControl::kSpeedSet,
+        little_dword(double_to_s16p16(speed)) << byte_(group)
+    );
 }
 
 /*
  * Helpers
  */
+template <typename G>
+void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, G const &generator)
+{
+    uint32_t const id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
+    can::CANMessage msg(id);
+
+    std::back_insert_iterator<std::vector<uint8_t> > payload(msg.payload);
+    bool success = boost::spirit::karma::generate(payload, generator);
+    assert(success);
+
+    can_.send(msg);
+}
+
+template <typename G>
+can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator)
+{
+    assert(!token_ || token_->ready());
+    send(api_class, api_index, generator);
+    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    return can_.recv(ack_id);
+}
+
 can::TokenPtr Jaguar::recv_ack(void)
 {
     token_ = can_.recv(pack_ack(num_, kManufacturer, kDeviceType));
     return token_;
 }
 
-void Jaguar::send(APIClass::Enum api_class, uint8_t api_index)
-{
-    uint32_t id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
-    can_.send(can::CANMessage(id));
-}
-
-template <typename T>
-void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, T const &payload)
-{
-    uint32_t id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
-    std::vector<uint8_t> payload_raw(sizeof payload);
-    memcpy(&payload_raw[0], &payload, sizeof payload);
-    can_.send(can::CANMessage(id, payload_raw));
-}
-
-can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index)
-{
-    assert(!token_ || token_->ready());
-    send(api_class, api_index);
-    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType);
-    return can_.recv(id);
-}
-
-template <typename T>
-can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, T const &payload)
-{
-    assert(!token_ || token_->ready());
-    send(api_class, api_index, payload);
-    uint32_t const id = pack_ack(num_, kManufacturer, kDeviceType);
-    return can_.recv(id);
-}
 
 };
 
