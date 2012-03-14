@@ -30,8 +30,11 @@ public:
 
 class CANBridge {
 public:
+    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
+
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
+    virtual void attach_callback(uint32_t id, recv_callback cb) = 0;
 };
 
 class Token : boost::noncopyable

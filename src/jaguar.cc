@@ -211,6 +211,35 @@ void Jaguar::speed_set_noack(double speed, uint8_t group)
 }
 
 /*
+ * Periodic Status Updates
+ */
+can::TokenPtr Jaguar::perioic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb)
+{
+    // TODO: Register a callback.
+#if 0
+    uint32_t const response_id = pack_id(num_, kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus
+    );
+    can_.attach_callback(response_id, boost::bind(cb));
+#endif 
+
+    return send_ack(
+        APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,
+        little_dword(rate_ms)
+    );
+}
+
+can::TokenPtr Jaguar::periodic_disable(uint8_t index)
+{
+    // TODO: Unregister the callback.
+
+    return send_ack(
+        APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,
+        byte_(0)
+    );
+}
+
+/*
  * Helpers
  */
 template <typename T>

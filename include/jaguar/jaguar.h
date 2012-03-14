@@ -1,11 +1,14 @@
 #ifndef JAGUAR_H_
 #define JAGUAR_H_
 
+#include <boost/function.hpp>
 #include <stdint.h>
 #include "can_bridge.h"
 #include "jaguar_api.h"
 
 namespace jaguar {
+
+typedef boost::function<void (void)> periodic_callback;
 
 class Jaguar {
 public:
@@ -35,6 +38,10 @@ public:
     can::TokenPtr speed_set(double speed, uint8_t group);
     void          speed_set_noack(double speed);
     void          speed_set_noack(double speed, uint8_t group);
+
+    // Periodic Status Updates
+    can::TokenPtr perioic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb);
+    can::TokenPtr periodic_disable(uint8_t index);
 
 private:
     template <typename T>
