@@ -50,7 +50,8 @@ Jaguar::Jaguar(can::CANBridge &can, uint8_t device_num)
 /*
  * Motor Control Configuration
  */
-can::TokenPtr Jaguar::set_num_brushes(uint8_t brushes)
+
+can::TokenPtr Jaguar::config_brushes_set(uint8_t brushes)
 {
     return send_ack(
         APIClass::kConfiguration, Configuration::kNumberOfBrushes,
@@ -58,7 +59,7 @@ can::TokenPtr Jaguar::set_num_brushes(uint8_t brushes)
     );
 }
 
-can::TokenPtr Jaguar::set_num_encoders(uint16_t lines)
+can::TokenPtr Jaguar::config_encoders_set(uint16_t lines)
 {
     return send_ack(
         APIClass::kConfiguration, Configuration::kNumberOfEncodersLines,
@@ -66,8 +67,9 @@ can::TokenPtr Jaguar::set_num_encoders(uint16_t lines)
     );
 }
 
-can::TokenPtr Jaguar::set_fault_time(uint16_t ms)
+can::TokenPtr Jaguar::config_fault_set(uint16_t ms)
 {
+    assert(ms >= 500);
     return send_ack(
         APIClass::kConfiguration,Configuration::kFaultTime,
         little_word(ms)

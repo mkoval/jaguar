@@ -144,7 +144,7 @@ namespace Configuration {
         kNumberOfBrushes            = 0,
         kNumberOfEncodersLines      = 1,
         kNumberOfPotentiometerTurns = 2,
-        kBreakCoastSetting          = 3,
+        kBrakeCoastSetting          = 3,
         kLimitMode                  = 4,
         kForwardDirectionLimit      = 5,
         kReverseDirectionLimit      = 6,
