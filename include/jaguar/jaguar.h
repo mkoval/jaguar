@@ -18,6 +18,7 @@
 #include "jaguar_api.h"
 #include "jaguar_helper.h"
 
+#if 0
 namespace boost { namespace spirit { namespace traits {
     template <>
     struct transform_attribute<uint16_t, double, qi::domain>
@@ -37,6 +38,7 @@ namespace boost { namespace spirit { namespace traits {
         static void fail(double&) {}
     };
 }}}
+#endif
 
 namespace jaguar {
 
@@ -188,8 +190,10 @@ using boost::spirit::little_dword;
 
 // TOOD: Replace this with proper parsers that automatically convert fixed
 // point numbers to floating point numbers.
-#define little_s8p8   attr_cast(boost::spirit::little_word)
-#define little_s16p16 attr_cast(boost::spirit::little_dword)
+//#define little_s8p8   attr_cast(boost::spirit::little_word)
+//#define little_s16p16 attr_cast(boost::spirit::little_dword)
+#define little_s8p8   boost::spirit::little_word
+#define little_s16p16 boost::spirit::little_dword
 
 JAGUAR_MAKE_STATUS(OutputVoltagePercent, double, byte_(1)  << byte_(2), little_s8p8);
 JAGUAR_MAKE_STATUS(BusVoltage, double,  byte_(3) << byte_(4), little_s8p8)
