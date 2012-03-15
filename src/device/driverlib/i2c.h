@@ -2,7 +2,7 @@
 //
 // i2c.h - Prototypes for the I2C Driver.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -79,6 +79,8 @@ extern "C"
                                 0x00000004
 #define I2C_MASTER_CMD_QUICK_COMMAND                                          \
                                 0x00000027
+#define I2C_MASTER_CMD_HS_MASTER_CODE_SEND                                    \
+                                0x00000011      
 
 //*****************************************************************************
 //

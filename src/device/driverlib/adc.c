@@ -2,7 +2,7 @@
 //
 // adc.c - Driver for the ADC.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -1103,7 +1103,7 @@ ADCHardwareOversampleConfigure(unsigned long ulBase, unsigned long ulFactor)
 //! output is in the low-band.
 //! - \b ADC_COMP_INT_LOW_ONCE to generate ADC interrupt once when ADC output
 //! transitions into the low-band.
-//! - \b ADC_COMP__INT_LOW_HALWAYS to always generate ADC interrupt when ADC
+//! - \b ADC_COMP_INT_LOW_HALWAYS to always generate ADC interrupt when ADC
 //! output is in the low-band only if ADC output has been in the high-band
 //! since the last trigger output.
 //! - \b ADC_COMP_INT_LOW_HONCE to generate ADC interrupt once when ADC output

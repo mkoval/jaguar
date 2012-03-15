@@ -2,7 +2,7 @@
 //
 // hw_i2c.h - Macros used when accessing the I2C master and slave hardware.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Firmware Development Package.
+// This is part of revision 8555 of the Stellaris Firmware Development Package.
 //
 //*****************************************************************************
 
@@ -126,6 +126,7 @@
 // The following are defines for the bit fields in the I2C_O_MTPR register.
 //
 //*****************************************************************************
+#define I2C_MTPR_HS             0x00000080  // High-Speed Enable
 #define I2C_MTPR_TPR_M          0x0000007F  // SCL Clock Period
 #define I2C_MTPR_TPR_S          0
 

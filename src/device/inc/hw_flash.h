@@ -2,7 +2,7 @@
 //
 // hw_flash.h - Macros used when accessing the flash controller.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Firmware Development Package.
+// This is part of revision 8555 of the Stellaris Firmware Development Package.
 //
 //*****************************************************************************
 
@@ -292,8 +292,8 @@
 // The following are defines for the bit fields in the FLASH_USERREG0 register.
 //
 //*****************************************************************************
+#define FLASH_USERREG0_DATA_M   0xFFFFFFFF  // User Data
 #define FLASH_USERREG0_NW       0x80000000  // Not Written
-#define FLASH_USERREG0_DATA_M   0x7FFFFFFF  // User Data
 #define FLASH_USERREG0_DATA_S   0
 
 //*****************************************************************************
@@ -301,8 +301,8 @@
 // The following are defines for the bit fields in the FLASH_USERREG1 register.
 //
 //*****************************************************************************
+#define FLASH_USERREG1_DATA_M   0xFFFFFFFF  // User Data
 #define FLASH_USERREG1_NW       0x80000000  // Not Written
-#define FLASH_USERREG1_DATA_M   0x7FFFFFFF  // User Data
 #define FLASH_USERREG1_DATA_S   0
 
 //*****************************************************************************
@@ -310,8 +310,8 @@
 // The following are defines for the bit fields in the FLASH_USERREG2 register.
 //
 //*****************************************************************************
+#define FLASH_USERREG2_DATA_M   0xFFFFFFFF  // User Data
 #define FLASH_USERREG2_NW       0x80000000  // Not Written
-#define FLASH_USERREG2_DATA_M   0x7FFFFFFF  // User Data
 #define FLASH_USERREG2_DATA_S   0
 
 //*****************************************************************************
@@ -319,8 +319,8 @@
 // The following are defines for the bit fields in the FLASH_USERREG3 register.
 //
 //*****************************************************************************
+#define FLASH_USERREG3_DATA_M   0xFFFFFFFF  // User Data
 #define FLASH_USERREG3_NW       0x80000000  // Not Written
-#define FLASH_USERREG3_DATA_M   0x7FFFFFFF  // User Data
 #define FLASH_USERREG3_DATA_S   0
 
 //*****************************************************************************

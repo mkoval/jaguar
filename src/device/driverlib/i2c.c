@@ -2,7 +2,7 @@
 //
 // i2c.c - Driver for Inter-IC (I2C) bus block.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -206,6 +206,17 @@ I2CMasterInitExpClk(unsigned long ulBase, unsigned long ulI2CClk,
     //
     ulTPR = ((ulI2CClk + (2 * 10 * ulSCLFreq) - 1) / (2 * 10 * ulSCLFreq)) - 1;
     HWREG(ulBase + I2C_O_MTPR) = ulTPR;
+    
+    //
+    // Check to see if this I2C peripheral is High-Speed enabled.  If yes, also
+    // choose the fastest speed that is less than or equal to 3.4Mbps.
+    //
+    if(HWREG(ulBase + I2C_O_PP) & I2C_PP_HS)
+    {
+        ulTPR = ((ulI2CClk + (2 * 3 * 3400000) - 1) / 
+                (2 * 3 * 3400000)) - 1;
+        HWREG(ulBase + I2C_O_MTPR) = I2C_MTPR_HS | ulTPR;    
+    }
 }
 
 //*****************************************************************************
@@ -1234,7 +1245,9 @@ I2CMasterControl(unsigned long ulBase, unsigned long ulCmd)
            (ulCmd == I2C_MASTER_CMD_BURST_RECEIVE_START) ||
            (ulCmd == I2C_MASTER_CMD_BURST_RECEIVE_CONT) ||
            (ulCmd == I2C_MASTER_CMD_BURST_RECEIVE_FINISH) ||
-           (ulCmd == I2C_MASTER_CMD_BURST_RECEIVE_ERROR_STOP));
+           (ulCmd == I2C_MASTER_CMD_BURST_RECEIVE_ERROR_STOP) ||
+           (ulCmd == I2C_MASTER_CMD_QUICK_COMMAND) ||
+           (ulCmd == I2C_MASTER_CMD_HS_MASTER_CODE_SEND));
 
     //
     // Send the command.

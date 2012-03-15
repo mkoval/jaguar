@@ -2,7 +2,7 @@
 //
 // hw_gpio.h - Defines and Macros for GPIO hardware.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Firmware Development Package.
+// This is part of revision 8555 of the Stellaris Firmware Development Package.
 //
 //*****************************************************************************
 
@@ -55,6 +55,38 @@
 #define GPIO_O_ADCCTL           0x00000530  // GPIO ADC Control
 #define GPIO_O_DMACTL           0x00000534  // GPIO DMA Control
 #define GPIO_O_SI               0x00000538  // GPIO Select Interrupt
+
+//*****************************************************************************
+//
+// The following are defines for the bit fields in the GPIO_O_IM register.
+//
+//*****************************************************************************
+#define GPIO_IM_GPIO_M          0x000000FF  // GPIO Interrupt Mask Enable
+#define GPIO_IM_GPIO_S          0
+
+//*****************************************************************************
+//
+// The following are defines for the bit fields in the GPIO_O_RIS register.
+//
+//*****************************************************************************
+#define GPIO_RIS_GPIO_M         0x000000FF  // GPIO Interrupt Raw Status
+#define GPIO_RIS_GPIO_S         0
+
+//*****************************************************************************
+//
+// The following are defines for the bit fields in the GPIO_O_MIS register.
+//
+//*****************************************************************************
+#define GPIO_MIS_GPIO_M         0x000000FF  // GPIO Masked Interrupt Status
+#define GPIO_MIS_GPIO_S         0
+
+//*****************************************************************************
+//
+// The following are defines for the bit fields in the GPIO_O_ICR register.
+//
+//*****************************************************************************
+#define GPIO_ICR_GPIO_M         0x000000FF  // GPIO Interrupt Clear
+#define GPIO_ICR_GPIO_S         0
 
 //*****************************************************************************
 //

@@ -2,7 +2,7 @@
 //
 // sysctl.h - Prototypes for the system control driver.
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -112,6 +112,8 @@ extern "C"
 #define SYSCTL_PERIPH2_CAN1     0xf0003401  // CAN 1
 #define SYSCTL_PERIPH2_CAN2     0xf0003402  // CAN 2
 #define SYSCTL_PERIPH2_COMP0    0xf0003c00  // Analog comparator 0
+#define SYSCTL_PERIPH2_COMP1    0xf0003c01  // Analog comparator 1
+#define SYSCTL_PERIPH2_COMP2    0xf0003c02  // Analog comparator 2
 #define SYSCTL_PERIPH_EEPROM0   0xf0005800  // EEPROM 0
 #define SYSCTL_PERIPH_FAN0      0xf0005400  // FAN 0
 #define SYSCTL_PERIPH2_GPIOA    0xf0000800  // GPIO A
