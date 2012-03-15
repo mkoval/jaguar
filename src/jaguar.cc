@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <cstring>
+#include <boost/bind.hpp>
 #include <boost/spirit/include/karma.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
@@ -199,16 +200,8 @@ void Jaguar::speed_set_noack(double speed, uint8_t group)
 /*
  * Periodic Status Updates
  */
-can::TokenPtr Jaguar::perioic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb)
+can::TokenPtr Jaguar::periodic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb)
 {
-    // TODO: Register a callback.
-#if 0
-    uint32_t const response_id = pack_id(num_, kManufacturer, kDeviceType,
-        APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus
-    );
-    can_.attach_callback(response_id, boost::bind(cb));
-#endif 
-
     return send_ack(
         APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,
         little_dword(rate_ms)
@@ -227,25 +220,45 @@ can::TokenPtr Jaguar::periodic_disable(uint8_t index)
 
 can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
 {
-    // TODO: Register receive callbacks.
-
-    uint32_t const id = pack_id(num_,
+    // Tell the Jaguar which status fields we're interested in. Due to CAN
+    // limitations, we can only receive eight bytes per update message.
+    uint32_t const config_id = pack_id(num_,
         kManufacturer, kDeviceType,
         APIClass::kPeriodicStatus, PeriodicStatus::kConfigureMessage + index
     );
-    can::CANMessage msg(id);
+    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    can::CANMessage msg(config_id);
 
     std::back_insert_iterator<std::vector<uint8_t> > payload(msg.payload);
     statuses.write(payload);
-    can_.send(msg);
 
-    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    // Terminate short methods the EOM item.
+    assert(msg.payload.size() <= 8);
+    if (msg.payload.size() < 8) {
+        msg.payload.push_back(PeriodicStatusItem::kEndOfMessage);
+    }
+
+    // Register a callback to process the periodic status updates.
+    uint32_t const status_id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
+    );
+    can_.attach_callback(status_id, boost::bind(&Jaguar::periodic_unpack, this, _1, statuses));
+
+    // Wait for an ACK in response to the config message.
+    can_.send(msg);
     return can_.recv(ack_id);
 }
 
 /*
  * Helpers
  */
+void Jaguar::periodic_unpack(boost::shared_ptr<can::CANMessage> message, AggregateStatus statuses)
+{
+    std::vector<uint8_t> const &payload = message->payload;
+    statuses.read(&payload.front(), &payload.back() + 1);
+}
+
 template <typename T>
 T Jaguar::rescale(double x)
 {

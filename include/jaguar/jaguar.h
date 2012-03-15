@@ -55,13 +55,14 @@ public:
     void          speed_set_noack(double speed, uint8_t group);
 
     // Periodic Status Updates
-    can::TokenPtr perioic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb);
+    can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb);
     can::TokenPtr periodic_disable(uint8_t index);
     can::TokenPtr periodic_config(uint8_t index, AggregateStatus statuses);
 
 private:
-    template <typename T>
-    T rescale(double x);
+    void periodic_unpack(boost::shared_ptr<can::CANMessage> message, AggregateStatus statuses);
+
+    template <typename T> T rescale(double x);
 
     template <typename G>
     void send(APIClass::Enum api_class, uint8_t api_index, G const &generator);
