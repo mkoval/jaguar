@@ -91,17 +91,17 @@ void DiffDriveRobot::heartbeat(void)
     }
 }
 
-void DiffDriveRobot::update_encoders_left(uint32_t pos)
+void DiffDriveRobot::update_encoders_left(double pos)
 {
     std::cout << "x_left  = " << s16p16_to_double(pos) << std::endl; 
 }
 
-void DiffDriveRobot::update_encoders_right(uint32_t pos)
+void DiffDriveRobot::update_encoders_right(double pos)
 {
     std::cout << "x_right = " << s16p16_to_double(pos) << std::endl; 
 }
 
-void DiffDriveRobot::update_temperature(uint16_t temp)
+void DiffDriveRobot::update_temperature(double temp)
 {
     std::cout << "temp    = " << s8p8_to_double(temp) << std::endl; 
 }

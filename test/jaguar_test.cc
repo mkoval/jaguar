@@ -40,6 +40,7 @@ public:
 
 JAGUAR_MAKE_STATUS(Mock1, uint8_t, byte_(0x01), byte_);
 JAGUAR_MAKE_STATUS(Mock2, uint8_t, byte_(0x02), byte_);
+JAGUAR_MAKE_STATUS(FixedPointMock, uint8_t, byte_(0x03), little_s8p8);
 
 class JaguarTest : public testing::Test
 {
@@ -52,13 +53,16 @@ protected:
 
         callback1_ptr_ = boost::bind(&JaguarTest::callback1, this, _1);
         callback2_ptr_ = boost::bind(&JaguarTest::callback2, this, _1);
+        callbackd_ptr_ = boost::bind(&JaguarTest::callbackd, this, _1);
     }
 
     MOCK_METHOD1(callback1, void (uint8_t));
     MOCK_METHOD1(callback2, void (uint8_t));
+    MOCK_METHOD1(callbackd, void (double));
 
     boost::function<void (uint8_t)> callback1_ptr_;
     boost::function<void (uint8_t)> callback2_ptr_;
+    boost::function<void (double)>  callbackd_ptr_;
 
     uint8_t num_;
     boost::shared_ptr<CANBridgeMock> bridge_;
@@ -130,3 +134,17 @@ TEST_F(JaguarTest, AggregateStatus_writeChains)
 
     ASSERT_THAT(payload, ElementsAre(0x01, 0x02));
 }
+
+#if 0
+TEST_F(JaguarTest, Status_readFixedPoint)
+{
+    uint16_t const payload = 32767 / 2;
+    uint8_t const *payload_raw = reinterpret_cast<uint8_t const *>(&payload);
+    Status::Ptr status = Mock3(callbackd_ptr_);
+
+    EXPECT_CALL(*this, callbackd(0.5));
+
+    status->read(payload_raw, payload_raw + sizeof(uint16_t) + 1);
+
+}
+#endif

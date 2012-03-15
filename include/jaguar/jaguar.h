@@ -16,6 +16,27 @@
 #include "can_bridge.h"
 #include "jaguar.h"
 #include "jaguar_api.h"
+#include "jaguar_helper.h"
+
+namespace boost { namespace spirit { namespace traits {
+    template <>
+    struct transform_attribute<uint16_t, double, qi::domain>
+    {
+        typedef double &type;
+        static double pre(uint16_t &d) { return jaguar::s8p8_to_double(d); }
+        static void post(double& val, int const& attr) {}
+        static void fail(double&) {}
+    };
+
+    template <>
+    struct transform_attribute<uint32_t, double, qi::domain>
+    {
+        typedef double &type;
+        static double pre(uint32_t &d) { return jaguar::s16p16_to_double(d); }
+        static void post(double& val, int const& attr) {}
+        static void fail(double&) {}
+    };
+}}}
 
 namespace jaguar {
 
@@ -167,10 +188,10 @@ using boost::spirit::little_dword;
 
 // TOOD: Replace this with proper parsers that automatically convert fixed
 // point numbers to floating point numbers.
-#define little_s8p8   boost::spirit::little_word
-#define little_s16p16 boost::spirit::little_dword
+#define little_s8p8   attr_cast(boost::spirit::little_word)
+#define little_s16p16 attr_cast(boost::spirit::little_dword)
 
-JAGUAR_MAKE_STATUS(OutputVoltagePercent, double, byte_(1)  << byte_(2), little_s8p8)
+JAGUAR_MAKE_STATUS(OutputVoltagePercent, double, byte_(1)  << byte_(2), little_s8p8);
 JAGUAR_MAKE_STATUS(BusVoltage, double,  byte_(3) << byte_(4), little_s8p8)
 JAGUAR_MAKE_STATUS(Current, double, byte_(5) << byte_(6), little_s8p8)
 JAGUAR_MAKE_STATUS(Temperature, double,  byte_(7) << byte_(8), little_s8p8)
@@ -184,9 +205,6 @@ JAGUAR_MAKE_STATUS(TemperatureFaultCounter, uint8_t, byte_(25), byte_)
 JAGUAR_MAKE_STATUS(BusVoltageFaultCounter, uint8_t, byte_(26), byte_)
 JAGUAR_MAKE_STATUS(GateFaultCounter, uint8_t, byte_(27), byte_)
 JAGUAR_MAKE_STATUS(CommunicationFaultCounter, uint8_t, byte_(28), byte_)
-
-#undef little_s8p8
-#undef little_s16p16
 
 };
 

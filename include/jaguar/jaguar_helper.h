@@ -21,7 +21,6 @@
 namespace jaguar {
 
 int16_t  double_to_s8p8(double x);
-uint16_t double_to_u8p8(double x);
 int32_t  double_to_s16p16(double x);
 
 double s8p8_to_double(int16_t x);
