@@ -1,3 +1,5 @@
+#include <sstream>
+#include <string>
 #include <jaguar/diff_drive.h>
 
 using can::JaguarBridge;
@@ -29,18 +31,39 @@ DiffDriveRobot::~DiffDriveRobot(void)
 
 void DiffDriveRobot::drive(double rpm_left, double rpm_right)
 {
+    std::cout << "drive before lock" << std::endl;
     can::TokenPtr cmd_left, cmd_right;
     {
-        boost::lock_guard<boost::mutex> lock(mutex_);
+        //boost::lock_guard<boost::mutex> lock(mutex_);
+        std::cout << "drive after lock)" << std::endl;
         cmd_left  = jag_left_.speed_set(rpm_left);
-        cmd_right = jag_right_.speed_set(rpm_right);
+        //cmd_right = jag_right_.speed_set(rpm_right);
     }
-    block(cmd_left, cmd_right);
-    }
+    std::cout << "drive unlock" << std::endl;
+    block(cmd_left); //, cmd_right);
+    std::cout << "drive ack" << std::endl;
+}
 
 void DiffDriveRobot::init(uint16_t status_ms)
 {
     using namespace jaguar::PeriodicStatus;
+
+    // Configure speed control to use quadrature encoders.
+    std::cout << "set speed reference" << std::endl;
+    block(
+        jag_left_.speed_set_reference(SpeedReference::kQuadratureEncoder)
+        //jag_right_.speed_set_reference(SpeedReference::kQuadratureEncoder)
+    );
+
+    std::cout << "set position reference" << std::endl;
+    block(
+        jag_left_.position_set_reference(PositionReference::kQuadratureEncoder)
+    );
+
+    std::cout << "set encoder lines" << std::endl;
+    block(
+        jag_left_.config_encoders_set(800)
+    );
 
     // Configure callbacks for the periodic status updates.
     boost::function<void (uint32_t)> cb_enc_left  = boost::bind(
@@ -51,29 +74,36 @@ void DiffDriveRobot::init(uint16_t status_ms)
         &DiffDriveRobot::update_temperature, this, _1);
     boost::function<void (uint8_t)>  cb_estop     = boost::bind(
         &DiffDriveRobot::update_estop, this, _1);
+
+
+    std::cout << "periodic config" << std::endl;
     block(
         jag_left_.periodic_config(0, Position(cb_enc_left)
                                   << Temperature(cb_temp)
-                                  << LimitNonClearing(cb_estop)),
-        jag_right_.periodic_config(0, Position(cb_enc_right))
-    );
-    block(
-        jag_left_.periodic_enable(0, status_ms),
-        jag_right_.periodic_enable(0, status_ms)
+                                  << LimitNonClearing(cb_estop))
+        //jag_right_.periodic_config(0, Position(cb_enc_right))
     );
 
-    // Configure speed control to use quadrature encoders.
+    std::cout << "periodic enable" << std::endl;
     block(
-        jag_left_.speed_set_reference(SpeedReference::kQuadratureEncoder),
-        jag_right_.speed_set_reference(SpeedReference::kQuadratureEncoder)
+        jag_left_.periodic_enable(0, status_ms)
+        //jag_right_.periodic_enable(0, status_ms)
     );
 
     // Enable speed control.
+    std::cout << "enable speed control" << std::endl;
     block(
-        jag_left_.speed_enable(),
-        jag_right_.speed_enable()
+        jag_left_.speed_enable()
+        //jag_right_.speed_enable()
     );
 
+    std::cout << "set p" << std::endl;
+    block(
+        jag_left_.speed_set_p(10000.0)
+        //jag_right_.speed_set_p(10000.0)
+    );
+
+    std::cout << "resume" << std::endl;
     jag_broadcast_.system_resume();
 }
 
@@ -91,24 +121,29 @@ void DiffDriveRobot::heartbeat(void)
     }
 }
 
-void DiffDriveRobot::update_encoders_left(double pos)
+void DiffDriveRobot::update_encoders_left(int32_t pos)
 {
-    std::cout << "x_left  = " << s16p16_to_double(pos) << std::endl; 
+    std::cout << "x_left  = " << s16p16_to_double(pos) << "(" << pos << "(" << std::endl;
 }
 
-void DiffDriveRobot::update_encoders_right(double pos)
+void DiffDriveRobot::update_encoders_right(int32_t pos)
 {
-    std::cout << "x_right = " << s16p16_to_double(pos) << std::endl; 
+    std::cout << "x_right = " << s16p16_to_double(pos) << std::endl;
 }
 
-void DiffDriveRobot::update_temperature(double temp)
+void DiffDriveRobot::update_temperature(int16_t temp)
 {
-    std::cout << "temp    = " << s8p8_to_double(temp) << std::endl; 
+    std::cout << "temp    = " << s8p8_to_double(temp) << std::endl;
 }
 
 void DiffDriveRobot::update_estop(uint8_t state)
 {
-    std::cout << "estop   = " << state << std::endl; 
+    std::cout << "estop   = " << (int)state << std::endl;
+}
+
+void DiffDriveRobot::block(can::TokenPtr t)
+{
+    t->block();
 }
 
 void DiffDriveRobot::block(can::TokenPtr t1, can::TokenPtr t2)
@@ -119,14 +154,38 @@ void DiffDriveRobot::block(can::TokenPtr t1, can::TokenPtr t2)
 
 };
 
+template <typename T> T convert(std::string const &str)
+{
+    T output;
+    std::stringstream ss(str);
+    ss >> output;
+    return output;
+}
+
+void test(int32_t x)
+{
+    std::cout << "update: " << x << std::endl;
+}
+
 int main(int argc, char **argv)
 {
-    std::string port;
-    uint8_t id_left(1), id_right(2);
-    uint32_t heartbeat_ms(50), status_ms(100);
+    if (argc <= 3) {
+        std::cerr << "err: incorrect number of arguments\n"
+                  << "usage: ./diff_drive <port> <left id> <right id>"
+                  << std::endl;
+        return 0;
+    }
+
+    std::string const port = argv[1];
+    uint8_t const id_left  = convert<int>(argv[2]);
+    uint8_t const id_right = convert<int>(argv[3]);
+    uint32_t const heartbeat_ms = 50;
+    uint32_t const status_ms = 100;
 
     jaguar::DiffDriveRobot robot(port, id_left, id_right, heartbeat_ms, status_ms);
-    robot.drive(1.0, 1.0);
+    robot.drive(1000.0, 1000.0);
+
+    // Configure callbacks for the periodic status updates.
 
     for (;;);
 

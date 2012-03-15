@@ -198,13 +198,24 @@ void Jaguar::speed_set_noack(double speed, uint8_t group)
 }
 
 /*
+ * Speed Updates
+ */
+can::TokenPtr Jaguar::position_set_reference(PositionReference::Enum reference)
+{
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionReference,
+        byte_(reference)
+    );
+}
+
+/*
  * Periodic Status Updates
  */
 can::TokenPtr Jaguar::periodic_enable(uint8_t index, uint16_t rate_ms)
 {
     return send_ack(
-        APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,
-        little_dword(rate_ms)
+        static_cast<APIClass::Enum>(6), 0,
+        little_word(rate_ms)
     );
 }
 

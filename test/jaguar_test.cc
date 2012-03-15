@@ -40,7 +40,6 @@ public:
 
 JAGUAR_MAKE_STATUS(Mock1, uint8_t, byte_(0x01), byte_);
 JAGUAR_MAKE_STATUS(Mock2, uint8_t, byte_(0x02), byte_);
-JAGUAR_MAKE_STATUS(FixedPointMock, uint8_t, byte_(0x03), little_s8p8);
 
 class JaguarTest : public testing::Test
 {
@@ -64,7 +63,7 @@ protected:
     uint8_t num_;
     boost::shared_ptr<CANBridgeMock> bridge_;
     boost::shared_ptr<Jaguar>        jaguar_;
-    boost::shared_ptr<MockToken>     token_;
+    can::Token::Ptr                  token_;
 };
 
 TEST_F(JaguarTest, config_brushes_set)
@@ -131,17 +130,3 @@ TEST_F(JaguarTest, AggregateStatus_writeChains)
 
     ASSERT_THAT(payload, ElementsAre(0x01, 0x02));
 }
-
-#if 0
-TEST_F(JaguarTest, Status_readFixedPoint)
-{
-    uint16_t const payload = 32767 / 2;
-    uint8_t const *payload_raw = reinterpret_cast<uint8_t const *>(&payload);
-    Status::Ptr status = Mock13(callbackd_ptr_);
-
-    EXPECT_CALL(*this, callbackd(0.5));
-
-    status->read(payload_raw, payload_raw + sizeof(uint16_t) + 1);
-
-}
-#endif

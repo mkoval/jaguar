@@ -19,11 +19,17 @@ rosbuild_add_executable(assign_id
     src/assign_id.cc
 )
 
+rosbuild_add_executable(diff_drive
+    src/diff_drive.cc
+)
+
 rosbuild_add_gtest(utests
+    test/jaguar_test.cc
     test/jaguar_bridge_test.cc
     test/jaguar_helper_test.cc
 )
 
 rosbuild_link_boost(jaguar signals system thread)
 target_link_libraries(assign_id jaguar)
+target_link_libraries(diff_drive jaguar)
 target_link_libraries(utests jaguar gtest_main gmock)

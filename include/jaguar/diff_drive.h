@@ -22,11 +22,12 @@ public:
 private:
     virtual void init(uint16_t status_ms);
     virtual void heartbeat(void);
-    virtual void update_encoders_left(double pos);
-    virtual void update_encoders_right(double pos);
-    virtual void update_temperature(double temp);
+    virtual void update_encoders_left(int32_t pos);
+    virtual void update_encoders_right(int32_t pos);
+    virtual void update_temperature(int16_t temp);
     virtual void update_estop(uint8_t state);
 
+    virtual void block(can::TokenPtr t1);
     virtual void block(can::TokenPtr t1, can::TokenPtr t2);
 
     can::JaguarBridge bridge_;

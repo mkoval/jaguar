@@ -18,28 +18,6 @@
 #include "jaguar_api.h"
 #include "jaguar_helper.h"
 
-#if 0
-namespace boost { namespace spirit { namespace traits {
-    template <>
-    struct transform_attribute<uint16_t, double, qi::domain>
-    {
-        typedef double &type;
-        static double pre(uint16_t &d) { return jaguar::s8p8_to_double(d); }
-        static void post(double& val, int const& attr) {}
-        static void fail(double&) {}
-    };
-
-    template <>
-    struct transform_attribute<uint32_t, double, qi::domain>
-    {
-        typedef double &type;
-        static double pre(uint32_t &d) { return jaguar::s16p16_to_double(d); }
-        static void post(double& val, int const& attr) {}
-        static void fail(double&) {}
-    };
-}}}
-#endif
-
 namespace jaguar {
 
 typedef boost::function<void (void)> periodic_callback;
@@ -75,6 +53,9 @@ public:
     can::TokenPtr speed_set(double speed, uint8_t group);
     void          speed_set_noack(double speed);
     void          speed_set_noack(double speed, uint8_t group);
+
+    // Position Control
+    can::TokenPtr position_set_reference(PositionReference::Enum reference);
 
     // Periodic Status Updates
     can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms);
@@ -195,15 +176,15 @@ using boost::spirit::little_dword;
 #define little_s8p8   boost::spirit::little_word
 #define little_s16p16 boost::spirit::little_dword
 
-JAGUAR_MAKE_STATUS(OutputVoltagePercent, double, byte_(1)  << byte_(2), little_s8p8);
-JAGUAR_MAKE_STATUS(BusVoltage, double,  byte_(3) << byte_(4), little_s8p8)
-JAGUAR_MAKE_STATUS(Current, double, byte_(5) << byte_(6), little_s8p8)
-JAGUAR_MAKE_STATUS(Temperature, double,  byte_(7) << byte_(8), little_s8p8)
-JAGUAR_MAKE_STATUS(Position, double, byte_(9)  << byte_(10) << byte_(11) << byte_(12), little_s16p16)
-JAGUAR_MAKE_STATUS(Speed, double,  byte_(13) << byte_(14) << byte_(15) << byte_(16), little_s16p16);
+JAGUAR_MAKE_STATUS(OutputVoltagePercent, int16_t, byte_(1)  << byte_(2), little_s8p8);
+JAGUAR_MAKE_STATUS(BusVoltage, int16_t,  byte_(3) << byte_(4), little_s8p8)
+JAGUAR_MAKE_STATUS(Current, int16_t, byte_(5) << byte_(6), little_s8p8)
+JAGUAR_MAKE_STATUS(Temperature, int16_t,  byte_(7) << byte_(8), little_s8p8)
+JAGUAR_MAKE_STATUS(Position, int32_t, byte_(9)  << byte_(10) << byte_(11) << byte_(12), little_s16p16)
+JAGUAR_MAKE_STATUS(Speed, int32_t,  byte_(13) << byte_(14) << byte_(15) << byte_(16), little_s16p16);
 JAGUAR_MAKE_STATUS(LimitNonClearing, uint8_t, byte_(17), byte_)
 JAGUAR_MAKE_STATUS(LimitClearing, uint8_t, byte_(18), byte_)
-JAGUAR_MAKE_STATUS(OutputVoltageVolts, double, byte_(22) << byte_(23), little_s8p8)
+JAGUAR_MAKE_STATUS(OutputVoltageVolts, int16_t, byte_(22) << byte_(23), little_s8p8)
 JAGUAR_MAKE_STATUS(CurrentFaultCounter, uint8_t, byte_(24), byte_)
 JAGUAR_MAKE_STATUS(TemperatureFaultCounter, uint8_t, byte_(25), byte_)
 JAGUAR_MAKE_STATUS(BusVoltageFaultCounter, uint8_t, byte_(26), byte_)

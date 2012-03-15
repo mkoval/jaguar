@@ -44,6 +44,8 @@ public:
 class Token : boost::noncopyable
 {
 public:
+    typedef boost::shared_ptr<Token> Ptr;
+
 	Token(void) {}
 	virtual ~Token(void) {}
 	virtual void block(void) = 0;
