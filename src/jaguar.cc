@@ -17,6 +17,7 @@ using boost::spirit::byte_;
 using boost::spirit::little_word;
 using boost::spirit::little_dword;
 
+
 namespace jaguar {
 
 Manufacturer::Enum const Jaguar::kManufacturer = Manufacturer::kTexasInstruments;

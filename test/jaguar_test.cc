@@ -14,7 +14,6 @@
 #include <jaguar/jaguar_helper.h>
 
 using namespace jaguar;
-using namespace jaguar::StatusUpdates;
 using namespace testing;
 
 using boost::assign::list_of;
@@ -92,7 +91,7 @@ TEST_F(JaguarTest, config_brushes_set)
 TEST_F(JaguarTest, Status_read)
 {
     std::vector<uint8_t> payload = list_of(0x12);
-    Status::Ptr status = Mock1Status(callback1_ptr_);
+    Status::Ptr status = Mock1(callback1_ptr_);
 
     EXPECT_CALL(*this, callback1(0x12));
 
@@ -103,7 +102,7 @@ TEST_F(JaguarTest, Status_write)
 {
     std::vector<uint8_t> payload;
     std::back_insert_iterator<std::vector<uint8_t> > it(payload);
-    Status::Ptr status = Mock1Status(callback1_ptr_);
+    Status::Ptr status = Mock1(callback1_ptr_);
 
     status->write(it);
 
@@ -113,7 +112,7 @@ TEST_F(JaguarTest, Status_write)
 TEST_F(JaguarTest, AggregateStatus_readChains)
 {
     std::vector<uint8_t> payload = list_of(0xF1)(0xF2);
-    AggregateStatus status = Mock1Status(callback1_ptr_) << Mock2Status(callback2_ptr_);
+    AggregateStatus status = Mock1(callback1_ptr_) << Mock2(callback2_ptr_);
 
     EXPECT_CALL(*this, callback1(0xF1));
     EXPECT_CALL(*this, callback2(0xF2));
@@ -125,7 +124,7 @@ TEST_F(JaguarTest, AggregateStatus_writeChains)
 {
     std::vector<uint8_t> payload;
     std::back_insert_iterator<std::vector<uint8_t> > it(payload);
-    AggregateStatus status = Mock1Status(callback1_ptr_) << Mock2Status(callback2_ptr_);
+    AggregateStatus status = Mock1(callback1_ptr_) << Mock2(callback2_ptr_);
 
     status.write(it);
 

@@ -133,12 +133,12 @@ private:
 AggregateStatus operator<<(AggregateStatus aggregate, Status::Ptr const &status);
 
 #define JAGUAR_MAKE_STATUS(_name_, _Toutput_,  _generator_, _parser_)          \
-class _name_##Status_ : public Status {                                        \
+class _name_##_ : public Status {                                              \
 public:                                                                        \
-    typedef boost::shared_ptr<_name_##Status_> Ptr;                            \
+    typedef boost::shared_ptr<_name_##_> Ptr;                                  \
     typedef boost::function<void (_Toutput_)> Callback;                        \
                                                                                \
-    explicit _name_##Status_(Callback callback) : callback_(callback) {}       \
+    explicit _name_##_(Callback callback) : callback_(callback) {}             \
                                                                                \
     virtual uint8_t const *read(uint8_t const *begin, uint8_t const *end) {    \
         _Toutput_ output;                                                      \
@@ -156,11 +156,11 @@ private:                                                                       \
     Callback callback_;                                                        \
 };                                                                             \
                                                                                \
-inline Status::Ptr _name_##Status(_name_##Status_::Callback callback) {        \
-    return boost::make_shared<_name_##Status_>(callback);                      \
+inline Status::Ptr _name_(_name_##_::Callback callback) {                      \
+    return boost::make_shared<_name_##_>(callback);                            \
 }
 
-namespace StatusUpdates {
+namespace PeriodicStatus {
 using boost::spirit::byte_;
 using boost::spirit::little_word;
 using boost::spirit::little_dword;
