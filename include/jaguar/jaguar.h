@@ -172,13 +172,13 @@ using boost::spirit::little_dword;
 //JAGUAR_MAKE_STATUS(Temperature, double,  byte_(7)  << byte_(8), little_8p8)
 //JAGUAR_MAKE_STATUS(Position, double,  byte_(9)  << byte_(10) << byte_(11) << byte_(12), little_16p16)
 //JAGUAR_MAKE_STATUS(Speed, double,  byte_(13) << byte_(14) << byte_(15) << byte_(16), little_16p16);
-//JAGUAR_MAKE_STATUS(LimitNonClearing, uint8_t, byte_(17), byte_)
-//JAGUAR_MAKE_STATUS(LimitClearing, uint8_t, byte_(18), byte_)
+JAGUAR_MAKE_STATUS(LimitNonClearing, uint8_t, byte_(17), byte_)
+JAGUAR_MAKE_STATUS(LimitClearing, uint8_t, byte_(18), byte_)
 //JAGUAR_MAKE_STATUS(OutputVoltageVolts, double,  byte_(22) << byte_(23), little_8p8)
-//JAGUAR_MAKE_STATUS(CurrentFaultCounter, uint8_t, byte_(24), byte_)
-//JAGUAR_MAKE_STATUS(TemperatureFaultCounter, uint8_t, byte_(25), byte_)
-//JAGUAR_MAKE_STATUS(BusVoltageFaultCounter, uint8_t, byte_(26), byte_)
-//JAGUAR_MAKE_STATUS(GateFaultCounter, uint8_t, byte_(27), byte_)
+JAGUAR_MAKE_STATUS(CurrentFaultCounter, uint8_t, byte_(24), byte_)
+JAGUAR_MAKE_STATUS(TemperatureFaultCounter, uint8_t, byte_(25), byte_)
+JAGUAR_MAKE_STATUS(BusVoltageFaultCounter, uint8_t, byte_(26), byte_)
+JAGUAR_MAKE_STATUS(GateFaultCounter, uint8_t, byte_(27), byte_)
 JAGUAR_MAKE_STATUS(CommunicationFaultCounter, uint8_t, byte_(28), byte_)
 
 };
