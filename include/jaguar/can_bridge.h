@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 

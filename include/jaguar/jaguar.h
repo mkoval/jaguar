@@ -14,6 +14,7 @@
 #include <boost/make_shared.hpp>
 
 #include "can_bridge.h"
+#include "jaguar.h"
 #include "jaguar_api.h"
 
 
@@ -82,7 +83,6 @@ class Status {
 public:
     typedef boost::shared_ptr<Status> Ptr;
 
-protected:
     virtual uint8_t const *read(uint8_t const *begin, uint8_t const *end) = 0;
     virtual void write(std::back_insert_iterator<std::vector<uint8_t> > &data) = 0;
 
@@ -103,7 +103,6 @@ public:
 
     virtual ~AggregateStatus(void) {}
 
-protected:
     virtual uint8_t const *read(uint8_t const *begin, uint8_t const *end)
     {
         BOOST_FOREACH(Status::Ptr &status, statuses_) {
@@ -131,10 +130,7 @@ private:
 
 // This must be declared outside of the class because the first argument needs
 // the above-defined implicit conversion from Status::Ptr.
-AggregateStatus operator<<(AggregateStatus aggregate, Status::Ptr const &status) {
-    aggregate.statuses_.push_back(status);
-    return aggregate;
-}
+AggregateStatus operator<<(AggregateStatus aggregate, Status::Ptr const &status);
 
 #define JAGUAR_MAKE_STATUS(_name_, _Toutput_,  _generator_, _parser_)          \
 class _name_##Status_ : public Status {                                        \
@@ -144,7 +140,6 @@ public:                                                                        \
                                                                                \
     explicit _name_##Status_(Callback callback) : callback_(callback) {}       \
                                                                                \
-protected:                                                                     \
     virtual uint8_t const *read(uint8_t const *begin, uint8_t const *end) {    \
         _Toutput_ output;                                                      \
         assert(boost::spirit::qi::parse(begin, end, _parser_, output));        \
@@ -161,7 +156,7 @@ private:                                                                       \
     Callback callback_;                                                        \
 };                                                                             \
                                                                                \
-Status::Ptr _name_##Status(_name_##Status_::Callback callback) {               \
+inline Status::Ptr _name_##Status(_name_##Status_::Callback callback) {        \
     return boost::make_shared<_name_##Status_>(callback);                      \
 }
 

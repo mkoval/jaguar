@@ -288,4 +288,9 @@ can::TokenPtr Jaguar::recv_ack(void)
     return token_;
 }
 
+AggregateStatus operator<<(AggregateStatus aggregate, Status::Ptr const &status) {
+    aggregate.statuses_.push_back(status);
+    return aggregate;
+}
+
 };
