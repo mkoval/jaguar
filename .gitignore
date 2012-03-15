@@ -3,6 +3,7 @@
 *.sublime-workspace
 .DS_Store
 /bin/
+/lib/
 /build/
 /CMakeCache.txt
 /CMakeFiles/
