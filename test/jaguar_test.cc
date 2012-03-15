@@ -92,9 +92,7 @@ TEST_F(JaguarTest, config_brushes_set)
 TEST_F(JaguarTest, Status_read)
 {
     std::vector<uint8_t> payload = list_of(0x12);
-    Status::Ptr status = CommunicationFaultCounterStatus(
-        boost::bind(&JaguarTest::callback1, this, _1)
-    );
+    Status::Ptr status = Mock1Status(callback1_ptr_);
 
     EXPECT_CALL(*this, callback1(0x12));
 
@@ -105,13 +103,11 @@ TEST_F(JaguarTest, Status_write)
 {
     std::vector<uint8_t> payload;
     std::back_insert_iterator<std::vector<uint8_t> > it(payload);
-    Status::Ptr status = CommunicationFaultCounterStatus(
-        boost::bind(&JaguarTest::callback1, this, _1)
-    );
+    Status::Ptr status = Mock1Status(callback1_ptr_);
 
     status->write(it);
 
-    ASSERT_THAT(payload, ElementsAre(28));
+    ASSERT_THAT(payload, ElementsAre(0x01));
 }
 
 TEST_F(JaguarTest, AggregateStatus_readChains)
