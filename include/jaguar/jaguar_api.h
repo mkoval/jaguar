@@ -153,9 +153,6 @@ namespace Configuration {
     }; 
 };
 
-/*
- * Miscellaneous Constants
- */
 namespace PeriodicStatus {
     enum Enum {
         kEnableMessage    = 0,
@@ -164,6 +161,9 @@ namespace PeriodicStatus {
     }; 
 };
 
+/*
+ * Miscellaneous Constants
+ */
 namespace SpeedReference {
     enum Enum {
         kPositiveEncoder   = 0,
@@ -210,6 +210,29 @@ namespace LimitStatus {
         kStickySoftForwardLimitReached = 6,
         kStickySoftReverseLimitReached = 7
     }; 
+};
+
+namespace PeriodicStatusItem {
+    enum Enum {
+        kEndOfMessage              = 0,
+        kOutputVoltagePercentBase  = 1,
+        kBusVoltageBase            = 3,
+        kMotorCurrentBase          = 5,
+        kTemperatureBase           = 7,
+        kPositionBase              = 9,
+        kSpeedBase                 = 13,
+        kLimitNonClearing          = 17,
+        kLimitClearing             = 17,
+        kFaults                    = 19,
+        kStickyFaultsNonClearing   = 20,
+        kStickyFaultsClearing      = 21,
+        kOutputVoltageVolts        = 22,
+        kCurrentFaultCounter       = 24,
+        kTemperatureFaultCounter   = 25,
+        kBusVoltageFaultCounter    = 26,
+        kGateFaultCounter          = 27,
+        kCommunicationFaultCounter = 28
+    };
 };
 
 };

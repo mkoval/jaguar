@@ -12,25 +12,10 @@
 #include <jaguar/jaguar.h>
 #include <jaguar/jaguar_helper.h>
 
+using boost::spirit::eps;
 using boost::spirit::byte_;
 using boost::spirit::little_word;
 using boost::spirit::little_dword;
-typedef boost::spirit::unused_type no_payload;
-
-// This 
-namespace boost { namespace spirit { namespace traits
-{
-    template <>
-    struct create_generator<no_payload>
-    {
-        typedef spirit::karma::eps_type type;
-
-        static type call()
-        {
-            return spirit::karma::eps;
-        }
-    };
-}}}
 
 namespace jaguar {
 
@@ -83,7 +68,7 @@ can::TokenPtr Jaguar::voltage_enable(void)
 {
     return send_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageModeEnable,
-        no_payload()
+        eps
     );
 }
 
@@ -91,7 +76,7 @@ can::TokenPtr Jaguar::voltage_disable(void)
 {
     return send_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageModeDisable,
-        no_payload()
+        eps
     );
 }
 
@@ -134,7 +119,7 @@ can::TokenPtr Jaguar::speed_enable(void)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedModeEnable,
-        no_payload()
+        eps
     );
 }
 
@@ -142,7 +127,7 @@ can::TokenPtr Jaguar::speed_disable(void)
 {
     return send_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedModeDisable,
-        no_payload()
+        eps
     );
 }
 
@@ -239,6 +224,24 @@ can::TokenPtr Jaguar::periodic_disable(uint8_t index)
     );
 }
 
+can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
+{
+    // TODO: Register receive callbacks.
+
+    uint32_t const id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kConfigureMessage + index
+    );
+    can::CANMessage msg(id);
+
+    std::back_insert_iterator<std::vector<uint8_t> > payload(msg.payload);
+    statuses.write(payload);
+    can_.send(msg);
+
+    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    return can_.recv(ack_id);
+}
+
 /*
  * Helpers
  */
@@ -285,6 +288,4 @@ can::TokenPtr Jaguar::recv_ack(void)
     return token_;
 }
 
-
 };
-
