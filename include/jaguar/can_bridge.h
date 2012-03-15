@@ -17,6 +17,8 @@ typedef boost::shared_ptr<Token> TokenPtr;
 
 class CANMessage {
 public:
+    typedef boost::shared_ptr<CANMessage> Ptr;
+
     CANMessage(uint32_t p_id)
         : id(p_id) {}
 
@@ -31,6 +33,7 @@ public:
 
 class CANBridge {
 public:
+    typedef boost::function<void (boost::shared_ptr<CANMessage>)> Callback;
     typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
 
     virtual void send(CANMessage const &message) = 0;

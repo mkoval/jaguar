@@ -200,7 +200,7 @@ void Jaguar::speed_set_noack(double speed, uint8_t group)
 /*
  * Periodic Status Updates
  */
-can::TokenPtr Jaguar::periodic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb)
+can::TokenPtr Jaguar::periodic_enable(uint8_t index, uint16_t rate_ms)
 {
     return send_ack(
         APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,

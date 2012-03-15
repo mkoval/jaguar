@@ -54,7 +54,7 @@ public:
     void          speed_set_noack(double speed, uint8_t group);
 
     // Periodic Status Updates
-    can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms, periodic_callback cb);
+    can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms);
     can::TokenPtr periodic_disable(uint8_t index);
     can::TokenPtr periodic_config(uint8_t index, AggregateStatus statuses);
 
@@ -170,15 +170,15 @@ using boost::spirit::little_dword;
 #define little_s8p8   boost::spirit::little_word
 #define little_s16p16 boost::spirit::little_dword
 
-JAGUAR_MAKE_STATUS(OutputVoltagePercent, double,  byte_(1)  << byte_(2), little_s8p8)
-JAGUAR_MAKE_STATUS(BusVoltage, double,  byte_(3)  << byte_(4), little_s8p8)
-JAGUAR_MAKE_STATUS(Current, double,  byte_(5)  << byte_(6), little_s8p8)
-JAGUAR_MAKE_STATUS(Temperature, double,  byte_(7)  << byte_(8), little_s8p8)
-JAGUAR_MAKE_STATUS(Position, double,  byte_(9)  << byte_(10) << byte_(11) << byte_(12), little_s16p16)
+JAGUAR_MAKE_STATUS(OutputVoltagePercent, double, byte_(1)  << byte_(2), little_s8p8)
+JAGUAR_MAKE_STATUS(BusVoltage, double,  byte_(3) << byte_(4), little_s8p8)
+JAGUAR_MAKE_STATUS(Current, double, byte_(5) << byte_(6), little_s8p8)
+JAGUAR_MAKE_STATUS(Temperature, double,  byte_(7) << byte_(8), little_s8p8)
+JAGUAR_MAKE_STATUS(Position, double, byte_(9)  << byte_(10) << byte_(11) << byte_(12), little_s16p16)
 JAGUAR_MAKE_STATUS(Speed, double,  byte_(13) << byte_(14) << byte_(15) << byte_(16), little_s16p16);
 JAGUAR_MAKE_STATUS(LimitNonClearing, uint8_t, byte_(17), byte_)
 JAGUAR_MAKE_STATUS(LimitClearing, uint8_t, byte_(18), byte_)
-JAGUAR_MAKE_STATUS(OutputVoltageVolts, double,  byte_(22) << byte_(23), little_s8p8)
+JAGUAR_MAKE_STATUS(OutputVoltageVolts, double, byte_(22) << byte_(23), little_s8p8)
 JAGUAR_MAKE_STATUS(CurrentFaultCounter, uint8_t, byte_(24), byte_)
 JAGUAR_MAKE_STATUS(TemperatureFaultCounter, uint8_t, byte_(25), byte_)
 JAGUAR_MAKE_STATUS(BusVoltageFaultCounter, uint8_t, byte_(26), byte_)
