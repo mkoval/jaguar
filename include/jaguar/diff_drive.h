@@ -4,6 +4,7 @@
 #include <string>
 #include <stdint.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/signal.hpp>
 #include <boost/thread/thread.hpp>
 #include <jaguar/jaguar.h>
 #include <jaguar/jaguar_bridge.h>
@@ -20,7 +21,12 @@ struct DiffDriveSettings {
 class DiffDriveRobot
 {
 public:
-    DiffDriveRobot(std::string port, uint8_t left_id, uint8_t right_id, uint32_t heartbeat_ms, uint32_t status_ms);
+    typedef void OdometryCallback(double, double, double, double, double, double);
+
+    DiffDriveRobot(std::string port,
+        uint8_t left_id, uint8_t right_id,
+        uint32_t heartbeat_ms, uint32_t status_ms,
+        double robot_radius);
     virtual ~DiffDriveRobot(void);
 
     virtual void drive(double v, double omega);
@@ -29,6 +35,8 @@ public:
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
     virtual void speed_set_d(double d);
+
+    virtual void odom_attach(boost::function<OdometryCallback> callback);
 
 private:
     enum Side { kNone, kLeft, kRight };
@@ -57,9 +65,9 @@ private:
     double odom_left_, odom_right_;
     double odom_last_left_, odom_last_right_;
     double x_, y_, theta_;
+    boost::signal<OdometryCallback> odom_signal_;
 
-    double radius_robot_;
-    double radius_wheel_;
+    double robot_radius_;
 };
 
 };

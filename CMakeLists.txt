@@ -21,6 +21,7 @@ rosbuild_add_executable(assign_id
 
 rosbuild_add_executable(diff_drive
     src/diff_drive.cc
+    src/diff_drive_node.cc
 )
 
 rosbuild_add_gtest(utests

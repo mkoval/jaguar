@@ -11,7 +11,8 @@ namespace jaguar {
 DiffDriveRobot::DiffDriveRobot(
         std::string port,
         uint8_t left_id, uint8_t right_id,
-        uint32_t heartbeat_ms, uint32_t status_ms
+        uint32_t heartbeat_ms, uint32_t status_ms,
+        double robot_radius
     )
     : bridge_(port),
       jag_broadcast_(bridge_),
@@ -21,7 +22,8 @@ DiffDriveRobot::DiffDriveRobot(
       timer_period_(boost::posix_time::milliseconds(heartbeat_ms)),
       timer_(boost::bind(&DiffDriveRobot::heartbeat, this)),
       odom_last_left_(0.), odom_last_right_(0.),
-      x_(0.), y_(0.), theta_(0.)
+      x_(0.), y_(0.), theta_(0.),
+      robot_radius_(robot_radius)
 {
     speed_init();
     odom_init();
@@ -83,6 +85,11 @@ void DiffDriveRobot::odom_init(void)
     );
 }
 
+void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
+{
+    odom_signal_.connect(callback);
+}
+
 void DiffDriveRobot::odom_update(Side side, int32_t pos)
 {
     double const position = s16p16_to_double(pos);
@@ -107,9 +114,12 @@ void DiffDriveRobot::odom_update(Side side, int32_t pos)
         double const delta_right = odom_get_delta(odom_last_right_, odom_right_);
 
         double const delta_linear  = (delta_left + delta_right) / 2;
-        theta_ += (delta_right - delta_left) / (2 * radius_robot_);
+        theta_ += (delta_right - delta_left) / (2 * robot_radius_);
         x_ += delta_linear * cos(theta_);
         y_ += delta_linear * sin(theta_);
+
+        // TODO: Also include the estimated linear and angular velocity.
+        odom_signal_(x_, y_, theta_, 0.0, 0.0, 0.0);
 
         odom_last_left_  = odom_left_;
         odom_last_right_ = odom_right_;
@@ -162,7 +172,7 @@ void DiffDriveRobot::speed_init(void)
         jag_left_.speed_set_reference(SpeedReference::kQuadratureEncoder),
         jag_right_.speed_set_reference(SpeedReference::kQuadratureEncoder)
     );
-    speed_set_p(10000.0);
+    speed_set_p(1000.0);
     speed_set_i(0.0);
     speed_set_d(0.0);
 }
@@ -192,36 +202,3 @@ void DiffDriveRobot::block(can::TokenPtr t1, can::TokenPtr t2)
 }
 
 };
-
-template <typename T> T convert(std::string const &str)
-{
-    T output;
-    std::stringstream ss(str);
-    ss >> output;
-    return output;
-}
-
-int main(int argc, char **argv)
-{
-    if (argc <= 3) {
-        std::cerr << "err: incorrect number of arguments\n"
-                  << "usage: ./diff_drive <port> <left id> <right id>"
-                  << std::endl;
-        return 0;
-    }
-
-    std::string const port = argv[1];
-    uint8_t const id_left  = convert<int>(argv[2]);
-    uint8_t const id_right = convert<int>(argv[3]);
-    uint32_t const heartbeat_ms = 50;
-    uint32_t const status_ms = 100;
-
-    jaguar::DiffDriveRobot robot(port, id_left, id_right, heartbeat_ms, status_ms);
-    robot.drive(1000.0, 1000.0);
-
-    // Configure callbacks for the periodic status updates.
-
-    for (;;);
-
-    return 0;
-}
