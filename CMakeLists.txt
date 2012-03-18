@@ -26,7 +26,7 @@ rosbuild_add_executable(diff_drive
 
 rosbuild_add_gtest(utests
     test/jaguar_test.cc
-    test/jaguar_bridge_test.cc
+#    test/jaguar_bridge_test.cc
     test/jaguar_helper_test.cc
 )
 
