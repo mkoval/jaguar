@@ -5,10 +5,9 @@ CXXFLAGS = -Wall -g -Isrc -Iinclude/
 LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt
 
 TARGET  = jaguar
-OBJECTS = src/assign_id.cc.o src/jaguar.cc.o src/jaguar_broadcaster.cc.o src/jaguar_helper.cc.o src/jaguar_bridge.cc.o
+OBJECTS = src/diff_drive.cc.o src/jaguar.cc.o src/jaguar_broadcaster.cc.o src/jaguar_helper.cc.o src/jaguar_bridge.cc.o
 TEST_TARGET  = $(TARGET)_test
 TEST_OBJECTS = test/jaguar_test.cc.o test/jaguar_bridge_test.cc.o test/jaguar_helper_test.cc.o src/jaguar.cc.o src/jaguar_broadcaster.cc.o src/jaguar_helper.cc.o src/jaguar_bridge.cc.o
-#test/jaguar_bridge_test.cc.o test/jaguar_helper_test.cc.o
 
 .PHONY: all test clean
 .SECONDARY:    
