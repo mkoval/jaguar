@@ -1,26 +1,26 @@
 #include <cassert>
-#include "jaguar_helper.h"
+#include <jaguar/jaguar_helper.h>
 
 namespace jaguar {
 
 int16_t double_to_s8p8(double x)
 {
-    return htole16(static_cast<int16_t>(x * 256));
+    return static_cast<int16_t>(x * 256);
 }
 
 int32_t double_to_s16p16(double x)
 {
-    return htole32(static_cast<int32_t>(x * 65536));
+    return static_cast<int32_t>(x * 65536);
 }
 
 double s8p8_to_double(int16_t x)
 {
-    return le16toh(x) / 256.;
+    return x / 256.;
 }
 
 double s16p16_to_double(int32_t x)
 {
-    return le32toh(x) / 65536.;
+    return x / 65536.;
 }
 
 uint32_t pack_id(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type,
@@ -39,10 +39,9 @@ uint32_t pack_id(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type,
          | (static_cast<uint32_t>(type)      << 24);
 }
 
-uint32_t pack_ack(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type,
-                  uint8_t api_index)
+uint32_t pack_ack(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type)
 {
-    return pack_id(num, man, type, APIClass::kAcknowledge, api_index);
+    return pack_id(num, man, type, APIClass::kAcknowledge, 0);
 }
 
 };

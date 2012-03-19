@@ -2,8 +2,10 @@
 #define CANBRIDGE_H_
 
 #include <exception>
+#include <stdint.h>
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
@@ -15,6 +17,8 @@ typedef boost::shared_ptr<Token> TokenPtr;
 
 class CANMessage {
 public:
+    typedef boost::shared_ptr<CANMessage> Ptr;
+
     CANMessage(uint32_t p_id)
         : id(p_id) {}
 
@@ -29,13 +33,19 @@ public:
 
 class CANBridge {
 public:
+    typedef boost::function<void (boost::shared_ptr<CANMessage>)> Callback;
+    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
+
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
+    virtual void attach_callback(uint32_t id, recv_callback cb) = 0;
 };
 
 class Token : boost::noncopyable
 {
 public:
+    typedef boost::shared_ptr<Token> Ptr;
+
 	Token(void) {}
 	virtual ~Token(void) {}
 	virtual void block(void) = 0;

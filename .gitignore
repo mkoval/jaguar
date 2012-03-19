@@ -1,9 +1,13 @@
-*.pyc
 *~
 *.o
+*.sublime-workspace
 .DS_Store
 /jaguar
+/bin/
+/lib/
 /build/
 /CMakeCache.txt
 /CMakeFiles/
 /cmake_install.cmake
+jaguar
+jaguar_test

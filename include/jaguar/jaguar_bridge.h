@@ -31,8 +31,6 @@ class JaguarToken;
 class JaguarBridge : public CANBridge
 {
 public:
-    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
-
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
