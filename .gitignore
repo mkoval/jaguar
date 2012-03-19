@@ -1,6 +1,7 @@
 *~
 *.o
 *.sublime-workspace
+.*.swp
 .DS_Store
 /jaguar
 /bin/
