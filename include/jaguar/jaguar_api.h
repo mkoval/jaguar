@@ -41,7 +41,7 @@ namespace APIClass {
         kPeriodicStatus             = 6,
         kConfiguration              = 7,
         kAcknowledge                = 8
-    }; 
+    };
 };
 
 /*
@@ -161,6 +161,17 @@ namespace PeriodicStatus {
     }; 
 };
 
+namespace FirmwareUpdate {
+    enum Enum {
+        kPing     = 0,
+        kDownload = 1, /* sets starting address */
+        kSendData = 2,
+        kReset    = 3,
+        kAck      = 4,
+        kRequest  = 6
+    };
+}
+
 /*
  * Miscellaneous Constants
  */
@@ -238,3 +249,5 @@ namespace PeriodicStatusItem {
 };
 
 #endif
+
+/* vim: set ts=4 et sts=4 sw=4: */

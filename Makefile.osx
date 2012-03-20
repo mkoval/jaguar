@@ -1,25 +1,37 @@
+all::
+
 CXX = clang++
 LD  = clang++
 RM  = rm -f
 CXXFLAGS = -Wall -g -Isrc -Iinclude/
-LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt
+LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt -Wl,--demangle
 
-TARGET  = jaguar
-OBJECTS = src/diff_drive.cc.o src/jaguar.cc.o src/jaguar_broadcaster.cc.o src/jaguar_helper.cc.o src/jaguar_bridge.cc.o
-TEST_TARGET  = $(TARGET)_test
-TEST_OBJECTS = test/jaguar_test.cc.o test/jaguar_bridge_test.cc.o test/jaguar_helper_test.cc.o src/jaguar.cc.o src/jaguar_broadcaster.cc.o src/jaguar_helper.cc.o src/jaguar_bridge.cc.o
+LIB_OBJ+=src/jaguar.cc.o
+LIB_OBJ+=src/jaguar_broadcaster.cc.o
+LIB_OBJ+=src/jaguar_helper.cc.o
+LIB_OBJ+=src/jaguar_bridge.cc.o
+
+TEST_TARGET  = jaguar_test
+TEST_OBJECTS = test/jaguar_test.cc.o
+TEST_OBJECTS+= test/jaguar_bridge_test.cc.o
+TEST_OBJECTS+= test/jaguar_helper_test.cc.o
+TEST_OBJECTS+= $(LIB_OBJ)
 
 .PHONY: all test clean
-.SECONDARY:    
+.SECONDARY:
 
-all: $(TARGET)
+unbrick : src/unbrick.cc.o   $(LIB_OBJ)
+jaguar  : src/assign_id.cc.o $(LIB_OBJ)
+TARGETS  = jaguar unbrick
+
+all:: $(TARGETS)
 
 test: $(TEST_TARGET)
 
 clean:
 	$(RM) $(TARGET) $(TEST_TARGET) $(OBJECTS) $(TEST_OBJECTS)
 
-$(TARGET): $(OBJECTS)
+$(TARGETS):
 	$(LD) $(LDFLAGS) -o $@ $^
 
 $(TEST_TARGET): $(TEST_OBJECTS)    

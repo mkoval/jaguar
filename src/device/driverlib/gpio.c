@@ -2,7 +2,7 @@
 //
 // gpio.c - API for GPIO ports
 //
-// Copyright (c) 2005-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2005-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -102,7 +102,7 @@ GPIOBaseValid(unsigned long ulPort)
 //!
 //! \param ulPort is the base address of the GPIO port.
 //!
-//! Given a GPIO base address, this function returns the corresponding 
+//! Given a GPIO base address, this function returns the corresponding
 //! interrupt number.
 //!
 //! \return Returns a GPIO interrupt number, or -1 if \e ulPort is invalid.
@@ -902,15 +902,15 @@ GPIOPinWrite(unsigned long ulPort, unsigned char ucPins, unsigned char ucVal)
 //! \param ucPins is the bit-packed representation of the pin(s).
 //!
 //! The analog-to-digital converter input pins must be properly configured
-//! to function correctly on devices that are not Sandstorm- or Fury-class.  
+//! to function correctly on devices that are not Sandstorm- or Fury-class.
 //! This function provides the proper configuration for those pin(s).
 //!
 //! The pin(s) are specified using a bit-packed byte, where each bit that is
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an ADC input; it 
-//! only configures an ADC input pin for proper operation. Devices with 
+//! \note This function cannot be used to turn any pin into an ADC input; it
+//! only configures an ADC input pin for proper operation. Devices with
 //! flexible pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -952,7 +952,7 @@ GPIOPinTypeADC(unsigned long ulPort, unsigned char ucPins)
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
 //! \note This function cannot be used to turn any pin into a CAN pin; it only
-//! configures a CAN pin for proper operation. Devices with flexible pin 
+//! configures a CAN pin for proper operation. Devices with flexible pin
 //! muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -992,8 +992,8 @@ GPIOPinTypeCAN(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an analog comparator 
-//! input; it only configures an analog comparator pin for proper operation. 
+//! \note This function cannot be used to turn any pin into an analog comparator
+//! input; it only configures an analog comparator pin for proper operation.
 //! Devices with flexible pin muxing also require a GPIOPinConfigure()
 //! function call.
 //!
@@ -1036,8 +1036,8 @@ GPIOPinTypeComparator(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an external 
-//! peripheral interface pin; it only configures an external peripheral 
+//! \note This function cannot be used to turn any pin into an external
+//! peripheral interface pin; it only configures an external peripheral
 //! interface pin for proper operation. Devices with flexible pin muxing also
 //! require a GPIOPinConfigure() function call.
 //!
@@ -1078,8 +1078,8 @@ GPIOPinTypeEPI(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an Ethernet LED pin; 
-//! it only configures an Ethernet LED pin for proper operation. Devices with 
+//! \note This function cannot be used to turn any pin into an Ethernet LED pin;
+//! it only configures an Ethernet LED pin for proper operation. Devices with
 //! flexible pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1119,8 +1119,8 @@ GPIOPinTypeEthernetLED(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an Ethernet MII pin; 
-//! it only configures an Ethernet MII pin for proper operation. Devices with 
+//! \note This function cannot be used to turn any pin into an Ethernet MII pin;
+//! it only configures an Ethernet MII pin for proper operation. Devices with
 //! flexible pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1203,9 +1203,9 @@ GPIOPinTypeFan(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note Devices with flexible pin muxing also require a GPIOPinConfigure() 
+//! \note Devices with flexible pin muxing also require a GPIOPinConfigure()
 //! function call.
-//! 
+//!
 //! \return None.
 //
 //*****************************************************************************
@@ -1244,7 +1244,7 @@ GPIOPinTypeGPIOInput(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note Devices with flexible pin muxing also require a GPIOPinConfigure() 
+//! \note Devices with flexible pin muxing also require a GPIOPinConfigure()
 //! function call.
 //!
 //! \return None.
@@ -1285,7 +1285,7 @@ GPIOPinTypeGPIOOutput(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note Devices with flexible pin muxing also require a GPIOPinConfigure() 
+//! \note Devices with flexible pin muxing also require a GPIOPinConfigure()
 //! function call.
 //!
 //! \return None.
@@ -1325,8 +1325,8 @@ GPIOPinTypeGPIOOutputOD(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into an I2C pin; it 
-//! only configures an I2C pin for proper operation. Devices with flexible pin 
+//! \note This function cannot be used to turn any pin into an I2C pin; it
+//! only configures an I2C pin for proper operation. Devices with flexible pin
 //! muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1366,8 +1366,8 @@ GPIOPinTypeI2C(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function should only be used for Blizzard-class devices. It 
-//! cannot be used to turn any pin into an I2C SCL pin; it only configures an 
+//! \note This function should only be used for Blizzard-class devices. It
+//! cannot be used to turn any pin into an I2C SCL pin; it only configures an
 //! I2C SCL pin for proper operation. Devices with flexible pin muxing also
 //! require a GPIOPinConfigure() function call.
 //!
@@ -1417,7 +1417,7 @@ GPIOPinTypeI2CSCL(unsigned long ulPort, unsigned char ucPins)
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
 //! \note This function cannot be used to turn any pin into a I2S pin; it only
-//! configures a I2S pin for proper operation. Devices with flexible pin 
+//! configures a I2S pin for proper operation. Devices with flexible pin
 //! muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1459,7 +1459,7 @@ GPIOPinTypeI2S(unsigned long ulPort, unsigned char ucPins)
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
 //! \note This function cannot be used to turn any pin into a LPC pin; it only
-//! configures a LPC pin for proper operation. Devices with flexible pin 
+//! configures a LPC pin for proper operation. Devices with flexible pin
 //! muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1499,8 +1499,8 @@ GPIOPinTypeLPC(unsigned long ulPort, unsigned char ucPins)
 //! identifies the pin to be accessed, and where bit 0 of the byte represents
 //! GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into a PECI receive pin; 
-//! it only configures a PECI receive pin for proper operation. Devices with 
+//! \note This function cannot be used to turn any pin into a PECI receive pin;
+//! it only configures a PECI receive pin for proper operation. Devices with
 //! flexible pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1540,7 +1540,7 @@ GPIOPinTypePECIRx(unsigned long ulPort, unsigned char ucPins)
 //! identifies the pin to be accessed, and where bit 0 of the byte represents
 //! GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into a PECI transmit pin; 
+//! \note This function cannot be used to turn any pin into a PECI transmit pin;
 //! it only configures a PECI transmit pin for proper operation. Devices with
 //! flexible pin muxing also require a GPIOPinConfigure() function call.
 //!
@@ -1583,7 +1583,7 @@ GPIOPinTypePECITx(unsigned long ulPort, unsigned char ucPins)
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
 //! \note This function cannot be used to turn any pin into a PWM pin; it only
-//! configures a PWM pin for proper operation. Devices wtih flexible pin 
+//! configures a PWM pin for proper operation. Devices wtih flexible pin
 //! muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1708,8 +1708,8 @@ GPIOPinTypeSSI(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into a timer pin; it 
-//! only configures a timer pin for proper operation. Devices with flexible 
+//! \note This function cannot be used to turn any pin into a timer pin; it
+//! only configures a timer pin for proper operation. Devices with flexible
 //! pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1750,8 +1750,8 @@ GPIOPinTypeTimer(unsigned long ulPort, unsigned char ucPins)
 //! set identifies the pin to be accessed, and where bit 0 of the byte
 //! represents GPIO port pin 0, bit 1 represents GPIO port pin 1, and so on.
 //!
-//! \note This function cannot be used to turn any pin into a UART pin; it 
-//! only configures a UART pin for proper operation. Devices with flexible 
+//! \note This function cannot be used to turn any pin into a UART pin; it
+//! only configures a UART pin for proper operation. Devices with flexible
 //! pin muxing also require a GPIOPinConfigure() function call.
 //!
 //! \return None.
@@ -1875,7 +1875,7 @@ GPIOPinTypeUSBDigital(unsigned long ulPort, unsigned char ucPins)
 //! associated with a particular GPIO pin.  Only one peripheral function at a
 //! time can be associated with a GPIO pin, and each peripheral function should
 //! only be associated with a single GPIO pin at a time (despite the fact that
-//! many of them can be associated with more than one GPIO pin). To fully 
+//! many of them can be associated with more than one GPIO pin). To fully
 //! configure a pin, a GPIOPinType*() function should also be called.
 //!
 //! The available mappings are supplied on a per-device basis in
@@ -1883,7 +1883,9 @@ GPIOPinTypeUSBDigital(unsigned long ulPort, unsigned char ucPins)
 //! appropriate set of defines for the device that is being used.
 //!
 //! \note This function is not valid on Sandstorm, Fury, and Dustdevil-class
-//! devices.
+//! devices. Also, if the same signal is assigned to two different GPIO port
+//! pins, the signal is assigned to the port with the lowest letter and the
+//! assignment to the higher letter port is ignored.
 //!
 //! \return None.
 //
@@ -1970,8 +1972,8 @@ GPIODMATriggerEnable(unsigned long ulPort, unsigned char ucPins)
 //! \param ulPort is the base address of the GPIO port.
 //! \param ucPins is the bit-packed representation of the pin(s).
 //!
-//! This function disables a GPIO pin from being used as a trigger to start a 
-//! uDMA transaction.  This function can be used to disable this feature if it 
+//! This function disables a GPIO pin from being used as a trigger to start a
+//! uDMA transaction.  This function can be used to disable this feature if it
 //! was enabled via a call to GPIODMATriggerEnable().
 //!
 //! \note This function is not available on all devices, consult the data sheet
@@ -2004,8 +2006,8 @@ GPIODMATriggerDisable(unsigned long ulPort, unsigned char ucPins)
 //! This function enables a GPIO pin to be used as a trigger to start an ADC
 //! sequence.  Any GPIO pin can be configured to be an external trigger for
 //! an ADC sequence.  The GPIO pin still generates interrupts if the
-//! interrupt is enabled for the selected pin. To enable the use of a GPIO pin 
-//! to trigger the ADC module, the ADCSequenceConfigure() function must be called 
+//! interrupt is enabled for the selected pin. To enable the use of a GPIO pin
+//! to trigger the ADC module, the ADCSequenceConfigure() function must be called
 //! with the ADC_TRIGGER_EXTERNAL parameter.
 //!
 //! \note This function is not available on all devices, consult the data sheet

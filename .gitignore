@@ -1,7 +1,10 @@
 *~
 *.o
 *.sublime-workspace
+.*.swp
 .DS_Store
+/jaguar
+/unbrick
 /bin/
 /lib/
 /build/

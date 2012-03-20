@@ -8,6 +8,7 @@
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 namespace can {
 
@@ -33,12 +34,14 @@ public:
 
 class CANBridge {
 public:
-    typedef boost::function<void (boost::shared_ptr<CANMessage>)> Callback;
-    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
+    typedef boost::function<void (CANMessage::Ptr)> Callback;
+    typedef boost::function<void (CANMessage::Ptr)> recv_callback;
 
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
     virtual void attach_callback(uint32_t id, recv_callback cb) = 0;
+    virtual void attach_callback(uint32_t id, uint32_t id_mask,
+		    recv_callback cb) = 0;
 };
 
 class Token : boost::noncopyable
@@ -49,6 +52,7 @@ public:
 	Token(void) {}
 	virtual ~Token(void) {}
 	virtual void block(void) = 0;
+	virtual bool timed_block(boost::posix_time::time_duration const &duration) = 0;
     virtual bool ready(void) const = 0;
 	virtual boost::shared_ptr<CANMessage const> message(void) const = 0;
 };
@@ -69,3 +73,5 @@ private:
 };
 
 #endif
+
+/* vim: set et sts=4 sw=4 ts=4: */

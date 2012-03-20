@@ -1,6 +1,8 @@
 #include <cassert>
 #include <iostream>
 #include <boost/make_shared.hpp>
+#include <boost/foreach.hpp>
+#include <boost/lambda/lambda.hpp>
 #include <jaguar/jaguar_bridge.h>
 
 namespace asio = boost::asio;
@@ -87,6 +89,20 @@ TokenPtr JaguarBridge::recv(uint32_t id)
     return it.first->second;
 }
 
+void JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
+{
+    boost::mutex::scoped_lock lock(callback_mutex_);
+
+    /* FIXME: connect signals with identical id & id_mask */
+    callbacks_list_.insert(
+	callbacks_list_.end(),
+	std::make_pair(
+            make_masked_number(id, id_mask),
+            boost::make_shared<callback_signal>()
+        )
+    );
+}
+
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
@@ -94,7 +110,7 @@ void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
     // Calling map::insert() is equivalent to map::find() if the key already
     // exists; i.e. the map is not changed in any way.
     std::pair<callback_table::iterator, bool> old_callback = callbacks_.insert(
-        std::make_pair(
+	std::make_pair(
             id,
             boost::make_shared<callback_signal>()
         )
@@ -193,7 +209,13 @@ void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
     callback_table::iterator callback_it = callbacks_.find(msg->id);
     if (callback_it != callbacks_.end()) {
         (*callback_it->second)(msg);
-    }    
+    }
+
+    // Invoke more callbacks
+    BOOST_FOREACH(mask_callback m, callbacks_list_) {
+	    if (m.first.matches(msg->id))
+		    (*m.second)(msg);
+    }
 
     // Wake anyone who is blocking for a response.
     token_table::iterator token_it = tokens_.find(msg->id);
@@ -260,12 +282,14 @@ JaguarToken::~JaguarToken(void)
 
 void JaguarToken::block(void)
 {
-    if (done_) return;
-
     boost::unique_lock<boost::mutex> lock(mutex_);
-    while (!done_) {
-        cond_.wait(lock);
-    }
+    cond_.wait(lock, boost::lambda::var(done_));
+}
+
+bool JaguarToken::timed_block(boost::posix_time::time_duration const& rel_time)
+{
+    boost::unique_lock<boost::mutex> lock(mutex_);
+    return cond_.timed_wait(lock, rel_time, boost::lambda::var(done_));
 }
 
 bool JaguarToken::ready(void) const
@@ -291,3 +315,5 @@ void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 }
 
 };
+
+/* vim: set et tw=4 sts=4 sw=4: */

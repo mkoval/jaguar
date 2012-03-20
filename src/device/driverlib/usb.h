@@ -2,7 +2,7 @@
 //
 // usb.h - Prototypes for the USB Interface Driver.
 //
-// Copyright (c) 2007-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2007-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -505,11 +505,12 @@ extern void USBDevMode(unsigned long ulBase);
 extern void USBOTGMode(unsigned long ulBase);
 extern void USBPHYPowerOff(unsigned long ulBase);
 extern void USBPHYPowerOn(unsigned long ulBase);
+extern unsigned long USBNumEndpointsGet(unsigned long ulBase);
 
 //*****************************************************************************
 //
 // Several USB APIs have been renamed, with the original function name being
-// deprecated.  These defines and function protypes provide backward
+// deprecated.  These defines and function prototypes provide backward
 // compatibility.
 //
 //*****************************************************************************

@@ -2,7 +2,7 @@
 //
 // hw_lpc.h - Macros used when accessing the LPC hardware.
 //
-// Copyright (c) 2010-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2010-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Firmware Development Package.
+// This is part of revision 8555 of the Stellaris Firmware Development Package.
 //
 //*****************************************************************************
 
@@ -98,7 +98,7 @@
 //
 //*****************************************************************************
 #define LPC_STS_CHCNT_M         0x00700000  // Number of Channels
-#define LPC_STS_POOLSZ_M        0x00070000  // Register Pool Size
+#define LPC_STS_POOLSZ_M        0x000F0000  // Register Pool Size
 #define LPC_STS_POOLSZ_256      0x00010000  // 256 bytes
 #define LPC_STS_POOLSZ_512      0x00020000  // 512 bytes
 #define LPC_STS_POOLSZ_768      0x00030000  // 768 bytes
@@ -182,7 +182,7 @@
 #define LPC_CH0CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH0CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH0CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH0CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH0CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH0CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH0CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -251,7 +251,7 @@
 #define LPC_CH1CTL_IRQEN0_TRGI2 0x00020000  // Trigger 2
 #define LPC_CH1CTL_IRQEN0_TRGI3 0x00030000  // Trigger 3
 #define LPC_CH1CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH1CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH1CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH1CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH1CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -320,7 +320,7 @@
 #define LPC_CH2CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH2CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH2CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH2CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH2CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH2CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH2CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -389,7 +389,7 @@
 #define LPC_CH3CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH3CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH3CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH3CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH3CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH3CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH3CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -458,7 +458,7 @@
 #define LPC_CH4CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH4CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH4CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH4CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH4CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH4CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH4CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -526,7 +526,7 @@
 #define LPC_CH5CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH5CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH5CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH5CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH5CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH5CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH5CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -594,7 +594,7 @@
 #define LPC_CH6CTL_IRQEN0_TRIG2 0x00020000  // Trigger 2
 #define LPC_CH6CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH6CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH6CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH6CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH6CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH6CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint
@@ -669,7 +669,7 @@
                                             // SW1ST bit is set)
 #define LPC_CH7CTL_IRQEN0_TRIG3 0x00030000  // Trigger 3
 #define LPC_CH7CTL_ARBDIS       0x00008000  // Arbitration Disabled
-#define LPC_CH7CTL_OFFSET_M     0x00003FE0  // Base Offset in Register Pool
+#define LPC_CH7CTL_OFFSET_M     0x00007FE0  // Base Offset in Register Pool
 #define LPC_CH7CTL_AMASK_M      0x0000001C  // Address Mask for Ranges
 #define LPC_CH7CTL_AMASK_4      0x00000000  // Address mask of 0x3; mailbox
                                             // size of 4 bytes for an endpoint

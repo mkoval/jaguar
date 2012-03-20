@@ -2,7 +2,7 @@
 //
 // eeprom.c - Driver for programming the on-chip EEPROM.
 //
-// Copyright (c) 2010-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2010-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -147,7 +147,7 @@ EEPROMWaitForDone(void)
 //! rewriting this data.  If \b EEPROM_INIT_ERROR is returned, the EEPROM was
 //! unable to recover its state.  This condition may or may not be resolved on
 //! future resets depending upon the cause of the fault. For example, if the
-//! supply voltage is unstable, retrying the operation once the voltage is 
+//! supply voltage is unstable, retrying the operation once the voltage is
 //! stabilized may clear the error.
 //!
 //! Failure to call this function after a reset may lead to permanent data loss
@@ -368,12 +368,16 @@ EEPROMProgram(unsigned long *pulData, unsigned long ulAddress,
     ASSERT((ulCount & 3) == 0);
 
     //
-    // This is a workaround for a silicon problem on Blizzard rev A.
+    // Make sure the EEPROM is idle before we start.
     //
-    if(CLASS_IS_BLIZZARD && REVISION_IS_A0)
+    do
     {
-        EEPROMSetSectorMask(ulAddress);
+        //
+        // Read the status.
+        //
+        ulStatus = HWREG(EEPROM_EEDONE);
     }
+    while(ulStatus & EEPROM_EEDONE_WORKING);
 
     //
     // Set the block and offset appropriately to program the first word.
@@ -391,6 +395,17 @@ EEPROMProgram(unsigned long *pulData, unsigned long ulAddress,
     //
     while(ulCount)
     {
+        //
+        // This is a workaround for a silicon problem on Blizzard rev A.  We
+        // need to do this before every word write to ensure that we don't
+        // have problems in multi-word writes that span multiple flash sectors.
+        //
+        if(CLASS_IS_BLIZZARD && REVISION_IS_A0)
+        {
+            EEPROMSetSectorMask(ulAddress);
+            ulAddress += 4;
+        }
+
         //
         // Write the next word through the autoincrementing register.
         //
@@ -626,9 +641,9 @@ EEPROMBlockProtectGet(unsigned long ulBlock)
 //! access to the EEPROM peripheral as a whole.  Protection settings applied to
 //! blocks numbered 1 and above are layered above any protection set on block 0
 //! such that the effective protection on each block is the logical OR of the
-//! protection flags set for block 0 and for the target block.  This protocol 
-//! allows global protection options to be set for the whole device via block 
-//! 0 and more restrictive protection settings to be set on a block-by-block 
+//! protection flags set for block 0 and for the target block.  This protocol
+//! allows global protection options to be set for the whole device via block
+//! 0 and more restrictive protection settings to be set on a block-by-block
 //! basis.
 //!
 //! The protection flags indicate access permissions as follow:

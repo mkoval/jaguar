@@ -2,7 +2,7 @@
 //
 // usb.c - Driver for the USB Interface.
 //
-// Copyright (c) 2007-2011 Texas Instruments Incorporated.  All rights reserved.
+// Copyright (c) 2007-2012 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
 // 
 // Texas Instruments (TI) is supplying this software for use solely and
@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 8264 of the Stellaris Peripheral Driver Library.
+// This is part of revision 8555 of the Stellaris Peripheral Driver Library.
 //
 //*****************************************************************************
 
@@ -32,9 +32,11 @@
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
 #include "inc/hw_types.h"
+#include "inc/hw_sysctl.h"
 #include "inc/hw_usb.h"
 #include "driverlib/debug.h"
 #include "driverlib/interrupt.h"
+#include "driverlib/sysctl.h"
 #include "driverlib/udma.h"
 #include "driverlib/usb.h"
 
@@ -379,7 +381,7 @@ USBHostSpeedGet(unsigned long ulBase)
 //! \b USB_DEV_IN, \b USB_DEV_OUT, and \b USB_DEV_EP0 values.
 //!
 //! \note This call clears the source of all of the general status interrupts.
-//! 
+//!
 //! \note WARNING: This API cannot be used on endpoint numbers greater than
 //! endpoint 3 so USBIntStatusControl() or USBIntStatusEndpoint() should be
 //! used instead.
@@ -494,7 +496,7 @@ USBIntDisable(unsigned long ulBase, unsigned long ulFlags)
     }
 
     //
-    // If any receive interrupts were disabled, then write the receive 
+    // If any receive interrupts were disabled, then write the receive
     // interrupt settings out to the hardware.
     //
     if(ulFlags & (USB_INT_HOST_IN | USB_INT_DEV_OUT))
@@ -505,7 +507,7 @@ USBIntDisable(unsigned long ulBase, unsigned long ulFlags)
     }
 
     //
-    // If any general interrupts were disabled, then write the general 
+    // If any general interrupts were disabled, then write the general
     // interrupt settings out to the hardware.
     //
     if(ulFlags & USB_INT_STATUS)
@@ -550,7 +552,7 @@ USBIntDisable(unsigned long ulBase, unsigned long ulFlags)
 //! \note A call must be made to enable the interrupt in the main interrupt
 //! controller to receive interrupts.  The USBIntRegister() API performs this
 //! controller-level interrupt enable.  However if static interrupt handlers
-//! are used, then then a call to IntEnable() must be made in order to allow 
+//! are used, then then a call to IntEnable() must be made in order to allow
 //! any USB interrupts to occur.
 //!
 //! \note WARNING: This API cannot be used on endpoint numbers greater than
@@ -581,7 +583,7 @@ USBIntEnable(unsigned long ulBase, unsigned long ulFlags)
     }
 
     //
-    // If any receive interrupts were enabled, then write the receive 
+    // If any receive interrupts were enabled, then write the receive
     // interrupt settings out to the hardware.
     //
     if(ulFlags & (USB_INT_HOST_IN | USB_INT_DEV_OUT))
@@ -592,7 +594,7 @@ USBIntEnable(unsigned long ulBase, unsigned long ulFlags)
     }
 
     //
-    // If any general interrupts were enabled, then write the general 
+    // If any general interrupts were enabled, then write the general
     // interrupt settings out to the hardware.
     //
     if(ulFlags & USB_INT_STATUS)
@@ -696,7 +698,7 @@ USBIntEnableControl(unsigned long ulBase, unsigned long ulFlags)
     ASSERT((ulFlags & (~USB_INTCTRL_ALL)) == 0);
 
     //
-    // If any general interrupts were enabled, then write the general 
+    // If any general interrupts were enabled, then write the general
     // interrupt settings out to the hardware.
     //
     if(ulFlags & USB_INTCTRL_STATUS)
@@ -729,7 +731,7 @@ USBIntEnableControl(unsigned long ulBase, unsigned long ulFlags)
 //!
 //! This function reads control interrupt status for a USB controller. This
 //! call returns the current status for control interrupts only, the endpoint
-//! interrupt status is retrieved by calling USBIntStatusEndpoint(). The bit 
+//! interrupt status is retrieved by calling USBIntStatusEndpoint(). The bit
 //! values returned should be compared against the \b USB_INTCTRL_*
 //! values.
 //!
@@ -758,7 +760,7 @@ USBIntEnableControl(unsigned long ulBase, unsigned long ulFlags)
 //! - \b USB_INTCTRL_POWER_FAULT - Power Fault detected. (Host Only)
 //!
 //! \note This call clears the source of all of the control status interrupts.
-//! 
+//!
 //! \return Returns the status of the control interrupts for a USB controller.
 //
 //*****************************************************************************
@@ -899,8 +901,8 @@ USBIntEnableEndpoint(unsigned long ulBase, unsigned long ulFlags)
 //!
 //! This function reads endpoint interrupt status for a USB controller. This
 //! call returns the current status for endpoint interrupts only, the control
-//! interrupt status is retrieved by calling USBIntStatusControl(). The bit 
-//! values returned should be compared against the \b USB_INTEP_* values.  
+//! interrupt status is retrieved by calling USBIntStatusControl(). The bit
+//! values returned should be compared against the \b USB_INTEP_* values.
 //! These values are grouped into classes for \b USB_INTEP_HOST_* and
 //! \b USB_INTEP_DEV_* values to handle both host and device modes with all
 //! endpoints.
@@ -945,7 +947,7 @@ USBIntStatusEndpoint(unsigned long ulBase)
 //! occurs and enables the global USB interrupt in the interrupt controller.
 //! The specific desired USB interrupts must be enabled via a separate call to
 //! USBIntEnable().  It is the interrupt handler's responsibility to clear the
-//! interrupt sources via calls to USBIntStatusControl() and 
+//! interrupt sources via calls to USBIntStatusControl() and
 //! USBIntStatusEndpoint().
 //!
 //! \sa IntRegister() for important information about registering interrupt
@@ -1017,7 +1019,7 @@ USBIntUnregister(unsigned long ulBase)
 //! This function returns the status of a given endpoint.  If any of these
 //! status bits must be cleared, then the USBDevEndpointStatusClear() or the
 //! USBHostEndpointStatusClear() functions should be called.
-//! 
+//!
 //! The following are the status flags for host mode:
 //!
 //! - \b USB_HOST_IN_PID_ERROR - PID error on the given endpoint.
@@ -1196,7 +1198,7 @@ USBDevEndpointStatusClear(unsigned long ulBase, unsigned long ulEndpoint,
            (ulEndpoint == USB_EP_14) || (ulEndpoint == USB_EP_15));
 
     //
-    // If this is endpoint 0, then the bits have different meaning and map 
+    // If this is endpoint 0, then the bits have different meaning and map
     // into the TX memory location.
     //
     if(ulEndpoint == USB_EP_0)
@@ -1605,7 +1607,7 @@ USBDevDisconnect(unsigned long ulBase)
 //! \param ulBase specifies the USB module base address.
 //! \param ulAddress is the address to use for a device.
 //!
-//! This function configures the device address on the USB bus.  This address 
+//! This function configures the device address on the USB bus.  This address
 //! was likely received via a SET ADDRESS command from the host controller.
 //!
 //! \note This function should only be called in device mode.
@@ -1672,9 +1674,9 @@ USBDevAddrGet(unsigned long ulBase)
 //! portion of an endpoint in host mode.  The \e ulFlags parameter determines
 //! some of the configuration while the other parameters provide the rest.  The
 //! \e ulFlags parameter determines whether this is an IN endpoint
-//! (\b USB_EP_HOST_IN or \b USB_EP_DEV_IN) or an OUT endpoint 
+//! (\b USB_EP_HOST_IN or \b USB_EP_DEV_IN) or an OUT endpoint
 //! (\b USB_EP_HOST_OUT or \b USB_EP_DEV_OUT), whether this is a Full speed
-//! endpoint (\b USB_EP_SPEED_FULL) or a Low speed endpoint 
+//! endpoint (\b USB_EP_SPEED_FULL) or a Low speed endpoint
 //! (\b USB_EP_SPEED_LOW).
 //!
 //! The \b USB_EP_MODE_ flags control the type of the endpoint.
@@ -1697,7 +1699,7 @@ USBDevAddrGet(unsigned long ulBase)
 //! frames.  When used as a NAK timeout, the \e ulNAKPollInterval value
 //! specifies 2 ^ (\e ulNAKPollInterval - 1) frames before issuing a time out.
 //! There are two special time out values that can be specified when setting
-//! the \e ulNAKPollInterval value.  The first is \b MAX_NAK_LIMIT, which is 
+//! the \e ulNAKPollInterval value.  The first is \b MAX_NAK_LIMIT, which is
 //! the maximum value that can be passed in this variable.  The other is
 //! \b DISABLE_NAK_LIMIT, which indicates that there should be no limit on the
 //! number of NAKs.
@@ -1847,7 +1849,7 @@ USBHostEndpointConfig(unsigned long ulBase, unsigned long ulEndpoint,
             //
             // Set the Maximum Payload per transaction.
             //
-            HWREGB(ulBase + EP_OFFSET(ulEndpoint) + USB_O_TXMAXP1) =
+            HWREGH(ulBase + EP_OFFSET(ulEndpoint) + USB_O_TXMAXP1) =
                 ulMaxPayload;
 
             //
@@ -1895,6 +1897,12 @@ USBHostEndpointConfig(unsigned long ulBase, unsigned long ulEndpoint,
             //
             HWREGB(ulBase + EP_OFFSET(ulEndpoint) + USB_O_RXINTERVAL1) =
                 ulNAKPollInterval;
+
+            //
+            // Set the Maximum Payload per transaction.
+            //
+            HWREGH(ulBase + EP_OFFSET(ulEndpoint) + USB_O_RXMAXP1) =
+                ulMaxPayload;
 
             //
             // Set the receive control value to zero.
@@ -1970,8 +1978,8 @@ USBHostEndpointConfig(unsigned long ulBase, unsigned long ulEndpoint,
 //! drained enough to receive \e ulMaxPacketSize more bytes of data.  Also for
 //! OUT endpoints, the \b USB_EP_AUTO_CLEAR bit can be used to clear the data
 //! packet ready flag automatically once the data has been read from the FIFO.
-//! If this option is not used, this flag must be manually cleared via a call 
-//! to USBDevEndpointStatusClear().  Both of these settings can be used to 
+//! If this option is not used, this flag must be manually cleared via a call
+//! to USBDevEndpointStatusClear().  Both of these settings can be used to
 //! remove the need for extra calls when using the controller in DMA mode.
 //!
 //! \note This function should only be called in device mode.
@@ -2006,7 +2014,7 @@ USBDevEndpointConfigSet(unsigned long ulBase, unsigned long ulEndpoint,
         //
         // Set the maximum packet size.
         //
-        HWREGB(ulBase + EP_OFFSET(ulEndpoint) + USB_O_TXMAXP1) =
+        HWREGH(ulBase + EP_OFFSET(ulEndpoint) + USB_O_TXMAXP1) =
             ulMaxPacketSize;
 
         //
@@ -2060,7 +2068,7 @@ USBDevEndpointConfigSet(unsigned long ulBase, unsigned long ulEndpoint,
         //
         // Set the MaxPacketSize.
         //
-        HWREGB(ulBase + EP_OFFSET(ulEndpoint) + USB_O_RXMAXP1) =
+        HWREGH(ulBase + EP_OFFSET(ulEndpoint) + USB_O_RXMAXP1) =
             ulMaxPacketSize;
 
         //
@@ -2168,7 +2176,7 @@ USBDevEndpointConfigGet(unsigned long ulBase, unsigned long ulEndpoint,
         //
         // Get the maximum packet size.
         //
-        *pulMaxPacketSize = (unsigned long)HWREGB(ulBase +
+        *pulMaxPacketSize = (unsigned long)HWREGH(ulBase +
                                                   EP_OFFSET(ulEndpoint) +
                                                   USB_O_TXMAXP1);
 
@@ -2214,7 +2222,7 @@ USBDevEndpointConfigGet(unsigned long ulBase, unsigned long ulEndpoint,
             //
             // The hardware doesn't differentiate between bulk, interrupt
             // and control mode for the endpoint so we just set something
-            // that isn't isochronous.  This protocol ensures that anyone 
+            // that isn't isochronous.  This protocol ensures that anyone
             // modifying the returned flags in preparation for a call to
             // USBDevEndpointConfigSet do not see an unexpected mode change.
             // If they decode the returned mode, however, they may be in for
@@ -2233,7 +2241,7 @@ USBDevEndpointConfigGet(unsigned long ulBase, unsigned long ulEndpoint,
         //
         // Get the MaxPacketSize.
         //
-        *pulMaxPacketSize = (unsigned long)HWREGB(ulBase +
+        *pulMaxPacketSize = (unsigned long)HWREGH(ulBase +
                                                   EP_OFFSET(ulEndpoint) +
                                                   USB_O_RXMAXP1);
 
@@ -2279,7 +2287,7 @@ USBDevEndpointConfigGet(unsigned long ulBase, unsigned long ulEndpoint,
             //
             // The hardware doesn't differentiate between bulk, interrupt
             // and control mode for the endpoint so we just set something
-            // that isn't isochronous.  This protocol ensures that anyone 
+            // that isn't isochronous.  This protocol ensures that anyone
             // modifying the returned flags in preparation for a call to
             // USBDevEndpointConfigSet do not see an unexpected mode change.
             // If they decode the returned mode, however, they may be in for
@@ -2310,7 +2318,7 @@ USBDevEndpointConfigGet(unsigned long ulBase, unsigned long ulEndpoint,
 //! example, use \b USB_FIFO_SZ_16_DB to configure an endpoint to have a 16-
 //! byte, double-buffered FIFO.  If a double-buffered FIFO is used, then the
 //! actual size of the FIFO is twice the size indicated by the \e ulFIFOSize
-//! parameter.  For example, the \b USB_FIFO_SZ_16_DB value uses 32 bytes of 
+//! parameter.  For example, the \b USB_FIFO_SZ_16_DB value uses 32 bytes of
 //! the USB controller's FIFO memory.
 //!
 //! The \e ulFIFOAddress value should be a multiple of 8 bytes and directly
@@ -2524,7 +2532,7 @@ USBEndpointDMADisable(unsigned long ulBase, unsigned long ulEndpoint,
 //! \param ulBase specifies the USB module base address.
 //! \param ulEndpoint is the endpoint to access.
 //!
-//! This function returns the number of bytes of data currently available in 
+//! This function returns the number of bytes of data currently available in
 //! the FIFO for the given receive (OUT) endpoint.  It may be used prior to
 //! calling USBEndpointDataGet() to determine the size of buffer required to
 //! hold the newly-received packet.
@@ -2880,8 +2888,8 @@ USBEndpointDataPut(unsigned long ulBase, unsigned long ulEndpoint,
 //! \param ulTransType is set to indicate what type of data is being sent.
 //!
 //! This function starts the transfer of data from the FIFO for a given
-//! endpoint.  This function should be called if the \b USB_EP_AUTO_SET bit was  
-//! not enabled for the endpoint.  Setting the \e ulTransType parameter allows 
+//! endpoint.  This function should be called if the \b USB_EP_AUTO_SET bit was
+//! not enabled for the endpoint.  Setting the \e ulTransType parameter allows
 //! the appropriate signaling on the USB bus for the type of transaction being
 //! requested.  The \e ulTransType parameter should be one of the following:
 //!
@@ -3042,7 +3050,7 @@ USBFIFOFlush(unsigned long ulBase, unsigned long ulEndpoint,
 //! \param ulEndpoint is the endpoint to access.
 //!
 //! This function schedules a request for an IN transaction.  When the USB
-//! device being communicated with responds with the data, the data can be 
+//! device being communicated with responds with the data, the data can be
 //! retrieved by calling USBEndpointDataGet() or via a DMA transfer.
 //!
 //! \note This function should only be called in host mode and only for IN
@@ -3151,7 +3159,7 @@ USBHostRequestINClear(unsigned long ulBase, unsigned long ulEndpoint)
 //! a device on endpoint zero.  This function can only be used with endpoint
 //! zero as that is the only control endpoint that supports this ability.  This
 //! function is used to complete the last phase of a control transaction to a
-//! device and an interrupt is signaled when the status packet has been 
+//! device and an interrupt is signaled when the status packet has been
 //! received.
 //!
 //! \return None.
@@ -3294,7 +3302,7 @@ USBHostAddrGet(unsigned long ulBase, unsigned long ulEndpoint,
 //!
 //! This function configures the hub address for a device that is using this
 //! endpoint for communication.  The \e ulFlags parameter determines if the
-//! device address for the IN or the OUT endpoint is configured by this call 
+//! device address for the IN or the OUT endpoint is configured by this call
 //! and sets the speed of the downstream device.  Valid values are one of \b
 //! USB_EP_HOST_OUT or \b USB_EP_HOST_IN optionally ORed with \b
 //! USB_EP_SPEED_LOW.
@@ -3340,7 +3348,7 @@ USBHostHubAddrSet(unsigned long ulBase, unsigned long ulEndpoint,
     }
 
     //
-    // Set the speed of communication for endpoint 0.  This configuration is 
+    // Set the speed of communication for endpoint 0.  This configuration is
     // done here because it changes on a transaction-by-transaction basis for
     // EP0.  For other endpoints, this is set in USBHostEndpointConfig().
     //
@@ -3445,20 +3453,20 @@ USBHostHubAddrGet(unsigned long ulBase, unsigned long ulEndpoint,
 //!
 //! - \b USB_HOST_PWREN_MAN_LOW - USBnEPEN is driven low by the USB controller
 //!                               when USBHostPwrEnable() is called.
-//! - \b USB_HOST_PWREN_MAN_HIGH - USBnEPEN is driven high by the USB 
-//!                                controller when USBHostPwrEnable() is 
+//! - \b USB_HOST_PWREN_MAN_HIGH - USBnEPEN is driven high by the USB
+//!                                controller when USBHostPwrEnable() is
 //!                                called.
 //! - \b USB_HOST_PWREN_AUTOLOW - USBnEPEN is driven low by the USB controller
 //!                               automatically if USBOTGSessionRequest() has
 //!                               enabled a session.
-//! - \b USB_HOST_PWREN_AUTOHIGH - USBnEPEN is driven high by the USB 
-//!                                controller automatically if 
-//!                                USBOTGSessionRequest() has enabled a 
+//! - \b USB_HOST_PWREN_AUTOHIGH - USBnEPEN is driven high by the USB
+//!                                controller automatically if
+//!                                USBOTGSessionRequest() has enabled a
 //!                                session.
 //!
 //! On devices that support the VBUS glitch filter, the
 //! \b USB_HOST_PWREN_FILTER can be added to ignore small, short drops in VBUS
-//! level caused by high power consumption.  This feature is mainly used to 
+//! level caused by high power consumption.  This feature is mainly used to
 //! avoid causing VBUS errors caused by devices with high in-rush current.
 //!
 //! \note The following values have been deprecated and should no longer be
@@ -3469,7 +3477,7 @@ USBHostHubAddrGet(unsigned long ulBase, unsigned long ulEndpoint,
 //!                            enabled.
 //! - \b USB_HOST_PWREN_VBLOW - Automatically drive USBnEPEN low when power is
 //!                             enabled.
-//! - \b USB_HOST_PWREN_VBHIGH - Automatically drive USBnEPEN high when power 
+//! - \b USB_HOST_PWREN_VBHIGH - Automatically drive USBnEPEN high when power
 //!                              is enabled.
 //!
 //! \note This function should only be called on microcontrollers that support
@@ -3496,7 +3504,7 @@ USBHostPwrConfig(unsigned long ulBase, unsigned long ulFlags)
     HWREG(ulBase + USB_O_VDC) = ulFlags >> 16;
 
     //
-    // Set the power fault configuration as specified.  This configuration 
+    // Set the power fault configuration as specified.  This configuration
     // does not change whether fault detection is enabled or not.
     //
     HWREGH(ulBase + USB_O_EPC) =
@@ -3566,7 +3574,7 @@ USBHostPwrFaultDisable(unsigned long ulBase)
 //!
 //! \param ulBase specifies the USB module base address.
 //!
-//! This function enables the USBnEPEN signal, which enables an external power 
+//! This function enables the USBnEPEN signal, which enables an external power
 //! supply in host mode operation.
 //!
 //! \note This function should only be called in host mode.
@@ -3594,7 +3602,7 @@ USBHostPwrEnable(unsigned long ulBase)
 //!
 //! \param ulBase specifies the USB module base address.
 //!
-//! This function disables the USBnEPEN signal, which disables an external 
+//! This function disables the USBnEPEN signal, which disables an external
 //! power supply in host mode operation.
 //!
 //! \note This function should only be called in host mode.
@@ -3683,9 +3691,9 @@ USBOTGSessionRequest(unsigned long ulBase, tBoolean bStart)
 //! \param ulBase specifies the USB module base address.
 //! \param ulEndpoint specifies which endpoint's FIFO address to return.
 //!
-//! This function returns the actual physical address of the FIFO.  This 
-//! address is needed when the USB is going to be used with the uDMA 
-//! controller and the source or destination address must be set to the 
+//! This function returns the actual physical address of the FIFO.  This
+//! address is needed when the USB is going to be used with the uDMA
+//! controller and the source or destination address must be set to the
 //! physical FIFO address for a given endpoint.
 //!
 //! \return None.
@@ -3955,7 +3963,7 @@ USBPHYPowerOff(unsigned long ulBase)
 //! \param ulBase specifies the USB module base address.
 //!
 //! This function powers on the USB PHY, enabling it return to normal
-//! operation.  By default, the PHY is powered on, so this function should 
+//! operation.  By default, the PHY is powered on, so this function should
 //! only be called if USBPHYPowerOff() has previously been called.
 //!
 //! \return None.
@@ -3971,6 +3979,61 @@ USBPHYPowerOn(unsigned long ulBase)
     HWREGB(ulBase + USB_O_POWER) &= ~USB_POWER_PWRDNPHY;
 }
 
+//*****************************************************************************
+//
+//! Returns the number of USB endpoint pairs on the device.
+//!
+//! \param ulBase specifies the USB module base address.
+//!
+//! This function returns the number of endpoint pairs supported by the USB
+//! controller corresponding to the passed base address.  The value returned is
+//! the number of IN or OUT endpoints available and does not include endpoint 0
+//! (the control endpoint).  For example, if 15 is returned, there are 15 IN
+//! and 15 OUT endpoints available in addition to endpoint 0.
+//!
+//! \return Returns the number of IN or OUT endpoints available.
+//
+//*****************************************************************************
+unsigned long
+USBNumEndpointsGet(unsigned long ulBase)
+{
+    if(CLASS_IS_SANDSTORM || CLASS_IS_FURY)
+    {
+        //
+        // These part families do not support USB.
+        //
+        return(0);
+    }
+    else if(CLASS_IS_DUSTDEVIL)
+    {
+        //
+        // DustDevil class devices support 3 endpoint pairs.
+        //
+        return(3);
+    }
+    else if(CLASS_IS_TEMPEST || CLASS_IS_FIRESTORM)
+    {
+        //
+        // Tempest and Firestorm class devices support 15 endpoint pairs.
+        //
+        return(15);
+    }
+    else if(CLASS_IS_BLIZZARD)
+    {
+        //
+        // Blizzard class devices support 7 endpoint pairs.
+        //
+        return(7);
+    }
+    else
+    {
+        //
+        // The device class is not recognized so default to assuming no USB
+        // support.
+        //
+        return(0);
+    }
+}
 
 //*****************************************************************************
 //
