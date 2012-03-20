@@ -27,6 +27,7 @@ public:
     MOCK_METHOD1(send, void (can::CANMessage const &message));
     MOCK_METHOD1(recv, can::TokenPtr (uint32_t id));
     MOCK_METHOD2(attach_callback, void (uint32_t id, can::CANBridge::recv_callback cb));
+    MOCK_METHOD3(attach_callback, void (uint32_t id, uint32_t id_mask, can::CANBridge::recv_callback cb));
 };
 
 class MockToken : public can::Token {

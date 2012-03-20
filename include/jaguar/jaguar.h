@@ -12,6 +12,7 @@
 #include <boost/function.hpp>
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/assert.hpp>
 
 #include "can_bridge.h"
 #include "jaguar.h"
@@ -146,14 +147,14 @@ public:                                                                        \
                                                                                \
     virtual uint8_t const *read(uint8_t const *begin, uint8_t const *end) {    \
         _Toutput_ output;                                                      \
-        assert(boost::spirit::qi::parse(begin, end, _parser_, output));        \
+        BOOST_VERIFY(boost::spirit::qi::parse(begin, end, _parser_, output));  \
         callback_(output);                                                     \
         return begin;                                                          \
     }                                                                          \
                                                                                \
     virtual void write(std::back_insert_iterator<std::vector<uint8_t> > &data) \
     {                                                                          \
-        assert(boost::spirit::karma::generate(data, _generator_));             \
+        BOOST_VERIFY(boost::spirit::karma::generate(data, _generator_));       \
     }                                                                          \
                                                                                \
 private:                                                                       \

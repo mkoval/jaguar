@@ -4,7 +4,7 @@ CXX = clang++
 LD  = clang++
 RM  = rm -f
 CXXFLAGS = -Wall -g -Isrc -Iinclude/
-LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt
+LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt -Wl,--demangle
 
 LIB_OBJ+=src/jaguar.cc.o
 LIB_OBJ+=src/jaguar_broadcaster.cc.o
