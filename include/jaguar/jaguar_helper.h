@@ -1,8 +1,12 @@
 #ifndef JAGUAR_HELPER_H_
 #define JAGUAR_HELPER_H_
 
-#include <boost/detail/endian.hpp>
 #include <stdint.h>
+#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_binary.hpp>
+#include <boost/spirit/include/phoenix_core.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+#include <boost/detail/endian.hpp>
 #include "jaguar_api.h"
 
 #ifndef __GLIBC__
@@ -32,6 +36,28 @@ uint32_t pack_id(uint8_t device_num, Manufacturer::Enum man, DeviceType::Enum ty
 uint32_t pack_id(uint8_t dnum, Manufacturer::Enum man, DeviceType::Enum type, uint16_t api);
 
 uint32_t pack_ack(uint8_t device_num, Manufacturer::Enum man, DeviceType::Enum type);
+};
+
+
+template <typename Iterator>
+struct u16p16_parser : boost::spirit::qi::grammar<Iterator, double()> {
+    struct cast_impl {
+        template <typename A>
+        struct result { typedef double type; };
+
+        double operator()(boost::fusion::vector<boost::uint32_t> arg) const {
+            return boost::fusion::at_c<0>(arg) / 65536.0;
+        }
+    };
+
+    u16p16_parser() : u16p16_parser::base_type(main) {
+        pair = boost::spirit::qi::little_dword;
+        main = pair[boost::spirit::qi::_val = cast(boost::spirit::qi::_1)];
+    }
+
+    boost::spirit::qi::rule<Iterator, boost::fusion::vector<boost::uint32_t>()> pair;
+    boost::spirit::qi::rule<Iterator, double()> main;
+    boost::phoenix::function<cast_impl> cast;
 };
 
 #endif

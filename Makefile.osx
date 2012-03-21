@@ -16,7 +16,6 @@ TEST_OBJECTS = test/jaguar_test.cc.o
 TEST_OBJECTS+= test/jaguar_bridge_test.cc.o
 TEST_OBJECTS+= test/jaguar_helper_test.cc.o
 TEST_OBJECTS+= $(LIB_OBJ)
-#test/jaguar_bridge_test.cc.o test/jaguar_helper_test.cc.o
 
 .PHONY: all test clean
 .SECONDARY:
