@@ -19,6 +19,7 @@ static uint32_t upd_id(uint16_t api)
             api);
 }
 
+#if 0
 static void upd_send(can::CANBridge &can, uint16_t api)
 {
     can.send(can::CANMessage(upd_id(api)));
@@ -51,8 +52,8 @@ static can::TokenPtr send_ack(can::CANBridge &can,
     BOOST_VERIFY(boost::spirit::karma::generate(obuf.end(), generator));
     return send_ack(can, api, obuf, ack_api);
 }
+#endif
 
-#if 0
 class JaguarBootloader
 {
 public:
@@ -60,26 +61,55 @@ public:
     : can_(can)
     {}
 
-    can::TokenPtr ping(void);
-    can::TokenPtr prepare(uint32_t len, uint32_t start_addr);
-    can::TokenPtr send_data(std::vector<uint8_t> const &data);
+    can::TokenPtr recv(uint16_t api)
+    {
+        return can_.recv(upd_id(api));
+    }
 
     can::TokenPtr send_ack(uint16_t api, std::vector<uint8_t> const &data,
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
+        can::TokenPtr tp = recv(ack_api);
+        send(api, data);
+        return tp;
     }
 
     template <typename G>
     can::TokenPtr send_ack(uint16_t api, G generator,
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
+        std::vector<uint8_t> obuf;
+        BOOST_VERIFY(boost::spirit::karma::generate(obuf.end(), generator));
+        return send_ack(api, obuf, ack_api);
     }
 
+    can::TokenPtr ping(void);
+    can::TokenPtr prepare(uint32_t start_addr, uint32_t size)
+    {
+        return send_ack(jaguar::FirmwareUpdate::kDownload,
+                boost::spirit::karma::little_dword(start_addr) <<
+                boost::spirit::karma::little_dword(size));
+    }
+
+    can::TokenPtr send_data(std::vector<uint8_t> const &data)
+    {
+        assert(data.size() <= 8 && data.size() > 0);
+        return send_ack(jaguar::FirmwareUpdate::kSendData, data);
+    }
+
+    void send(uint16_t api)
+    {
+        can_.send(can::CANMessage(upd_id(api)));
+    }
+
+    void send(uint16_t api, std::vector<uint8_t> const &payload)
+    {
+        can_.send(can::CANMessage(upd_id(api), payload));
+    }
 
 private:
     can::CANBridge &can_;
-}
-#endif
+};
 
 int main(int argc, char *argv[])
 {
@@ -87,7 +117,8 @@ int main(int argc, char *argv[])
         if (argc <= 3) {
             char const *n = argc?argv[0]:"./unbrick";
             std::cerr << "err: lack args\n"
-                      << "usage: " << n << " <serial> <fw.bin> <start addr>" << std::endl;
+                      << "usage: " << n << " <serial> <fw.bin> <start addr>"
+                        << std::endl;
             return 1;
         }
 
@@ -98,27 +129,29 @@ int main(int argc, char *argv[])
         sa_stm << argv[3];
         sa_stm >> fw_start;
 
-        can::JaguarBridge can(io_path);
+        can::JaguarBridge     can(io_path);
+        JaguarBootloader bl(can);
+
         /* XXX: the hell is this, C++? */
         std::ifstream     fw_stream(fw_path.c_str());
         std::stringstream fw_buf;
         fw_buf << fw_stream.rdbuf();
         std::string const fw(fw_buf.str());
 
-        can.attach_callback(0, 0, std::cerr << boost::lambda::_1);
+        /* XXX: spy on all recv'd data */
+        can.attach_callback(0, 0,
+                boost::lambda::var(std::cerr) << boost::lambda::_1);
 
         /* send PING */
-        can::TokenPtr ping_token = can.recv(upd_id(jaguar::FirmwareUpdate::kPing));
+        can::TokenPtr ping_token = bl.recv(jaguar::FirmwareUpdate::kPing);
 
         do {
-            upd_send(can, jaguar::FirmwareUpdate::kPing);
+            bl.send(jaguar::FirmwareUpdate::kPing);
             std::cout << "p" << std::endl;
         } while(!ping_token->timed_block(boost::posix_time::millisec(50)));
 
         /* set starting address and length */
-        can::TokenPtr ack = send_ack(can, jaguar::FirmwareUpdate::kDownload,
-                boost::spirit::karma::little_dword(fw_start) <<
-                boost::spirit::karma::little_dword(fw.size()));
+        can::TokenPtr ack = bl.prepare(fw_start, fw.size());
 
         std::cout << 's';
 
@@ -132,8 +165,7 @@ int main(int argc, char *argv[])
         BOOST_FOREACH(uint8_t byte, fw) {
             if (data.size() == 8) {
                 /* send `data` and reset */
-                ack = send_ack(can, jaguar::FirmwareUpdate::kSendData,
-                        data);
+                ack = bl.send_data(data);
 
                 std::cout << 'd';
 
@@ -149,7 +181,7 @@ int main(int argc, char *argv[])
         }
 
         if (!data.empty()) {
-            ack = send_ack(can, jaguar::FirmwareUpdate::kSendData, data);
+            ack = bl.send_data(data);
             ack->block();
         }
 
