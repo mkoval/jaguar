@@ -13,9 +13,13 @@
 namespace jaguar {
 
 struct DiffDriveSettings {
-    uint8_t id_left, id_right;
-    uint32_t heartbeat_ms;
-    uint32_t status_ms;
+    std::string port;
+    int id_left, id_right;
+    int heartbeat_ms;
+    int status_ms;
+    double ticks_per_m;
+    double wheel_radius_m;
+    double robot_radius_m;
 };
 
 class DiffDriveRobot
@@ -23,10 +27,7 @@ class DiffDriveRobot
 public:
     typedef void OdometryCallback(double, double, double, double, double, double);
 
-    DiffDriveRobot(std::string port,
-        uint8_t left_id, uint8_t right_id,
-        uint32_t heartbeat_ms, uint32_t status_ms,
-        double robot_radius);
+    DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
 
     virtual void drive(double v, double omega);
@@ -68,6 +69,7 @@ private:
     boost::signal<OdometryCallback> odom_signal_;
 
     double robot_radius_;
+    double wheel_radius_;
 };
 
 };

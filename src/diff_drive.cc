@@ -8,22 +8,18 @@ using can::JaguarBridge;
 
 namespace jaguar {
 
-DiffDriveRobot::DiffDriveRobot(
-        std::string port,
-        uint8_t left_id, uint8_t right_id,
-        uint32_t heartbeat_ms, uint32_t status_ms,
-        double robot_radius
-    )
-    : bridge_(port),
+DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
+    : bridge_(settings.port),
       jag_broadcast_(bridge_),
-      jag_left_(bridge_, left_id),
-      jag_right_(bridge_, right_id),
-      status_ms_(status_ms),
-      timer_period_(boost::posix_time::milliseconds(heartbeat_ms)),
+      jag_left_(bridge_, settings.id_left),
+      jag_right_(bridge_, settings.id_right),
+      status_ms_(settings.status_ms),
+      timer_period_(boost::posix_time::milliseconds(settings.heartbeat_ms)),
       timer_(boost::bind(&DiffDriveRobot::heartbeat, this)),
       odom_last_left_(0.), odom_last_right_(0.),
       x_(0.), y_(0.), theta_(0.),
-      robot_radius_(robot_radius)
+      robot_radius_(settings.robot_radius_m),
+      wheel_radius_(settings.wheel_radius_m)
 {
     speed_init();
     odom_init();

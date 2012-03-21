@@ -12,16 +12,8 @@ static ros::Subscriber sub_twist;
 static ros::Publisher pub_odom;
 static tf::TransformBroadcaster pub_tf;
 
+static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
-
-static std::string const port = "/dev/ttyUSB0";
-static int const left_id = 1;
-static int const right_id = 2;
-static int const rate_heartbeat = 100; // ms
-static int const rate_odometry = 20; // ms
-static double const v_max = 1000.0; // m/s
-static double const omega_max = 1000.0; // m/s
-static double const robot_radius = 0.3; // m
 
 void callback_odom(double x,  double y,  double theta,
                    double vx, double vy, double omega)
@@ -57,19 +49,7 @@ void callback_cmd(geometry_msgs::Twist const &twist)
      || twist.angular.x != 0.0 || twist.angular.y != 0) {
         ROS_WARN_THROTTLE(10.0, "Ignoring non-zero component of velocity command.");
     }
-    if (fabs(twist.linear.x) > v_max) {
-        ROS_WARN_THROTTLE(10.0, "Linear velocity exceeds maximum speed.");
-    }
-    if (fabs(twist.angular.z) > omega_max) {
-        ROS_WARN_THROTTLE(10.0, "Angular velocity exceeds maximum turn rate.");
-    }
-
-    // Constraining the velocity is probably not necessary, but it may help
-    // the stability of the control loop by limiting integral windup.
-    double const v = std::min(std::max(twist.linear.x, -v_max), v_max);
-    double const omega = std::min(std::max(twist.angular.z, -omega_max), omega_max);
-
-    robot->drive(v, omega);
+    robot->drive(twist.linear.x, twist.angular.z);
 }
 
 int main(int argc, char **argv)
@@ -78,14 +58,42 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
-    pub_odom   = nh.advertise<nav_msgs::Odometry>("odom", 100);
+    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
 
-    robot = boost::make_shared<DiffDriveRobot>(
-        port,
-        left_id, right_id,
-        rate_heartbeat, rate_odometry,
-        robot_radius
-    );
+    ros::param::get("port", settings.port);
+    ros::param::get("id_left", settings.id_left);
+    ros::param::get("id_right", settings.id_right);
+    ros::param::get("heartbeat", settings.heartbeat_ms);
+    ros::param::get("status", settings.status_ms);
+    ros::param::get("ticks_per_meter", settings.ticks_per_m);
+    ros::param::get("wheel_radius", settings.wheel_radius_m);
+    ros::param::get("robot_radius", settings.robot_radius_m);
+
+    if (!(1 <= settings.id_left  && settings.id_left  <= 63)
+     || !(1 <= settings.id_right && settings.id_right <= 63)) {
+        ROS_FATAL("Invalid CAN device id. Must be in the range 1-63.");
+        return 1;
+    } else if (settings.heartbeat_ms <= 0 || settings.heartbeat_ms > 100) {
+        ROS_FATAL("Heartbeat period invalid. Must be in the range 1-500 ms.");
+        return 1;
+    } else if (settings.status_ms <= 0 || settings.status_ms > std::numeric_limits<uint16_t>::max()) {
+        ROS_FATAL("Status period invalid must be in the range 1-255 ms.");
+        return 1;
+    } else if (settings.ticks_per_m <= 0) {
+        ROS_FATAL("Number of ticks per meter must be positive");
+        return 1;
+    } else if (settings.wheel_radius_m <= 0) {
+        ROS_FATAL("Wheel radius must be positive.");
+        return 1;
+    } else if (settings.robot_radius_m <= 0) {
+        ROS_FATAL("Robot radius must be positive.");
+        return 1;
+    }
+
+    robot = boost::make_shared<DiffDriveRobot>(settings);
     robot->odom_attach(&callback_odom);
+
+    ros::spin();
+
     return 0;
 }
