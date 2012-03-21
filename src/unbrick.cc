@@ -19,15 +19,6 @@ static uint32_t upd_id(uint16_t api)
             api);
 }
 
-__attribute__((__unused__))
-static uint32_t upd_ack_id(void)
-{
-    return jaguar::pack_ack(
-            0,
-            jaguar::Manufacturer::kTexasInstruments,
-            jaguar::DeviceType::kFirmwareUpdate);
-}
-
 static void upd_send(can::CANBridge &can, uint16_t api)
 {
     can.send(can::CANMessage(upd_id(api)));
@@ -39,14 +30,56 @@ static void upd_send(can::CANBridge &can, uint16_t api,
     can.send(can::CANMessage(upd_id(api), payload));
 }
 
-template <typename generator_type>
-static void f_send(can::CANBridge &can, uint16_t api,
-        generator_type generator)
+
+static can::TokenPtr send_ack(can::CANBridge &can,
+        uint16_t api,
+        std::vector<uint8_t> const &data,
+        uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
+{
+    can::TokenPtr tp = can.recv(upd_id(ack_api));
+    upd_send(can, api, data);
+    return tp;
+}
+
+template <typename G>
+static can::TokenPtr send_ack(can::CANBridge &can,
+        uint16_t api,
+        G generator,
+        uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
 {
     std::vector<uint8_t> obuf;
     BOOST_VERIFY(boost::spirit::karma::generate(obuf.end(), generator));
-    upd_send(can, api, obuf);
+    return send_ack(can, api, obuf, ack_api);
 }
+
+#if 0
+class JaguarBootloader
+{
+public:
+    JaguarBootloader(can::CANBridge &can)
+    : can_(can)
+    {}
+
+    can::TokenPtr ping(void);
+    can::TokenPtr prepare(uint32_t len, uint32_t start_addr);
+    can::TokenPtr send_data(std::vector<uint8_t> const &data);
+
+    can::TokenPtr send_ack(uint16_t api, std::vector<uint8_t> const &data,
+                           uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
+    {
+    }
+
+    template <typename G>
+    can::TokenPtr send_ack(uint16_t api, G generator,
+                           uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
+    {
+    }
+
+
+private:
+    can::CANBridge &can_;
+}
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -83,8 +116,7 @@ int main(int argc, char *argv[])
         } while(!ping_token->timed_block(boost::posix_time::millisec(50)));
 
         /* set starting address and length */
-        can::TokenPtr ack = can.recv(upd_id(jaguar::FirmwareUpdate::kAck));
-        f_send(can, jaguar::FirmwareUpdate::kDownload,
+        can::TokenPtr ack = send_ack(can, jaguar::FirmwareUpdate::kDownload,
                 boost::spirit::karma::little_dword(fw_start) <<
                 boost::spirit::karma::little_dword(fw.size()));
 
@@ -100,7 +132,8 @@ int main(int argc, char *argv[])
         BOOST_FOREACH(uint8_t byte, fw) {
             if (data.size() == 8) {
                 /* send `data` and reset */
-                upd_send(can, jaguar::FirmwareUpdate::kSendData, data);
+                ack = send_ack(can, jaguar::FirmwareUpdate::kSendData,
+                        data);
 
                 std::cout << 'd';
 
@@ -116,7 +149,7 @@ int main(int argc, char *argv[])
         }
 
         if (!data.empty()) {
-            upd_send(can, jaguar::FirmwareUpdate::kSendData, data);
+            ack = send_ack(can, jaguar::FirmwareUpdate::kSendData, data);
             ack->block();
         }
 
