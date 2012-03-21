@@ -83,10 +83,17 @@ int main(int argc, char *argv[])
         } while(!ping_token->timed_block(boost::posix_time::millisec(50)));
 
         /* set starting address and length */
+        can::TokenPtr ack = can.recv(upd_id(jaguar::FirmwareUpdate::kAck));
         f_send(can, jaguar::FirmwareUpdate::kDownload,
                 boost::spirit::karma::little_dword(fw_start) <<
                 boost::spirit::karma::little_dword(fw.size()));
-        /* TODO: wait for ack? */
+
+        std::cout << 's';
+
+        /* TODO: examine ack */
+        ack->block();
+
+        std::cout << 'a';
 
         /* send data block */
         std::vector<uint8_t> data;
@@ -94,7 +101,13 @@ int main(int argc, char *argv[])
             if (data.size() == 8) {
                 /* send `data` and reset */
                 upd_send(can, jaguar::FirmwareUpdate::kSendData, data);
-                /* TODO: wait for ack? */
+
+                std::cout << 'd';
+
+                /* TODO: look at ack payload (== status) */
+                ack->block();
+
+                std::cout << 'a';
 
                 data.clear();
             }
@@ -104,7 +117,10 @@ int main(int argc, char *argv[])
 
         if (!data.empty()) {
             upd_send(can, jaguar::FirmwareUpdate::kSendData, data);
+            ack->block();
         }
+
+        std::cout << std::endl << "Programming complete" << std::endl;
 
     } catch (can::CANException &e) {
         std::cerr << "error " << e.code() << ": " << e.what() << std::endl;
