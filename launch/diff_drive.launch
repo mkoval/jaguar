@@ -1,0 +1,15 @@
+<launch>
+    <node name="diff_drive" pkg="diff_drive" type="diff_drive_node">
+        <!-- CAN bus Configuration -->
+        <param name="port" value="/dev/null"/>
+        <param name="id_left"  value="2"/>
+        <param name="id_right" value="3"/>
+        <!-- Periodic Message Rates -->
+        <param name="heartbeat" value="50"/> <!-- period in ms -->
+        <param name="status"    value="50"/> <!-- period in ms -->
+        <!-- Robot Model Parameters -->
+        <param name="ticks_per_rev" value="800.000"/>
+        <param name="wheel_radius"  value="0.127"/> <!-- meters -->
+        <param name="robot_radius"  value="0.419"/> <!-- meters -->
+    </node>
+</launch>
