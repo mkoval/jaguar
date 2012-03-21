@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     ros::param::get("id_right", settings.id_right);
     ros::param::get("heartbeat", settings.heartbeat_ms);
     ros::param::get("status", settings.status_ms);
-    ros::param::get("ticks_per_meter", settings.ticks_per_m);
+    ros::param::get("ticks_per_rev", settings.ticks_per_rev);
     ros::param::get("wheel_radius", settings.wheel_radius_m);
     ros::param::get("robot_radius", settings.robot_radius_m);
 
@@ -79,8 +79,8 @@ int main(int argc, char **argv)
     } else if (settings.status_ms <= 0 || settings.status_ms > std::numeric_limits<uint16_t>::max()) {
         ROS_FATAL("Status period invalid must be in the range 1-255 ms.");
         return 1;
-    } else if (settings.ticks_per_m <= 0) {
-        ROS_FATAL("Number of ticks per meter must be positive");
+    } else if (settings.ticks_per_rev<= 0) {
+        ROS_FATAL("Number of ticks per revolution must be positive");
         return 1;
     } else if (settings.wheel_radius_m <= 0) {
         ROS_FATAL("Wheel radius must be positive.");
