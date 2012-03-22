@@ -30,7 +30,7 @@ all:: $(TARGETS)
 test: $(TEST_TARGET)
 
 clean:
-	$(RM) $(TARGET) $(TEST_TARGET) $(OBJECTS) $(TEST_OBJECTS)
+	$(RM) $(TARGETS) $(LIB_OBJ) $(LIB_OBJ:.o=.d) $(TEST_TARGET) $(TEST_OBJECTS)
 
 $(TARGETS):
 	$(LD) $(LDFLAGS) -o $@ $^
@@ -39,7 +39,7 @@ $(TEST_TARGET): $(TEST_OBJECTS)
 	$(LD) $(LDFLAGS) -lgmock -lgtest -lgtest_main -o $@ $^
 
 %.cc.o: %.cc
-	$(CXX) $(CXXFLAGS) -c -o $@ $^
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 
 -include $(wildcard src/*.d) $(wildcard *.d)

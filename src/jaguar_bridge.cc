@@ -246,9 +246,9 @@ boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> c
 {
     assert(4 <= packet.size() && packet.size() <= 12);
 
-    uint32_t id;
-    memcpy(&id, &packet[0], sizeof(uint32_t));
-    id = le32toh(id);
+    uint32_t le_id;
+    memcpy(&le_id, &packet[0], sizeof(uint32_t));
+    uint32_t id = le32toh(le_id);
 
     std::vector<uint8_t> payload(packet.size() - 4);
     if (packet.size() > 4) {

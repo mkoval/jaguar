@@ -16,9 +16,10 @@ int main(int argc, char *argv[])
 	uint32_t raw_id;
 	s >> std::hex >> raw_id;
 
-	jaguar::CANId id(raw_id);
+	jaguar::CANId id(le32toh(raw_id));
 
-	std::cout << id << std::endl;
+	std::cout << le32toh(raw_id) << std::endl
+		  << id << std::endl;
 
 	return 0;
 }

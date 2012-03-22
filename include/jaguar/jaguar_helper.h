@@ -77,10 +77,11 @@ public:
 	friend std::ostream& operator<< (std::ostream& o, const CANId& it)
 	{
 		o << "ID { .device_num="
-			<< std::hex << static_cast<int>(it.device_num)
-		  << " .manuf=" << std::hex << it.manuf
-		  << " .device_type=" << std::hex << it.device_type
-		  << " .api=" << std::hex << it.api
+			<< std::hex << static_cast<long>(it.device_num)
+		  << " .manuf=" << std::hex << static_cast<long>(it.manuf)
+		  << " .device_type="
+			<< std::hex << static_cast<long>(it.device_type)
+		  << " .api=" << std::hex << static_cast<long>(it.api)
 		  << " }" ;
 		return o;
 	}
