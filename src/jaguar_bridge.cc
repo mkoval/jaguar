@@ -96,41 +96,43 @@ TokenPtr JaguarBridge::recv(uint32_t id)
     return it.first->second;
 }
 
-void JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
+CallbackToken JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     /* FIXME: connect signals with identical id & id_mask */
+    boost::shared_ptr<callback_signal> signal = boost::make_shared<callback_signal>();
     callbacks_list_.insert(
-	callbacks_list_.end(),
-	std::make_pair(
+        callbacks_list_.end(),
+        std::make_pair(
             make_masked_number(id, id_mask),
-            boost::make_shared<callback_signal>()
+            signal
         )
     );
+    return signal->connect(cb);
 }
 
 /* FIXME: should be `void JaguarBridge::attack_callback(error_callback cb)` */
-void JaguarBridge::attach_callback(boost::function<error_callback_sig> cb)
+CallbackToken JaguarBridge::attach_callback(boost::function<error_callback_sig> cb)
 {
-    error_signal_.connect(cb);
+    return error_signal_.connect(cb);
 }
 
-void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
+CallbackToken JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
     // Calling map::insert() is equivalent to map::find() if the key already
     // exists; i.e. the map is not changed in any way.
     std::pair<callback_table::iterator, bool> old_callback = callbacks_.insert(
-	std::make_pair(
+        std::make_pair(
             id,
             boost::make_shared<callback_signal>()
         )
     );
 
     callback_signal_ptr signal = old_callback.first->second;
-    signal->connect(cb);
+    return signal->connect(cb);
 }
 
 boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
@@ -332,4 +334,4 @@ void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 
 };
 
-/* vim: set et tw=4 sts=4 sw=4: */
+/* vim: set et ts=4 sts=4 sw=4: */

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <boost/function.hpp>
+#include <boost/signals2.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -15,6 +16,7 @@ namespace can {
 class Token;
 
 typedef boost::shared_ptr<Token> TokenPtr;
+typedef boost::signals2::connection CallbackToken;
 
 class CANMessage {
 public:
@@ -41,10 +43,10 @@ public:
 
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
-    virtual void attach_callback(uint32_t id, recv_callback cb) = 0;
-    virtual void attach_callback(uint32_t id, uint32_t id_mask,
+    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb) = 0;
+    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
 		    recv_callback cb) = 0;
-    virtual void attach_callback(error_callback cb) = 0;
+    virtual CallbackToken attach_callback(error_callback cb) = 0;
 };
 
 class Token : boost::noncopyable
