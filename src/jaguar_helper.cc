@@ -53,6 +53,7 @@ uint32_t pack_id(uint8_t dnum, Manufacturer::Enum man, DeviceType::Enum type,
          | (static_cast<uint32_t>(type)      << 24);
 }
 
+
 uint32_t pack_ack(uint8_t num, Manufacturer::Enum man, DeviceType::Enum type)
 {
     return pack_id(num, man, type, APIClass::kAcknowledge, 0);

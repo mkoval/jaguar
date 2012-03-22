@@ -36,7 +36,56 @@ uint32_t pack_id(uint8_t device_num, Manufacturer::Enum man, DeviceType::Enum ty
 uint32_t pack_id(uint8_t dnum, Manufacturer::Enum man, DeviceType::Enum type, uint16_t api);
 
 uint32_t pack_ack(uint8_t device_num, Manufacturer::Enum man, DeviceType::Enum type);
+
+class CANId {
+public:
+	static int const device_num_offs = 0;
+	static int const api_offs        = 6;
+	static int const manuf_offs      = 16;
+	static int const device_type_offs= 24;
+
+	static int const device_num_mask = 0x3f;
+	static int const api_mask        = 0x3ff;
+	static int const manuf_mask      = 0xff;
+	static int const device_type_mask= 0x1f;
+
+	uint32_t raw_id;
+	uint8_t  device_num;
+	Manufacturer::Enum manuf;
+	DeviceType::Enum   device_type;
+
+	APIClass::Enum     api_class;
+	uint8_t            api_index;
+	uint16_t           api;
+
+
+	CANId(uint32_t id)
+	{
+		raw_id = id;
+		device_num = raw_id >> 0  & 0x3f;  /* 6  */
+		api        = raw_id >> 6  & 0x3ff; /* 10 */
+		manuf      = static_cast<Manufacturer::Enum>
+				(raw_id >> 16 & 0xff);  /* 8  */
+		device_type= static_cast<DeviceType::Enum>
+				(raw_id >> 24 & 0x1f);  /* 5  */
+
+		api_class  = static_cast<APIClass::Enum>
+				(api >> 4 & 0x3f); /* 6 */
+		api_index  = api >> 0 & 0x0f; /* 4 */
+	}
+
+	friend std::ostream& operator<< (std::ostream& o, const CANId& it)
+	{
+		o << "ID { .device_num="
+			<< std::hex << static_cast<int>(it.device_num)
+		  << " .manuf=" << std::hex << it.manuf
+		  << " .device_type=" << std::hex << it.device_type
+		  << " .api=" << std::hex << it.api
+		  << " }" ;
+		return o;
+	}
 };
+}; /* namespace jaguar */
 
 
 template <typename Iterator>
@@ -59,5 +108,8 @@ struct u16p16_parser : boost::spirit::qi::grammar<Iterator, double()> {
     boost::spirit::qi::rule<Iterator, double()> main;
     boost::phoenix::function<cast_impl> cast;
 };
+
+
+
 
 #endif

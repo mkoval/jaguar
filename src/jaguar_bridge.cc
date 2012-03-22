@@ -110,8 +110,7 @@ void JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback 
     );
 }
 
-/* FIXME: should be
- * void JaguarBridge::attack_callback(error_callback cb)
+/* FIXME: should be `void JaguarBridge::attack_callback(error_callback cb)` */
 void JaguarBridge::attach_callback(boost::function<error_callback_sig> cb)
 {
     error_signal_.connect(cb);
