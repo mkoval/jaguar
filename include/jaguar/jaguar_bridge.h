@@ -69,15 +69,13 @@ public:
     virtual void send(CANMessage const &message);
     virtual TokenPtr recv(uint32_t id);
 
-    virtual void attach_callback(uint32_t id, recv_callback cb);
-    virtual void attach_callback(uint32_t id, uint32_t id_mask,
+    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb);
+    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
 		    recv_callback cb);
-    virtual void attach_callback(error_callback cb);
-    //virtual bool detach_callback(uint32_t id, recv_callback cb);
+    virtual CallbackToken attach_callback(error_callback cb);
 
 private:
-    typedef boost::signals2::signal<recv_callback_sig>
-	    callback_signal;
+    typedef boost::signals2::signal<recv_callback_sig> callback_signal;
     typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
 
     typedef std::map<uint32_t, callback_signal_ptr> callback_table;
