@@ -13,7 +13,7 @@ namespace DeviceType {
         kAccelerometerSensor = 5,
         kUltrasonicSensor    = 6,
         kGearToothSensor     = 7,
-        kFirmwareUpdate      = 31
+        kFirmwareUpdate      = 0x1f
     };
 };
 
@@ -58,7 +58,7 @@ namespace SystemControl {
         kFirmwareUpdate    = 7,
         kFirmwareVersion   = 8,
         kEnumeration       = 9,
-        kSystemResume      = 10
+        kSystemResume      = 0xf
     }; 
 };
 

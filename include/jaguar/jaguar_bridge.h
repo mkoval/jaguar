@@ -5,7 +5,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2.hpp>
 #include <boost/thread.hpp>
 #include <map>
 #include <vector>
@@ -72,10 +72,12 @@ public:
     virtual void attach_callback(uint32_t id, recv_callback cb);
     virtual void attach_callback(uint32_t id, uint32_t id_mask,
 		    recv_callback cb);
+    virtual void attach_callback(error_callback cb);
     //virtual bool detach_callback(uint32_t id, recv_callback cb);
 
 private:
-    typedef boost::signal<void (boost::shared_ptr<CANMessage>)> callback_signal;
+    typedef boost::signals2::signal<recv_callback_sig>
+	    callback_signal;
     typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
 
     typedef std::map<uint32_t, callback_signal_ptr> callback_table;
@@ -92,6 +94,8 @@ private:
 
     boost::asio::io_service  io_;
     boost::asio::serial_port serial_;
+
+    boost::signals2::signal<error_callback_sig> error_signal_;
 
     boost::thread recv_thread_;
     std::vector<uint8_t> recv_buffer_;
@@ -121,7 +125,7 @@ public:
     virtual boost::shared_ptr<CANMessage const> message(void) const;
     virtual bool ready(void) const;
 
-private:    
+private:
     boost::shared_ptr<CANMessage> message_;
     boost::condition_variable cond_;
     boost::mutex mutex_;

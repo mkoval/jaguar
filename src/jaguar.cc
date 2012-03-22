@@ -257,9 +257,11 @@ can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
     can_.attach_callback(status_id, boost::bind(&Jaguar::periodic_unpack, this, _1, statuses));
 
     // Wait for an ACK in response to the config message.
+    can::TokenPtr token =  can_.recv(ack_id);
     can_.send(msg);
-    return can_.recv(ack_id);
+    return token;
 }
+
 
 /*
  * Helpers
@@ -302,9 +304,10 @@ template <typename G>
 can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator)
 {
     assert(!token_ || token_->ready());
-    send(api_class, api_index, generator);
     uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
-    return can_.recv(ack_id);
+    can::TokenPtr token =  can_.recv(ack_id);
+    send(api_class, api_index, generator);
+    return token;
 }
 
 can::TokenPtr Jaguar::recv_ack(void)
