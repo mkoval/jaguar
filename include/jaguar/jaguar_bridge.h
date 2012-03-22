@@ -72,6 +72,7 @@ public:
     virtual void attach_callback(uint32_t id, recv_callback cb);
     virtual void attach_callback(uint32_t id, uint32_t id_mask,
 		    recv_callback cb);
+    virtual void attach_callback(error_callback cb);
     //virtual bool detach_callback(uint32_t id, recv_callback cb);
 
 private:
@@ -92,6 +93,8 @@ private:
 
     boost::asio::io_service  io_;
     boost::asio::serial_port serial_;
+
+    boost::signal<error_callback> error_signal_;
 
     boost::thread recv_thread_;
     std::vector<uint8_t> recv_buffer_;
@@ -121,7 +124,7 @@ public:
     virtual boost::shared_ptr<CANMessage const> message(void) const;
     virtual bool ready(void) const;
 
-private:    
+private:
     boost::shared_ptr<CANMessage> message_;
     boost::condition_variable cond_;
     boost::mutex mutex_;

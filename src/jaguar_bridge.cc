@@ -3,11 +3,18 @@
 #include <boost/make_shared.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lambda/lambda.hpp>
+#include <boost/assert.hpp>
 #include <jaguar/jaguar_bridge.h>
 
 namespace asio = boost::asio;
 
 namespace can {
+
+#define CAN_JAGUARBRIDGE_ERROR(msg) do {                                    \
+    std::stringstream __m__;                                                \
+    __m__ << msg;                                                           \
+    error_signal_(BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, __m__.str()); \
+} while(0)
 
 uint8_t const JaguarBridge::kSOF = 0xFF;
 uint8_t const JaguarBridge::kESC = 0xFE;
@@ -103,6 +110,11 @@ void JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback 
     );
 }
 
+void JaguarBridge::attach_callback(error_callback cb)
+{
+    error_signal_.connect(cb);
+}
+
 void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
@@ -131,9 +143,13 @@ boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     }
     // Packet length can never be SOF or ESC, so we can ignore escaping.
     else if (state_ == kLength) {
-        assert(4 <= byte && byte <= 12);
-        state_  = kPayload;
-        length_ = byte;
+        if (byte < 4 || byte > 12) {
+            CAN_JAGUARBRIDGE_ERROR("recieved invalid length = " << byte);
+            state_  = kWaiting;
+        } else {
+            state_  = kPayload;
+            length_ = byte;
+        }
     }
     // This is the second byte in a two-byte escape code.
     else if (state_ == kPayload && escape_) {
@@ -147,7 +163,7 @@ boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
             break;
 
         default:
-            // TODO: Print a warning because this should never happen.
+            CAN_JAGUARBRIDGE_ERROR("should never happen");
             state_ = kWaiting;
         }
         escape_ = false;
@@ -186,8 +202,7 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     } else if (error == asio::error::operation_aborted) {
         return;
     } else {
-        // TODO: properly log this error message
-        std::cerr << "error: " << error.message() << std::endl;
+        CAN_JAGUARBRIDGE_ERROR(error.message());
         return;
     }
 

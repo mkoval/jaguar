@@ -19,43 +19,7 @@ static uint32_t upd_id(uint16_t api)
             api);
 }
 
-#if 0
-static void upd_send(can::CANBridge &can, uint16_t api)
-{
-    can.send(can::CANMessage(upd_id(api)));
-}
-
-static void upd_send(can::CANBridge &can, uint16_t api,
-    std::vector<uint8_t> const &payload)
-{
-    can.send(can::CANMessage(upd_id(api), payload));
-}
-
-
-static can::TokenPtr send_ack(can::CANBridge &can,
-        uint16_t api,
-        std::vector<uint8_t> const &data,
-        uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
-{
-    can::TokenPtr tp = can.recv(upd_id(ack_api));
-    upd_send(can, api, data);
-    return tp;
-}
-
-template <typename G>
-static can::TokenPtr send_ack(can::CANBridge &can,
-        uint16_t api,
-        G generator,
-        uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
-{
-    std::vector<uint8_t> obuf;
-    BOOST_VERIFY(boost::spirit::karma::generate(obuf.end(), generator));
-    return send_ack(can, api, obuf, ack_api);
-}
-#endif
-
-class JaguarBootloader
-{
+class JaguarBootloader {
 public:
     JaguarBootloader(can::CANBridge &can)
     : can_(can)
@@ -127,7 +91,10 @@ int main(int argc, char *argv[])
         std::stringstream sa_stm;
         uint32_t fw_start;
         sa_stm << argv[3];
-        sa_stm >> fw_start;
+
+        /* FIXME: */
+        //sa_stm >> std::hex >> fw_start;
+        fw_start = 0x800;
 
         can::JaguarBridge     can(io_path);
         JaguarBootloader bl(can);
