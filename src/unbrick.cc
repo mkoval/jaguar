@@ -29,7 +29,8 @@ public:
         return can_.recv(upd_id(api));
     }
 
-    can::TokenPtr send_ack(uint16_t api, std::vector<uint8_t> const &data,
+    can::TokenPtr send_ack(uint16_t api,
+                           std::vector<uint8_t> const &data,
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
         can::TokenPtr tp = recv(ack_api);
@@ -38,7 +39,8 @@ public:
     }
 
     template <typename G>
-    can::TokenPtr send_ack(uint16_t api, G generator,
+    can::TokenPtr send_ack(uint16_t api,
+                           G generator,
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
         std::vector<uint8_t> obuf;
@@ -46,12 +48,26 @@ public:
         return send_ack(api, obuf, ack_api);
     }
 
-    can::TokenPtr ping(void);
+    can::TokenPtr send_ack(uint16_t api)
+    {
+        return send_ack(api, boost::spirit::karma::eps);
+    }
+
+    can::TokenPtr ping(void)
+    {
+        return send_ack(jaguar::FirmwareUpdate::kPing);
+    }
+
     can::TokenPtr prepare(uint32_t start_addr, uint32_t size)
     {
         return send_ack(jaguar::FirmwareUpdate::kDownload,
                 boost::spirit::karma::little_dword(start_addr) <<
                 boost::spirit::karma::little_dword(size));
+    }
+
+    void wait_for_request(void)
+    {
+        can_.recv(jaguar::FirmwareUpdate::kRequest)->block();
     }
 
     can::TokenPtr send_data(std::vector<uint8_t> const &data)
@@ -113,13 +129,22 @@ int main(int argc, char *argv[])
         can.attach_callback(0, 0, std::cerr << arg1);
         can.attach_callback(std::cerr << arg1 << arg2 << arg3 << arg4);
 
-        /* send PING */
+        /* wait for Request & ping ack */
+        can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
         can::TokenPtr ping_token = bl.recv(jaguar::FirmwareUpdate::kPing);
 
-        do {
-            bl.send(jaguar::FirmwareUpdate::kPing);
-            std::cout << "p" << std::endl;
-        } while(!ping_token->timed_block(boost::posix_time::millisec(50)));
+        std::cout << "waiting for request." << std::endl;
+        req_token->block();
+
+        std::cout << "recv'd req, pinging." << std::endl;
+
+        bl.ping();
+
+        std::cout << "pinged, waiting for ack." << std::endl;
+
+        ping_token->block();
+
+        std::cout << "recv'd ack." << std::endl;
 
         /* set starting address and length */
         can::TokenPtr ack = bl.prepare(fw_start, fw.size());
