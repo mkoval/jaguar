@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include <boost/assert.hpp>
-#include <boost/lambda/lambda.hpp>
 #include <boost/fusion/algorithm.hpp>
 #include <boost/spirit/include/karma.hpp>
 #include <boost/foreach.hpp>
@@ -105,9 +104,14 @@ int main(int argc, char *argv[])
         fw_buf << fw_stream.rdbuf();
         std::string const fw(fw_buf.str());
 
+        using boost::phoenix::arg_names::arg1;
+        using boost::phoenix::arg_names::arg2;
+        using boost::phoenix::arg_names::arg3;
+        using boost::phoenix::arg_names::arg4;
+
         /* XXX: spy on all recv'd data */
-        can.attach_callback(0, 0,
-                boost::lambda::var(std::cerr) << boost::lambda::_1);
+        can.attach_callback(0, 0, std::cerr << arg1);
+        can.attach_callback(std::cerr << arg1 << arg2 << arg3 << arg4);
 
         /* send PING */
         can::TokenPtr ping_token = bl.recv(jaguar::FirmwareUpdate::kPing);

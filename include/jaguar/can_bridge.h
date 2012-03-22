@@ -34,9 +34,10 @@ public:
 
 class CANBridge {
 public:
-    typedef boost::function<void (CANMessage::Ptr)> Callback;
-    typedef boost::function<void (CANMessage::Ptr)> recv_callback;
-    typedef void (error_callback)(char const *func, char const *file, unsigned line, std::string const &msg);
+    typedef void recv_callback_sig(CANMessage::Ptr);
+    typedef boost::function<recv_callback_sig> recv_callback;
+    typedef void error_callback_sig(char const *func, char const *file, unsigned line, std::string const &msg);
+    typedef boost::function<error_callback_sig> error_callback;
 
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
