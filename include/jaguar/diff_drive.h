@@ -22,6 +22,7 @@ struct DiffDriveSettings {
     double ticks_per_rev;
     double wheel_radius_m;
     double robot_radius_m;
+    BrakeCoastSetting::Enum brake;
 };
 
 class DiffDriveRobot

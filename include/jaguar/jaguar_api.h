@@ -210,6 +210,14 @@ namespace ControlMode {
     }; 
 };
 
+namespace BrakeCoastSetting {
+    enum Enum {
+        kUseJumper     = 0,
+        kOverrideBrake = 1,
+        kOverrideCoast = 2
+    };
+};
+
 namespace LimitStatus {
     enum Enum {
         kForwardLimitReached           = 0,

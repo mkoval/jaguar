@@ -33,6 +33,7 @@ public:
     // Motor Control Configuration
     can::TokenPtr config_brushes_set(uint8_t brushes);
     can::TokenPtr config_encoders_set(uint16_t lines);
+    can::TokenPtr config_brake_set(BrakeCoastSetting::Enum setting);
     can::TokenPtr config_fault_set(uint16_t ms);
 
     // Voltage Control

@@ -54,6 +54,14 @@ can::TokenPtr Jaguar::config_encoders_set(uint16_t lines)
     );
 }
 
+can::TokenPtr Jaguar::config_brake_set(BrakeCoastSetting::Enum brake)
+{
+    return send_ack(
+        APIClass::kConfiguration, Configuration::kBrakeCoastSetting,
+        byte_(brake)
+    );
+}
+
 can::TokenPtr Jaguar::config_fault_set(uint16_t ms)
 {
     assert(ms >= 500);
