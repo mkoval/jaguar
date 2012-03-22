@@ -69,6 +69,9 @@ int main(int argc, char **argv)
     ros::param::get("wheel_radius", settings.wheel_radius_m);
     ros::param::get("robot_radius", settings.robot_radius_m);
 
+    // TODO: Read this from a parameter.
+    settings.brake = BrakeCoastSetting::kOverrideCoast;
+
     if (!(1 <= settings.id_left  && settings.id_left  <= 63)
      || !(1 <= settings.id_right && settings.id_right <= 63)) {
         ROS_FATAL("Invalid CAN device id. Must be in the range 1-63.");

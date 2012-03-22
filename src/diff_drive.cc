@@ -29,6 +29,10 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
         jag_left_.config_encoders_set(ticks_per_meter),
         jag_right_.config_encoders_set(ticks_per_meter)
     );
+    block(
+        jag_left_.config_brake_set(settings.brake),
+        jag_right_.config_brake_set(settings.brake)
+    );
     jag_broadcast_.system_resume();
 }
 
