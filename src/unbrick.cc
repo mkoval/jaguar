@@ -183,8 +183,8 @@ int main(int argc, char *argv[])
             std::cout << 'p' << std::flush;
         } while (bl.timed_ping(boost::posix_time::millisec(100)));
 
-        std::cout << "recv'd ack." << std::endl;
-        std::cout << "sending prepare" << std::endl;
+        std::cout << std::endl << "recv'd ack."     << std::endl;
+        std::cout              << "sending prepare" << std::endl;
 
         /* set starting address and length */
         can::TokenPtr ack = bl.prepare(fw_start, fw.size());
