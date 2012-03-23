@@ -100,7 +100,9 @@ private:
     callback_table callbacks_;
     callback_list  callbacks_list_;
     boost::mutex callback_mutex_;
+
     token_table tokens_;
+    boost::mutex token_mutex_;
 
     std::vector<uint8_t> packet_;
     ReceiveState state_;
