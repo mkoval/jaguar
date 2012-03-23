@@ -91,7 +91,7 @@ public:
 
     bool timed_ping(boost::posix_time::time_duration const &duration)
     {
-        return send_ack(jaguar::FirmwareUpdate::kPing)->timed_block(duration);
+        return ping()->timed_block(duration);
     }
 
     can::TokenPtr prepare(uint32_t start_addr, uint32_t size)
@@ -168,31 +168,34 @@ int main(int argc, char *argv[])
                 << arg1 << ":" << arg2 << ":" << arg3 << ":" << arg4);
 
         /* wait for Request & ping ack */
+#if 0
         can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
 
         std::cout << "waiting for request." << std::endl;
         req_token->block();
 
         std::cout << "recv'd req, pinging." << std::endl;
+#else
+        std::cout << "waiting for ping responce" << std::endl;
+#endif
 
         do {
             std::cout << 'p' << std::flush;
         } while (bl.timed_ping(boost::posix_time::millisec(100)));
 
-        std::cout << std::endl << "pinged, waiting for ack." << std::endl;
-
         std::cout << "recv'd ack." << std::endl;
+        std::cout << "sending prepare" << std::endl;
 
         /* set starting address and length */
         can::TokenPtr ack = bl.prepare(fw_start, fw.size());
 
-        std::cout << 's' << std::flush;
-
         /* TODO: examine ack */
         ack->block();
         if (ack->message()->payload[0] == 1) {
-            std::cout << std::endl << "Prepare failed" << std::endl;
+            std::cout << "Prepare failed" << std::endl;
         }
+
+        std::cout << "prepare acked." << std::endl;
 
         std::cout << 'a' << std::flush;
 
