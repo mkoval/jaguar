@@ -19,7 +19,9 @@ int main(int argc, char *argv[])
 	jaguar::CANId id(be32toh(raw_id));
 
 	std::cout << be32toh(raw_id) << std::endl
-		  << id << std::endl;
+		  << jaguar::CANId(be32toh(raw_id)) << std::endl
+		  << le32toh(raw_id) << std::endl
+		  << jaguar::CANId(le32toh(raw_id)) << std::endl;
 
 	return 0;
 }

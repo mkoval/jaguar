@@ -18,9 +18,39 @@ static uint32_t upd_id(uint16_t api)
             api);
 }
 
-class JaguarBootloader {
+class AckToken {
 public:
-    JaguarBootloader(can::CANBridge &can)
+    AckToken(can::TokenPtr &token_)
+    : token(token_)
+    {}
+
+    can::TokenPtr &token;
+
+    int get_status(void)
+    {
+        std::vector<uint8_t> data = token->message()->payload;
+        if (data.size() == 1)
+            return data[0];
+        else
+            return -1;
+    }
+
+    int status_block(void)
+    {
+        token->block();
+        return get_status();
+    }
+
+    int timed_status_block(boost::posix_time::time_duration const &duration)
+    {
+        token->timed_block(duration);
+        return get_status();
+    }
+};
+
+class Bootloader {
+public:
+    Bootloader(can::CANBridge &can)
     : can_(can)
     {}
 
@@ -44,7 +74,8 @@ public:
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
         std::vector<uint8_t> obuf;
-        BOOST_VERIFY(boost::spirit::karma::generate(obuf.end(), generator));
+        std::back_insert_iterator<std::vector<uint8_t> > payload(obuf);
+        BOOST_VERIFY(boost::spirit::karma::generate(payload, generator));
         return send_ack(api, obuf, ack_api);
     }
 
@@ -56,6 +87,11 @@ public:
     can::TokenPtr ping(void)
     {
         return send_ack(jaguar::FirmwareUpdate::kPing);
+    }
+
+    bool timed_ping(boost::posix_time::time_duration const &duration)
+    {
+        return send_ack(jaguar::FirmwareUpdate::kPing)->timed_block(duration);
     }
 
     can::TokenPtr prepare(uint32_t start_addr, uint32_t size)
@@ -103,16 +139,17 @@ int main(int argc, char *argv[])
 
         std::string const io_path(argv[1]);
         std::string const fw_path(argv[2]);
-        std::stringstream sa_stm;
+
+        //std::stringstream sa_stm;
         uint32_t fw_start;
-        sa_stm << argv[3];
+        //sa_stm << argv[3];
 
         /* FIXME: */
         //sa_stm >> std::hex >> fw_start;
         fw_start = 0x800;
 
         can::JaguarBridge     can(io_path);
-        JaguarBootloader bl(can);
+        Bootloader bl(can);
 
         /* XXX: the hell is this, C++? */
         std::ifstream     fw_stream(fw_path.c_str());
@@ -127,34 +164,37 @@ int main(int argc, char *argv[])
 
         /* XXX: spy on all recv'd data */
         can.attach_callback(0, 0, std::cerr << arg1);
-        can.attach_callback(std::cerr << arg1 << arg2 << arg3 << arg4);
+        can.attach_callback(std::cerr
+                << arg1 << ":" << arg2 << ":" << arg3 << ":" << arg4);
 
         /* wait for Request & ping ack */
         can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
-        can::TokenPtr ping_token = bl.recv(jaguar::FirmwareUpdate::kPing);
 
         std::cout << "waiting for request." << std::endl;
         req_token->block();
 
         std::cout << "recv'd req, pinging." << std::endl;
 
-        bl.ping();
+        do {
+            std::cout << 'p' << std::flush;
+        } while (bl.timed_ping(boost::posix_time::millisec(100)));
 
-        std::cout << "pinged, waiting for ack." << std::endl;
-
-        ping_token->block();
+        std::cout << std::endl << "pinged, waiting for ack." << std::endl;
 
         std::cout << "recv'd ack." << std::endl;
 
         /* set starting address and length */
         can::TokenPtr ack = bl.prepare(fw_start, fw.size());
 
-        std::cout << 's';
+        std::cout << 's' << std::flush;
 
         /* TODO: examine ack */
         ack->block();
+        if (ack->message()->payload[0] == 1) {
+            std::cout << std::endl << "Prepare failed" << std::endl;
+        }
 
-        std::cout << 'a';
+        std::cout << 'a' << std::flush;
 
         /* send data block */
         std::vector<uint8_t> data;
@@ -163,12 +203,15 @@ int main(int argc, char *argv[])
                 /* send `data` and reset */
                 ack = bl.send_data(data);
 
-                std::cout << 'd';
+                std::cout << 'd' << std::flush;
 
                 /* TODO: look at ack payload (== status) */
                 ack->block();
+                if (ack->message()->payload[0] == 1) {
+                    std::cout << std::endl << "send data failed" << std::endl;
+                }
 
-                std::cout << 'a';
+                std::cout << 'a' << std::flush;
 
                 data.clear();
             }
@@ -179,6 +222,9 @@ int main(int argc, char *argv[])
         if (!data.empty()) {
             ack = bl.send_data(data);
             ack->block();
+            if (ack->message()->payload[0] == 1) {
+                std::cout << std::endl << "send data failed" << std::endl;
+            }
         }
 
         std::cout << std::endl << "Programming complete" << std::endl;
