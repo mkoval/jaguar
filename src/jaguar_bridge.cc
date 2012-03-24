@@ -91,7 +91,7 @@ TokenPtr JaguarBridge::recv(uint32_t id)
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
-        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken()))
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id)))
     );
     //assert(it.second);
     return it.first->second;
@@ -220,6 +220,16 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
+void JaguarBridge::discard_token(JaguarToken &token)
+{
+    boost::mutex::scoped_lock lock(token_mutex_);
+    token_table::iterator token_it = tokens_.find(token.id_);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        tokens_.erase(token_it);
+    }
+}
+
 void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
 {
     boost::mutex::scoped_lock lock(token_mutex_);
@@ -298,13 +308,25 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
 /*
  * JaguarToken
  */
-JaguarToken::JaguarToken(void)
+JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
     : done_(false)
+    , bridge_(bridge)
+    , id_(id)
 {
 }
 
 JaguarToken::~JaguarToken(void)
 {
+    bridge_.discard_token(*this);
+}
+
+void JaguarToken::discard(void)
+{
+    bridge_.discard_token(*this);
+    {
+        boost::mutex::scoped_lock lock(mutex_);
+        done_ = true;
+    }
 }
 
 void JaguarToken::block(void)

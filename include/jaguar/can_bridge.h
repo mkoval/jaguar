@@ -60,6 +60,7 @@ public:
 	virtual bool timed_block(boost::posix_time::time_duration const &duration) = 0;
     virtual bool ready(void) const = 0;
 	virtual boost::shared_ptr<CANMessage const> message(void) const = 0;
+    virtual void discard(void) = 0;
 };
 
 class CANException : public std::exception {

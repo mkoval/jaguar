@@ -113,9 +113,12 @@ private:
     void recv_handle(boost::system::error_code const& error, size_t count);
     void recv_message(boost::shared_ptr<CANMessage> msg);
     void remove_token(boost::shared_ptr<CANMessage> msg);
+    void discard_token(JaguarToken &msg);
 
     boost::shared_ptr<CANMessage> unpack_packet(std::vector<uint8_t> const &packet);
     size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
+
+    friend class JaguarToken;
 };
 
 class JaguarToken : public Token {
@@ -125,14 +128,17 @@ public:
     virtual bool timed_block(boost::posix_time::time_duration const &duration);
     virtual boost::shared_ptr<CANMessage const> message(void) const;
     virtual bool ready(void) const;
+    virtual void discard(void);
 
 private:
+    bool done_;
+    JaguarBridge &bridge_;
+    uint32_t id_;
     boost::shared_ptr<CANMessage> message_;
     boost::condition_variable cond_;
     boost::mutex mutex_;
-    bool done_;
 
-    JaguarToken(void);
+    JaguarToken(JaguarBridge &bridge, uint32_t id);
     void unblock(boost::shared_ptr<CANMessage> message);
 
     friend class JaguarBridge;
