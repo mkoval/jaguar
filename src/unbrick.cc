@@ -139,15 +139,15 @@ int main(int argc, char *argv[])
 
     po::options_description desc("Allowed options");
     desc.add_options()
-        ("serial port,s",   po::value<std::string>(&io_path)->required(),
+        ("serial_port,s",   po::value<std::string>(&io_path)->required(),
             "serial port the Jaguar is connected to")
         ("firmware,f",      po::value<std::string>(&fw_path)->required(),
             "firmware binary to flash")
-        ("wait for req,w",  po::value<bool>(&wait_for_req)->zero_tokens(),
+        ("wait_for_req,w",  po::value<bool>(&wait_for_req)->zero_tokens(),
             "wait for a request for a firmware update")
-        ("start address,a", po::value<uint32_t>(&fw_start)->default_value(0x800),
+        ("start_address,a", po::value<uint32_t>(&fw_start)->default_value(0x800),
             "set the firmware start address")
-        ("help", po::value<bool>(&help)->zero_tokens(),
+        ("help,h", po::value<bool>(&help)->zero_tokens(),
             "show this message")
         ;
 
@@ -159,7 +159,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    po::notify(vm);
+    try {
+        po::notify(vm);
+    } catch (std::exception &e) {
+        std::cerr << "bleh" << std::endl;
+        return 0;
+    }
 
     try {
         can::JaguarBridge     can(io_path);
