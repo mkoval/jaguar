@@ -43,7 +43,8 @@ public:
 
     int timed_status_block(boost::posix_time::time_duration const &duration)
     {
-        token->timed_block(duration);
+        if (!token->timed_block(duration))
+            return -1;
         return get_status();
     }
 };
