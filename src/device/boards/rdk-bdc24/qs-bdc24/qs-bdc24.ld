@@ -37,15 +37,15 @@ SECTIONS
         *(.text*)
         *(.rodata*)
         _etext = .;
-    } > FLASH
+    } >FLASH AT>FLASH
 
-    .data : AT(ADDR(.text) + SIZEOF(.text))
+    .data :
     {
         _data = .;
-        *(vtable)
+        KEEP(*(vtable))
         *(.data*)
         _edata = .;
-    } > SRAM
+    }  >SRAM AT>FLASH
 
     .bss :
     {
