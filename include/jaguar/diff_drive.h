@@ -33,6 +33,7 @@ public:
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
 
+    virtual void heartbeat(void);
     virtual void drive(double v, double omega);
     virtual void drive_raw(double v_left, double v_right);
 
@@ -52,7 +53,6 @@ private:
     // Speed Control
     virtual void speed_init(void);
 
-    virtual void heartbeat(void);
     virtual void block(can::TokenPtr t1, can::TokenPtr t2);
 
     can::JaguarBridge bridge_;
@@ -61,8 +61,6 @@ private:
     boost::mutex mutex_;
 
     uint32_t status_ms_;
-    boost::posix_time::time_duration timer_period_;
-    boost::thread timer_;
 
     Side odom_state_;
     int32_t odom_curr_left_, odom_curr_right_;

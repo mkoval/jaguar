@@ -14,8 +14,6 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
       jag_left_(bridge_, settings.id_left),
       jag_right_(bridge_, settings.id_right),
       status_ms_(settings.status_ms),
-      timer_period_(boost::posix_time::milliseconds(settings.heartbeat_ms)),
-//      timer_(boost::bind(&DiffDriveRobot::heartbeat, this)),
       robot_radius_(settings.robot_radius_m)
 {
     double const ticks_per_meter = settings.ticks_per_rev / (2. * M_PI * settings.wheel_radius_m);
@@ -36,12 +34,13 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     );
     std::cout << "system resume" << std::endl;
     jag_broadcast_.system_resume();
+
+    jag_left_.voltage_enable()->block();
+    jag_left_.voltage_set(1.0)->block();
 }
 
 DiffDriveRobot::~DiffDriveRobot(void)
 {
-    timer_.interrupt();
-    timer_.join();
 }
 
 void DiffDriveRobot::drive(double v, double omega)
@@ -57,6 +56,11 @@ void DiffDriveRobot::drive_raw(double v_left, double v_right)
         jag_left_.speed_set(v_left),
         jag_right_.speed_set(v_right)
     );
+}
+
+void DiffDriveRobot::heartbeat(void)
+{
+    jag_broadcast_.heartbeat();
 }
 
 /*
@@ -184,22 +188,6 @@ void DiffDriveRobot::speed_init(void)
 /*
  * Helper Methods
  */
-void DiffDriveRobot::heartbeat(void)
-{
-    for (;;) {
-        std::cout << "heartbeat" << std::endl;
-        jag_broadcast_.heartbeat();
-
-        // We must gracefully handle interruption because the destructor
-        // interrupts this thread to cleanly exit.
-        try {
-            boost::this_thread::sleep(timer_period_);
-        } catch (boost::thread_interrupted const &e) {
-            break;
-        }
-    }
-}
-
 void DiffDriveRobot::block(can::TokenPtr t1, can::TokenPtr t2)
 {
     t1->block();

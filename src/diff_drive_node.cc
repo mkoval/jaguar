@@ -131,6 +131,13 @@ int main(int argc, char **argv)
     f = boost::bind(&callback_reconfigure, _1, _2);
     server.setCallback(f);
 
+    // TODO: Read this heartbeat rate from a parameter.
+    ros::Rate heartbeat_rate(20);
+    while (ros::ok()) {
+        robot->heartbeat();
+        ros::spinOnce();
+        heartbeat_rate.sleep();
+    }
     ros::spin();
 
     return 0;
