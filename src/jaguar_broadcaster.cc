@@ -1,11 +1,12 @@
-#include "jaguar_broadcaster.h"
+#include <cstring>
+#include <jaguar/jaguar_broadcaster.h>
 
 namespace jaguar {
 
 JaguarBroadcaster::JaguarBroadcaster(can::CANBridge &can)
 	: can_(can)
 {
-}	
+}
 
 JaguarBroadcaster::~JaguarBroadcaster(void)
 {
@@ -43,17 +44,21 @@ void JaguarBroadcaster::synchronous_update(uint8_t group)
 
 void JaguarBroadcaster::broadcast(SystemControl::Enum api)
 {
+    std::vector<uint8_t> payload;
     uint32_t id = pack_id(0, Manufacturer::kBroadcastMessage, DeviceType::kBroadcastMessage,
     	                  APIClass::kBroadcastMessage, api);
-	can_.send(id, NULL, 0);
+	can_.send(can::CANMessage(id, payload));
 }
 
 template <typename T>
-void JaguarBroadcaster::broadcast(SystemControl::Enum api, T const &payload)
+void JaguarBroadcaster::broadcast(SystemControl::Enum api, T const &payload_raw)
 {
+    std::vector<uint8_t> payload(sizeof(T));
+    memcpy(&payload[0], &payload_raw, sizeof(T));
+
     uint32_t id = pack_id(0, Manufacturer::kBroadcastMessage, DeviceType::kBroadcastMessage,
     	                  APIClass::kBroadcastMessage, api);
-	can_.send(id, &payload, sizeof payload);
+	can_.send(can::CANMessage(id, payload));
 }
 
 };

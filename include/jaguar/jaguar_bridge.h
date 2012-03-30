@@ -5,7 +5,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/signal.hpp>
+#include <boost/signals2.hpp>
 #include <boost/thread.hpp>
 #include <map>
 #include <vector>
@@ -26,26 +26,62 @@ enum ReceiveState {
     kComplete
 };
 
+template<typename T>
+class masked_number
+{
+public:
+	typedef T type;
+
+	masked_number(T const& num_, T const& mask_)
+	: num(num_), mask(mask_)
+	{
+		assert((num_ & ~mask_) == 0);
+	}
+
+	template <class U>
+	masked_number(masked_number<U> const &mn)
+	: num(mn.num), mask(mn.mask)
+	{}
+
+	bool matches(T val)
+	{
+		return (val & mask) == num;
+	}
+
+	T num;
+	T mask;
+};
+
+template<typename T>
+masked_number<T> make_masked_number(T const &n, T const &m)
+{
+	return masked_number<T>(n, m);
+}
+
 class JaguarToken;
 
 class JaguarBridge : public CANBridge
 {
 public:
-    typedef boost::function<void (boost::shared_ptr<CANMessage>)> recv_callback;
-
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
     virtual void send(CANMessage const &message);
     virtual TokenPtr recv(uint32_t id);
 
-    virtual void attach_callback(uint32_t id, recv_callback cb);
-    //virtual bool detach_callback(uint32_t id, recv_callback cb);
+    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb);
+    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
+		    recv_callback cb);
+    virtual CallbackToken attach_callback(error_callback cb);
 
 private:
-    typedef boost::signal<void (boost::shared_ptr<CANMessage>)> callback_signal;
+    typedef boost::signals2::signal<recv_callback_sig> callback_signal;
     typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
+
     typedef std::map<uint32_t, callback_signal_ptr> callback_table;
+
+    typedef std::pair<masked_number<uint32_t>, callback_signal_ptr> mask_callback;
+    typedef std::list<mask_callback> callback_list;
 
     typedef boost::shared_ptr<JaguarToken> token_ptr;
     typedef std::map<uint32_t, token_ptr>  token_table;
@@ -57,11 +93,16 @@ private:
     boost::asio::io_service  io_;
     boost::asio::serial_port serial_;
 
+    boost::signals2::signal<error_callback_sig> error_signal_;
+
     boost::thread recv_thread_;
     std::vector<uint8_t> recv_buffer_;
     callback_table callbacks_;
+    callback_list  callbacks_list_;
     boost::mutex callback_mutex_;
+
     token_table tokens_;
+    boost::mutex token_mutex_;
 
     std::vector<uint8_t> packet_;
     ReceiveState state_;
@@ -71,26 +112,34 @@ private:
     boost::shared_ptr<CANMessage> recv_byte(uint8_t byte);
     void recv_handle(boost::system::error_code const& error, size_t count);
     void recv_message(boost::shared_ptr<CANMessage> msg);
+    void remove_token(boost::shared_ptr<CANMessage> msg);
+    void discard_token(JaguarToken &msg);
 
     boost::shared_ptr<CANMessage> unpack_packet(std::vector<uint8_t> const &packet);
     size_t encode_bytes(uint8_t const *bytes, size_t length, std::vector<uint8_t> &buffer);
+
+    friend class JaguarToken;
 };
 
 class JaguarToken : public Token {
 public:
     virtual ~JaguarToken(void);
     virtual void block(void);
+    virtual bool timed_block(boost::posix_time::time_duration const &duration);
     virtual boost::shared_ptr<CANMessage const> message(void) const;
     virtual bool ready(void) const;
+    virtual void discard(void);
 
-private:    
+private:
+    bool done_;
+    JaguarBridge &bridge_;
+    uint32_t id_;
     boost::shared_ptr<CANMessage> message_;
     boost::condition_variable cond_;
     boost::mutex mutex_;
-    bool done_;
 
-    JaguarToken(void);
-    virtual void unblock(boost::shared_ptr<CANMessage> message);
+    JaguarToken(JaguarBridge &bridge, uint32_t id);
+    void unblock(boost::shared_ptr<CANMessage> message);
 
     friend class JaguarBridge;
 };
@@ -98,3 +147,5 @@ private:
 };
 
 #endif
+
+/* vim set: sts=4 et sw=4 ts=4 : */

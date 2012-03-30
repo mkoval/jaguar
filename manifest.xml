@@ -6,11 +6,12 @@
   </description>
   <author>Michael Koval</author>
   <license>BSD</license>
-  <rosdep name="pyserial"/>
-  <depend package="geometry_msgs"/>
-  <depend package="rospy"/>
+  <rosdep name="google-mock"/>
+  <depend package="dynamic_reconfigure"/>
+  <depend package="nav_msgs"/>
+  <depend package="roscpp"/>
   <depend package="tf"/>
   <export>
-    <cpp cflags="-L/usr/local/esd/lib64" lflags="-lntcan"/>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -ljaguar"/>
   </export>
 </package>

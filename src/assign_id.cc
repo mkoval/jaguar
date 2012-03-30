@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 #include <stdint.h>
-#include "jaguar_broadcaster.h"
-#include "jaguar_bridge.h"
+#include <jaguar/jaguar_bridge.h>
+#include <jaguar/jaguar_broadcaster.h>
 
 template <typename T>
 static T convert(std::string str)
@@ -17,21 +17,18 @@ static T convert(std::string str)
 
 int main(int argc, char *argv[])
 {
-    if (argc <= 2) {
-        std::cerr << "err: incorrect number of arguments\n"
-                  << "usage: ./assign_id <path> <device id>"
-                  << std::endl;
-        return 1;
-    }
-
-    std::string const path(argv[1]);
-    uint8_t const new_id = convert<uint16_t>(argv[2]);
-
     try {
-        can::JaguarBridge can(path);
-        sleep(10);
-        return 0;
+        if (argc <= 2) {
+            std::cerr << "err: incorrect number of arguments\n"
+                      << "usage: ./assign_id <path> <device id>"
+                      << std::endl;
+            return 1;
+        }
 
+        std::string const path(argv[1]);
+        uint8_t const new_id = convert<uint16_t>(argv[2]);
+
+        can::JaguarBridge can(path);
         jaguar::JaguarBroadcaster broadcaster(can);
         broadcaster.device_assignment(new_id);
 

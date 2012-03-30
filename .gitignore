@@ -1,9 +1,15 @@
-*.pyc
 *~
-*.o
+*.[do]
+*.sublime-workspace
+.*.swp
 .DS_Store
 /jaguar
+/unbrick
+/decode_id
+/bin/
+/lib/
 /build/
 /CMakeCache.txt
 /CMakeFiles/
 /cmake_install.cmake
+/jaguar_test

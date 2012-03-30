@@ -13,7 +13,7 @@ namespace DeviceType {
         kAccelerometerSensor = 5,
         kUltrasonicSensor    = 6,
         kGearToothSensor     = 7,
-        kFirmwareUpdate      = 31
+        kFirmwareUpdate      = 0x1f
     };
 };
 
@@ -41,7 +41,7 @@ namespace APIClass {
         kPeriodicStatus             = 6,
         kConfiguration              = 7,
         kAcknowledge                = 8
-    }; 
+    };
 };
 
 /*
@@ -58,7 +58,7 @@ namespace SystemControl {
         kFirmwareUpdate    = 7,
         kFirmwareVersion   = 8,
         kEnumeration       = 9,
-        kSystemResume      = 10
+        kSystemResume      = 0xf
     }; 
 };
 
@@ -144,7 +144,7 @@ namespace Configuration {
         kNumberOfBrushes            = 0,
         kNumberOfEncodersLines      = 1,
         kNumberOfPotentiometerTurns = 2,
-        kBreakCoastSetting          = 3,
+        kBrakeCoastSetting          = 3,
         kLimitMode                  = 4,
         kForwardDirectionLimit      = 5,
         kReverseDirectionLimit      = 6,
@@ -153,9 +153,6 @@ namespace Configuration {
     }; 
 };
 
-/*
- * Miscellaneous Constants
- */
 namespace PeriodicStatus {
     enum Enum {
         kEnableMessage    = 0,
@@ -164,6 +161,20 @@ namespace PeriodicStatus {
     }; 
 };
 
+namespace FirmwareUpdate {
+    enum Enum {
+        kPing     = 0,
+        kDownload = 1, /* sets starting address */
+        kSendData = 2,
+        kReset    = 3,
+        kAck      = 4,
+        kRequest  = 6
+    };
+}
+
+/*
+ * Miscellaneous Constants
+ */
 namespace SpeedReference {
     enum Enum {
         kPositiveEncoder   = 0,
@@ -199,6 +210,14 @@ namespace ControlMode {
     }; 
 };
 
+namespace BrakeCoastSetting {
+    enum Enum {
+        kUseJumper     = 0,
+        kOverrideBrake = 1,
+        kOverrideCoast = 2
+    };
+};
+
 namespace LimitStatus {
     enum Enum {
         kForwardLimitReached           = 0,
@@ -212,6 +231,31 @@ namespace LimitStatus {
     }; 
 };
 
+namespace PeriodicStatusItem {
+    enum Enum {
+        kEndOfMessage              = 0,
+        kOutputVoltagePercentBase  = 1,
+        kBusVoltageBase            = 3,
+        kMotorCurrentBase          = 5,
+        kTemperatureBase           = 7,
+        kPositionBase              = 9,
+        kSpeedBase                 = 13,
+        kLimitNonClearing          = 17,
+        kLimitClearing             = 17,
+        kFaults                    = 19,
+        kStickyFaultsNonClearing   = 20,
+        kStickyFaultsClearing      = 21,
+        kOutputVoltageVolts        = 22,
+        kCurrentFaultCounter       = 24,
+        kTemperatureFaultCounter   = 25,
+        kBusVoltageFaultCounter    = 26,
+        kGateFaultCounter          = 27,
+        kCommunicationFaultCounter = 28
+    };
+};
+
 };
 
 #endif
+
+/* vim: set ts=4 et sts=4 sw=4: */

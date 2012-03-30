@@ -8,10 +8,29 @@ set(ROS_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-rosbuild_add_executable(diffdrive src/jaguar_diffdrive.cc src/jaguar.cc src/jaguar_bridge.cc)
-rosbuild_add_link_flags(diffdrive -L/usr/local/esd/lib64 -lntcan)
-rosbuild_link_boost(diffdrive system)
+rosbuild_add_library(jaguar
+	src/jaguar.cc
+	src/jaguar_helper.cc
+	src/jaguar_bridge.cc
+	src/jaguar_broadcaster.cc
+)
 
-rosbuild_add_executable(assign_id src/assign_id.cc src/jaguar.cc src/jaguar_bridge.cc)
-rosbuild_add_link_flags(assign_id -L/usr/local/esd/lib64 -lntcan)
-rosbuild_link_boost(assign_id system)
+rosbuild_add_executable(assign_id
+    src/assign_id.cc
+)
+
+rosbuild_add_executable(diff_drive
+    src/diff_drive.cc
+    src/diff_drive_node.cc
+)
+
+rosbuild_add_gtest(utests
+    test/jaguar_test.cc
+#    test/jaguar_bridge_test.cc
+    test/jaguar_helper_test.cc
+)
+
+rosbuild_link_boost(jaguar signals system thread)
+target_link_libraries(assign_id jaguar)
+target_link_libraries(diff_drive jaguar)
+target_link_libraries(utests jaguar gtest_main gmock)

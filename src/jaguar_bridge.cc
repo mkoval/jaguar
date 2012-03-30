@@ -1,11 +1,20 @@
 #include <cassert>
-#include "jaguar_bridge.h"
-
 #include <iostream>
+#include <boost/make_shared.hpp>
+#include <boost/foreach.hpp>
+#include <boost/lambda/lambda.hpp>
+#include <boost/assert.hpp>
+#include <jaguar/jaguar_bridge.h>
 
 namespace asio = boost::asio;
 
 namespace can {
+
+#define CAN_JAGUARBRIDGE_ERROR(msg) do {                                    \
+    std::stringstream __m__;                                                \
+    __m__ << msg;                                                           \
+    error_signal_(BOOST_CURRENT_FUNCTION, __FILE__, __LINE__, __m__.str()); \
+} while(0)
 
 uint8_t const JaguarBridge::kSOF = 0xFF;
 uint8_t const JaguarBridge::kESC = 0xFE;
@@ -78,16 +87,39 @@ void JaguarBridge::send(CANMessage const &message)
 
 TokenPtr JaguarBridge::recv(uint32_t id)
 {
+    boost::mutex::scoped_lock lock(token_mutex_);
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
-        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken()))
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id)))
     );
-    assert(it.second);
+    //assert(it.second);
     return it.first->second;
 }
 
-void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
+CallbackToken JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
+{
+    boost::mutex::scoped_lock lock(callback_mutex_);
+
+    /* FIXME: connect signals with identical id & id_mask */
+    boost::shared_ptr<callback_signal> signal = boost::make_shared<callback_signal>();
+    callbacks_list_.insert(
+        callbacks_list_.end(),
+        std::make_pair(
+            make_masked_number(id, id_mask),
+            signal
+        )
+    );
+    return signal->connect(cb);
+}
+
+/* FIXME: should be `void JaguarBridge::attack_callback(error_callback cb)` */
+CallbackToken JaguarBridge::attach_callback(boost::function<error_callback_sig> cb)
+{
+    return error_signal_.connect(cb);
+}
+
+CallbackToken JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
@@ -101,7 +133,7 @@ void JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
     );
 
     callback_signal_ptr signal = old_callback.first->second;
-    signal->connect(cb);
+    return signal->connect(cb);
 }
 
 boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
@@ -115,9 +147,13 @@ boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     }
     // Packet length can never be SOF or ESC, so we can ignore escaping.
     else if (state_ == kLength) {
-        assert(4 <= byte && byte <= 12);
-        state_  = kPayload;
-        length_ = byte;
+        if (byte < 4 || byte > 12) {
+            CAN_JAGUARBRIDGE_ERROR("recieved invalid length = " << static_cast<int>(byte));
+            state_  = kWaiting;
+        } else {
+            state_  = kPayload;
+            length_ = byte;
+        }
     }
     // This is the second byte in a two-byte escape code.
     else if (state_ == kPayload && escape_) {
@@ -131,7 +167,7 @@ boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
             break;
 
         default:
-            // TODO: Print a warning because this should never happen.
+            CAN_JAGUARBRIDGE_ERROR("should never happen");
             state_ = kWaiting;
         }
         escape_ = false;
@@ -170,8 +206,7 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     } else if (error == asio::error::operation_aborted) {
         return;
     } else {
-        // TODO: properly log this error message
-        std::cerr << "error: " << error.message() << std::endl;
+        CAN_JAGUARBRIDGE_ERROR(error.message());
         return;
     }
 
@@ -185,16 +220,19 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
-void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
+void JaguarBridge::discard_token(JaguarToken &token)
 {
-    boost::mutex::scoped_lock lock(callback_mutex_);
+    boost::mutex::scoped_lock lock(token_mutex_);
+    token_table::iterator token_it = tokens_.find(token.id_);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        tokens_.erase(token_it);
+    }
+}
 
-    // Invoke callbacks registered to this CAN identifier.
-    callback_table::iterator callback_it = callbacks_.find(msg->id);
-    if (callback_it != callbacks_.end()) {
-        (*callback_it->second)(msg);
-    }    
-
+void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
+{
+    boost::mutex::scoped_lock lock(token_mutex_);
     // Wake anyone who is blocking for a response.
     token_table::iterator token_it = tokens_.find(msg->id);
     if (token_it != tokens_.end()) {
@@ -204,13 +242,34 @@ void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
     }
 }
 
+void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
+{
+    {
+        boost::mutex::scoped_lock lock(callback_mutex_);
+
+        // Invoke callbacks registered to this CAN identifier.
+        callback_table::iterator callback_it = callbacks_.find(msg->id);
+        if (callback_it != callbacks_.end()) {
+            (*callback_it->second)(msg);
+        }
+
+        // Invoke more callbacks
+        BOOST_FOREACH(mask_callback m, callbacks_list_) {
+            if (m.first.matches(msg->id))
+                (*m.second)(msg);
+        }
+    }
+
+    remove_token(msg);
+}
+
 boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
 {
     assert(4 <= packet.size() && packet.size() <= 12);
 
-    uint32_t id;
-    memcpy(&id, &packet[0], sizeof(uint32_t));
-    id = le32toh(id);
+    uint32_t le_id;
+    memcpy(&le_id, &packet[0], sizeof(uint32_t));
+    uint32_t id = le32toh(le_id);
 
     std::vector<uint8_t> payload(packet.size() - 4);
     if (packet.size() > 4) {
@@ -249,23 +308,39 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
 /*
  * JaguarToken
  */
-JaguarToken::JaguarToken(void)
-    : done_(false) 
+JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
+    : done_(false)
+    , bridge_(bridge)
+    , id_(id)
 {
 }
 
 JaguarToken::~JaguarToken(void)
 {
+    bridge_.discard_token(*this);
+}
+
+void JaguarToken::discard(void)
+{
+    bridge_.discard_token(*this);
+    {
+        boost::mutex::scoped_lock lock(mutex_);
+        done_ = true;
+    }
 }
 
 void JaguarToken::block(void)
 {
-    if (done_) return;
-
     boost::unique_lock<boost::mutex> lock(mutex_);
-    while (!done_) {
-        cond_.wait(lock);
-    }
+    cond_.wait(lock, boost::lambda::var(done_));
+}
+
+bool JaguarToken::timed_block(boost::posix_time::time_duration const& rel_time)
+{
+    boost::unique_lock<boost::mutex> lock(mutex_);
+    bool r = cond_.timed_wait(lock, rel_time, boost::lambda::var(done_));
+    //bridge->remove_token();
+    return r;
 }
 
 bool JaguarToken::ready(void) const
@@ -279,6 +354,15 @@ boost::shared_ptr<CANMessage const> JaguarToken::message(void) const
     return message_;
 }
 
+#if 0
+void JaguarToken::clear_block(void)
+{
+    boost::lock_guard<boost::mutex> lock(mutex_);
+    message_ = message;
+    done_ = true;
+}
+#endif
+
 void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 {
     assert(!done_);
@@ -291,3 +375,5 @@ void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 }
 
 };
+
+/* vim: set et ts=4 sts=4 sw=4: */

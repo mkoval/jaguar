@@ -2,19 +2,26 @@
 #define CANBRIDGE_H_
 
 #include <exception>
+#include <stdint.h>
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
+#include <boost/signals2.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 namespace can {
 
 class Token;
 
 typedef boost::shared_ptr<Token> TokenPtr;
+typedef boost::signals2::connection CallbackToken;
 
 class CANMessage {
 public:
+    typedef boost::shared_ptr<CANMessage> Ptr;
+
     CANMessage(uint32_t p_id)
         : id(p_id) {}
 
@@ -29,18 +36,31 @@ public:
 
 class CANBridge {
 public:
+    typedef void recv_callback_sig(CANMessage::Ptr);
+    typedef boost::function<recv_callback_sig> recv_callback;
+    typedef void error_callback_sig(char const *func, char const *file, unsigned line, std::string const &msg);
+    typedef boost::function<error_callback_sig> error_callback;
+
     virtual void send(CANMessage const &message) = 0;
     virtual TokenPtr recv(uint32_t id) = 0;
+    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb) = 0;
+    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
+		    recv_callback cb) = 0;
+    virtual CallbackToken attach_callback(error_callback cb) = 0;
 };
 
 class Token : boost::noncopyable
 {
 public:
+    typedef boost::shared_ptr<Token> Ptr;
+
 	Token(void) {}
 	virtual ~Token(void) {}
 	virtual void block(void) = 0;
+	virtual bool timed_block(boost::posix_time::time_duration const &duration) = 0;
     virtual bool ready(void) const = 0;
 	virtual boost::shared_ptr<CANMessage const> message(void) const = 0;
+    virtual void discard(void) = 0;
 };
 
 class CANException : public std::exception {
@@ -59,3 +79,5 @@ private:
 };
 
 #endif
+
+/* vim: set et sts=4 sw=4 ts=4: */
