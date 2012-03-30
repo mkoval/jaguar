@@ -290,7 +290,7 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
  * JaguarToken
  */
 JaguarToken::JaguarToken(void)
-    : done_(false) 
+    : done_(false)
 {
 }
 
