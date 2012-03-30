@@ -16,27 +16,40 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
       status_ms_(settings.status_ms),
       robot_radius_(settings.robot_radius_m)
 {
-    double const ticks_per_meter = settings.ticks_per_rev / (2. * M_PI * settings.wheel_radius_m);
-    speed_init();
-    odom_init();
-
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
+    // FIXME: Convert from revolutions to meters using the robot model.
     std::cout << "set encoder ticks" << std::endl;
     block(
-        jag_left_.config_encoders_set(ticks_per_meter),
-        jag_right_.config_encoders_set(ticks_per_meter)
+        jag_left_.config_encoders_set(settings.ticks_per_rev),
+        jag_right_.config_encoders_set(settings.ticks_per_rev)
     );
-    std::cout << "set encoder ticks" << std::endl;
+    std::cout << "set coast mode" << std::endl;
     block(
         jag_left_.config_brake_set(settings.brake),
         jag_right_.config_brake_set(settings.brake)
     );
+
+    // FIXME: DEBUG
+    status_ms_ = 100;
+
+    speed_init();
+    odom_init();
+
     std::cout << "system resume" << std::endl;
     jag_broadcast_.system_resume();
 
+#if 0
     jag_left_.voltage_enable()->block();
     jag_left_.voltage_set(1.0)->block();
+    jag_right_.voltage_enable()->block();
+    jag_right_.voltage_set(1.0)->block();
+    jag_left_.speed_enable()->block();
+    jag_left_.speed_set(100)->block();
+
+    jag_right_.speed_enable()->block();
+    jag_right_.speed_set(100)->block();
+#endif
 }
 
 DiffDriveRobot::~DiffDriveRobot(void)
@@ -63,12 +76,18 @@ void DiffDriveRobot::heartbeat(void)
     jag_broadcast_.heartbeat();
 }
 
+void foo(std::string side, uint32_t speed)
+{
+    std::cout << side << " speed = " << s16p16_to_double(speed) << std::endl;
+}
+
 /*
  * Wheel Odometry
  */
 void DiffDriveRobot::odom_init(void)
 {
     using jaguar::PeriodicStatus::Position;
+    using jaguar::PeriodicStatus::Speed;
 
     odom_curr_left_  = 0;
     odom_curr_right_ = 0;
@@ -88,7 +107,8 @@ void DiffDriveRobot::odom_init(void)
         jag_right_.position_set_reference(PositionReference::kQuadratureEncoder)
     );
 
-#if 0
+    // FIXME: This fails if I only listen for position.
+    // TODO: Combine position and speed into one callback.
     std::cout << "config periodic updates" << std::endl;
     block(
         jag_left_.periodic_config(0,
@@ -96,11 +116,17 @@ void DiffDriveRobot::odom_init(void)
                 &DiffDriveRobot::odom_update, this,
                 kLeft, boost::ref(odom_last_left_), boost::ref(odom_curr_left_), _1
             ))
+            << Speed(boost::bind(&DiffDriveRobot::speed_update, this,
+                kLeft, _1
+            ))
         ),
         jag_right_.periodic_config(0,
             Position(boost::bind(
                 &DiffDriveRobot::odom_update, this,
                 kRight, boost::ref(odom_last_right_), boost::ref(odom_curr_right_), _1
+            ))
+            << Speed(boost::bind(&DiffDriveRobot::speed_update, this,
+                kRight, _1
             ))
         )
     );
@@ -109,7 +135,6 @@ void DiffDriveRobot::odom_init(void)
         jag_left_.periodic_enable(0, status_ms_),
         jag_right_.periodic_enable(0, status_ms_)
     );
-#endif
 }
 
 void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
@@ -119,6 +144,7 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
 
 void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos)
 {
+#if 0
     // Keep track of the last two encoder readings to measure the change.
     last_pos = curr_pos;
     curr_pos = new_pos;
@@ -148,6 +174,7 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
+#endif
 }
 
 /*
@@ -155,34 +182,49 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
  */
 void DiffDriveRobot::speed_set_p(double p)
 {
-    jag_left_.speed_set_p(p)->block();
-    jag_right_.speed_set_p(p)->block();
+    block(
+        jag_left_.speed_set_p(p),
+        jag_right_.speed_set_p(p)
+    );
 }
 
 void DiffDriveRobot::speed_set_i(double i)
 {
-    jag_left_.speed_set_p(i)->block();
-    jag_right_.speed_set_p(i)->block();
+    block(
+        jag_left_.speed_set_p(i),
+        jag_right_.speed_set_p(i)
+    );
 }
 
 void DiffDriveRobot::speed_set_d(double d)
 {
-    jag_left_.speed_set_p(d)->block();
-    jag_right_.speed_set_p(d)->block();
+    block(
+        jag_left_.speed_set_p(d),
+        jag_right_.speed_set_p(d)
+    );
+}
+
+void DiffDriveRobot::speed_attach(boost::function<DiffDriveRobot::SpeedCallback> cb)
+{
+    speed_signal_.connect(cb);
 }
 
 void DiffDriveRobot::speed_init(void)
 {
+    std::cout << "set speed reference" << std::endl;
     block(
         jag_left_.speed_set_reference(SpeedReference::kQuadratureEncoder),
         jag_right_.speed_set_reference(SpeedReference::kQuadratureEncoder)
     );
-    std::cout << "set p" << std::endl;
-    speed_set_p(1000.0);
-    std::cout << "set i" << std::endl;
-    speed_set_i(0.0);
-    std::cout << "set d" << std::endl;
-    speed_set_d(0.0);
+    block(
+        jag_left_.speed_enable(),
+        jag_right_.speed_enable()
+    );
+}
+
+void DiffDriveRobot::speed_update(DiffDriveRobot::Side side, int32_t speed)
+{
+    speed_signal_(side, s16p16_to_double(speed));
 }
 
 /*

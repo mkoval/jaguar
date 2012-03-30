@@ -19,7 +19,7 @@ struct DiffDriveSettings {
     // Periodic Messages
     int heartbeat_ms, status_ms;
     // Robot Model Parameters
-    double ticks_per_rev;
+    uint16_t ticks_per_rev;
     double wheel_radius_m;
     double robot_radius_m;
     BrakeCoastSetting::Enum brake;
@@ -28,7 +28,9 @@ struct DiffDriveSettings {
 class DiffDriveRobot
 {
 public:
+    enum Side { kNone, kLeft, kRight };
     typedef void OdometryCallback(double, double, double, double, double, double);
+    typedef void SpeedCallback(Side, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
@@ -42,16 +44,16 @@ public:
     virtual void speed_set_d(double d);
 
     virtual void odom_attach(boost::function<OdometryCallback> callback);
+    virtual void speed_attach(boost::function<SpeedCallback> cb_left);
 
 private:
-    enum Side { kNone, kLeft, kRight };
-
     // Wheel Odometry
     virtual void odom_init(void);
     virtual void odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos);
 
     // Speed Control
     virtual void speed_init(void);
+    virtual void speed_update(Side side, int32_t speed);
 
     virtual void block(can::TokenPtr t1, can::TokenPtr t2);
 
@@ -67,6 +69,7 @@ private:
     int32_t odom_last_left_, odom_last_right_;
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
+    boost::signal<SpeedCallback> speed_signal_;
 
     double robot_radius_;
 };
