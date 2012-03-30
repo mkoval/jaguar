@@ -94,22 +94,6 @@ int main(int argc, char **argv)
     ROS_INFO("Wheel Radius: %f m", settings.wheel_radius_m);
     ROS_INFO("Robot Radius: %f m", settings.robot_radius_m);
 
-    robot = boost::make_shared<DiffDriveRobot>(settings);
-    // TODO: Why does this hang?
-    std::cout << "A" << std::endl;
-    robot->odom_attach(&callback_odom);
-    std::cout << "B" << std::endl;
-
-    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
-    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
-    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
-
-    std::cout << "c" << std::endl;
-    dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
-    dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
-    f = boost::bind(&callback_reconfigure, _1, _2);
-    server.setCallback(f);
-
     // TODO: Read this from a parameter.
     settings.brake = BrakeCoastSetting::kOverrideCoast;
 
@@ -133,6 +117,19 @@ int main(int argc, char **argv)
         ROS_FATAL("Robot radius must be positive.");
         return 1;
     }
+
+    robot = boost::make_shared<DiffDriveRobot>(settings);
+    robot->odom_attach(&callback_odom);
+
+    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
+    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
+    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
+
+    std::cout << "c" << std::endl;
+    dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
+    dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
+    f = boost::bind(&callback_reconfigure, _1, _2);
+    server.setCallback(f);
 
     ros::spin();
 

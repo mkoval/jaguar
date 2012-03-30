@@ -151,17 +151,20 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
  */
 void DiffDriveRobot::speed_set_p(double p)
 {
-    block(jag_left_.speed_set_p(p), jag_right_.speed_set_p(p));
+    jag_left_.speed_set_p(p)->block();
+    jag_right_.speed_set_p(p)->block();
 }
 
 void DiffDriveRobot::speed_set_i(double i)
 {
-    block(jag_left_.speed_set_p(i), jag_right_.speed_set_p(i));
+    jag_left_.speed_set_p(i)->block();
+    jag_right_.speed_set_p(i)->block();
 }
 
 void DiffDriveRobot::speed_set_d(double d)
 {
-    block(jag_left_.speed_set_p(d), jag_right_.speed_set_p(d));
+    jag_left_.speed_set_p(d)->block();
+    jag_right_.speed_set_p(d)->block();
 }
 
 void DiffDriveRobot::speed_init(void)

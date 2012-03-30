@@ -87,6 +87,8 @@ void JaguarBridge::send(CANMessage const &message)
 
 TokenPtr JaguarBridge::recv(uint32_t id)
 {
+    boost::mutex::scoped_lock lock(callback_mutex_);
+
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
@@ -221,18 +223,20 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
 
 void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
 {
-    boost::mutex::scoped_lock lock(callback_mutex_);
+    {
+        boost::mutex::scoped_lock lock(callback_mutex_);
 
-    // Invoke callbacks registered to this CAN identifier.
-    callback_table::iterator callback_it = callbacks_.find(msg->id);
-    if (callback_it != callbacks_.end()) {
-        (*callback_it->second)(msg);
-    }
+        // Invoke callbacks registered to this CAN identifier.
+        callback_table::iterator callback_it = callbacks_.find(msg->id);
+        if (callback_it != callbacks_.end()) {
+            (*callback_it->second)(msg);
+        }
 
-    // Invoke more callbacks
-    BOOST_FOREACH(mask_callback m, callbacks_list_) {
-	    if (m.first.matches(msg->id))
-		    (*m.second)(msg);
+        // Invoke more callbacks
+        BOOST_FOREACH(mask_callback m, callbacks_list_) {
+            if (m.first.matches(msg->id))
+                (*m.second)(msg);
+        }
     }
 
     // Wake anyone who is blocking for a response.
