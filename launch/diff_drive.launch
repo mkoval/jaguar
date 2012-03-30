@@ -8,12 +8,12 @@
         <param name="heartbeat" value="50"/> <!-- period in ms -->
         <param name="status"    value="50"/> <!-- period in ms -->
         <!-- Robot Model Parameters -->
-        <param name="ticks_per_rev" value="800"/>
+        <param name="ticks_per_rev" value="230"/>
         <param name="wheel_radius"  value="0.127"/> <!-- meters -->
         <param name="robot_radius"  value="0.419"/> <!-- meters -->
         <!-- PID Gains -->
-        <param name="gain_p" value="3.5"/>
-        <param name="gain_i" value="4.0"/>
-        <param name="gain_d" value="0.0"/>
+        <param name="gain_p" value="0.50"/>
+        <param name="gain_i" value="0.05"/>
+        <param name="gain_d" value="0.00"/>
     </node>
 </launch>

@@ -19,11 +19,6 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
     // FIXME: Convert from revolutions to meters using the robot model.
-    std::cout << "set encoder ticks" << std::endl;
-    block(
-        jag_left_.config_encoders_set(settings.ticks_per_rev),
-        jag_right_.config_encoders_set(settings.ticks_per_rev)
-    );
     std::cout << "set coast mode" << std::endl;
     block(
         jag_left_.config_brake_set(settings.brake),
@@ -144,6 +139,13 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
 
 void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos)
 {
+    if (side == kLeft)
+        std::cout << "left";
+    else
+        std::cout << "right";
+
+    std::cout << " position = " << s16p16_to_double(new_pos) << std::endl;
+
 #if 0
     // Keep track of the last two encoder readings to measure the change.
     last_pos = curr_pos;
@@ -191,16 +193,16 @@ void DiffDriveRobot::speed_set_p(double p)
 void DiffDriveRobot::speed_set_i(double i)
 {
     block(
-        jag_left_.speed_set_p(i),
-        jag_right_.speed_set_p(i)
+        jag_left_.speed_set_i(i),
+        jag_right_.speed_set_i(i)
     );
 }
 
 void DiffDriveRobot::speed_set_d(double d)
 {
     block(
-        jag_left_.speed_set_p(d),
-        jag_right_.speed_set_p(d)
+        jag_left_.speed_set_d(d),
+        jag_right_.speed_set_d(d)
     );
 }
 
@@ -225,6 +227,17 @@ void DiffDriveRobot::speed_init(void)
 void DiffDriveRobot::speed_update(DiffDriveRobot::Side side, int32_t speed)
 {
     speed_signal_(side, s16p16_to_double(speed));
+}
+
+/*
+ * Robot Parameters
+ */
+void DiffDriveRobot::robot_set_encoders(uint16_t ticks_per_rev)
+{
+    block(
+        jag_left_.config_encoders_set(ticks_per_rev),
+        jag_right_.config_encoders_set(ticks_per_rev)
+    );
 }
 
 /*

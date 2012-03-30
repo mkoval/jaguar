@@ -46,6 +46,8 @@ public:
     virtual void odom_attach(boost::function<OdometryCallback> callback);
     virtual void speed_attach(boost::function<SpeedCallback> cb_left);
 
+    virtual void robot_set_encoders(uint16_t ticks_per_rev);
+
 private:
     // Wheel Odometry
     virtual void odom_init(void);

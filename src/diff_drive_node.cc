@@ -92,8 +92,12 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         ROS_INFO("Reconfigure, D = %f", config.gain_d);
     }
     if (level & 16) {
-        // TODO: Implement this.
-        ROS_WARN("Dynamically changing ticks/rev is not supported.");
+        if (0 < config.ticks_per_rev && config.ticks_per_rev <= std::numeric_limits<uint16_t>::max()) {
+            robot->robot_set_encoders(config.ticks_per_rev);
+            ROS_INFO("Reconfigure, Ticks/Rev = %d", config.ticks_per_rev);
+        } else {
+            ROS_WARN("Ticks/rev must be a positive 16-bit unsigned integer.");
+        }
     }
     if (level & 32) {
         // TODO: Implement this.
