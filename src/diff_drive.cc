@@ -66,6 +66,21 @@ void DiffDriveRobot::drive_raw(double v_left, double v_right)
     );
 }
 
+void DiffDriveRobot::drive_brake(bool braking)
+{
+    jaguar::BrakeCoastSetting::Enum value;
+    if (braking) {
+        value = jaguar::BrakeCoastSetting::kOverrideBrake;
+    } else {
+        value = jaguar::BrakeCoastSetting::kOverrideCoast;
+    }
+
+    block(
+        jag_left_.config_brake_set(value),
+        jag_right_.config_brake_set(value)
+    );
+}
+
 void DiffDriveRobot::heartbeat(void)
 {
     jag_broadcast_.heartbeat();

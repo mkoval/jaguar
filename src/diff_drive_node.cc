@@ -91,6 +91,10 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         robot->speed_set_d(config.gain_d);
         ROS_INFO("Reconfigure, D = %f", config.gain_d);
     }
+    if (level & 8) {
+        robot->drive_brake(config.brake);
+        ROS_INFO("Reconfigure, Braking = %d", config.brake);
+    }
     if (level & 16) {
         if (0 < config.ticks_per_rev && config.ticks_per_rev <= std::numeric_limits<uint16_t>::max()) {
             robot->robot_set_encoders(config.ticks_per_rev);

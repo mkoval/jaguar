@@ -38,6 +38,7 @@ public:
     virtual void heartbeat(void);
     virtual void drive(double v, double omega);
     virtual void drive_raw(double v_left, double v_right);
+    virtual void drive_brake(bool braking);
 
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
