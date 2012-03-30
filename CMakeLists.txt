@@ -34,3 +34,8 @@ rosbuild_link_boost(jaguar signals system thread)
 target_link_libraries(assign_id jaguar)
 target_link_libraries(diff_drive jaguar)
 target_link_libraries(utests jaguar gtest_main gmock)
+
+rosbuild_find_ros_package(dynamic_reconfigure)
+include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+gencfg()
+
