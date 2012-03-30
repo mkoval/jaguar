@@ -87,12 +87,12 @@ void JaguarBridge::send(CANMessage const &message)
 
 TokenPtr JaguarBridge::recv(uint32_t id)
 {
-    boost::mutex::scoped_lock lock(callback_mutex_);
+    boost::mutex::scoped_lock lock(token_mutex_);
 
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
-        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken()))
+        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id)))
     );
     assert(it.second);
     return it.first->second;
@@ -149,7 +149,7 @@ boost::shared_ptr<CANMessage> JaguarBridge::recv_byte(uint8_t byte)
     // Packet length can never be SOF or ESC, so we can ignore escaping.
     else if (state_ == kLength) {
         if (byte < 4 || byte > 12) {
-            CAN_JAGUARBRIDGE_ERROR("recieved invalid length = " << byte);
+            CAN_JAGUARBRIDGE_ERROR("recieved invalid length = " << static_cast<int>(byte));
             state_  = kWaiting;
         } else {
             state_  = kPayload;
@@ -221,6 +221,28 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
     );
 }
 
+void JaguarBridge::discard_token(JaguarToken &token)
+{
+    boost::mutex::scoped_lock lock(token_mutex_);
+    token_table::iterator token_it = tokens_.find(token.id_);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        tokens_.erase(token_it);
+    }
+}
+
+void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
+{
+    boost::mutex::scoped_lock lock(token_mutex_);
+    // Wake anyone who is blocking for a response.
+    token_table::iterator token_it = tokens_.find(msg->id);
+    if (token_it != tokens_.end()) {
+        token_ptr token = token_it->second;
+        token->unblock(msg);
+        tokens_.erase(token_it);
+    }
+}
+
 void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
 {
     {
@@ -239,13 +261,7 @@ void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
         }
     }
 
-    // Wake anyone who is blocking for a response.
-    token_table::iterator token_it = tokens_.find(msg->id);
-    if (token_it != tokens_.end()) {
-        token_ptr token = token_it->second;
-        token->unblock(msg);
-        tokens_.erase(token_it);
-    }
+    remove_token(msg);
 }
 
 boost::shared_ptr<CANMessage> JaguarBridge::unpack_packet(std::vector<uint8_t> const &packet)
@@ -293,13 +309,25 @@ size_t JaguarBridge::encode_bytes(uint8_t const *bytes, size_t length, std::vect
 /*
  * JaguarToken
  */
-JaguarToken::JaguarToken(void)
+JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
     : done_(false)
+    , bridge_(bridge)
+    , id_(id)
 {
 }
 
 JaguarToken::~JaguarToken(void)
 {
+    bridge_.discard_token(*this);
+}
+
+void JaguarToken::discard(void)
+{
+    bridge_.discard_token(*this);
+    {
+        boost::mutex::scoped_lock lock(mutex_);
+        done_ = true;
+    }
 }
 
 void JaguarToken::block(void)
@@ -311,7 +339,9 @@ void JaguarToken::block(void)
 bool JaguarToken::timed_block(boost::posix_time::time_duration const& rel_time)
 {
     boost::unique_lock<boost::mutex> lock(mutex_);
-    return cond_.timed_wait(lock, rel_time, boost::lambda::var(done_));
+    bool r = cond_.timed_wait(lock, rel_time, boost::lambda::var(done_));
+    //bridge->remove_token();
+    return r;
 }
 
 bool JaguarToken::ready(void) const
@@ -324,6 +354,15 @@ boost::shared_ptr<CANMessage const> JaguarToken::message(void) const
     assert(done_);
     return message_;
 }
+
+#if 0
+void JaguarToken::clear_block(void)
+{
+    boost::lock_guard<boost::mutex> lock(mutex_);
+    message_ = message;
+    done_ = true;
+}
+#endif
 
 void JaguarToken::unblock(boost::shared_ptr<CANMessage> message)
 {

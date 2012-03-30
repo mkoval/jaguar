@@ -1,11 +1,11 @@
 *~
-*.o
-*.d
+*.[do]
 *.sublime-workspace
 .*.swp
 .DS_Store
 /jaguar
 /unbrick
+/decode_id
 /bin/
 /docs/
 /lib/
