@@ -102,7 +102,7 @@ CFLAGS=-mthumb             \
        -Wall               \
        -pedantic           \
        -DPART_${PART}      \
-       -c
+       -ggdb
 
 #
 # The command for calling the library archiver.
@@ -112,12 +112,14 @@ AR=${PREFIX}-ar
 #
 # The command for calling the linker.
 #
-LD=${PREFIX}-ld
+LD=$(CC)
 
 #
 # The flags passed to the linker.
 #
-LDFLAGS=--gc-sections
+LDFLAGS+= -Wl,--gc-sections,-O0,--as-needed
+LDFLAGS+= $(CFLAGS) -nostartfiles -nostdlib
+#LDFLAGS+= -Wl,--print-gc-sections
 
 #
 # Get the location of libgcc.a from the GCC front-end.
@@ -166,9 +168,9 @@ ${COMPILER}${SUFFIX}/%.o: %.c
 	 then                                                 \
 	     echo "  CC    ${<}";                             \
 	 else                                                 \
-	     echo ${CC} ${CFLAGS} -D${COMPILER} -o ${@} ${<}; \
+	     echo ${CC} ${CFLAGS} -D${COMPILER} -c -o ${@} ${<}; \
 	 fi
-	@${CC} ${CFLAGS} -D${COMPILER} -o ${@} ${<}
+	@${CC} ${CFLAGS} -D${COMPILER} -c -o ${@} ${<}
 ifneq ($(findstring CYGWIN, ${os}), )
 	@sed -i -r 's/ ([A-Za-z]):/ \/cygdrive\/\1/g' ${@:.o=.d}
 endif
@@ -215,7 +217,7 @@ ${COMPILER}${SUFFIX}/%.axf:
 	     echo "  LD    ${@} ${LNK_SCP}";                                  \
 	 else                                                                 \
 	     echo ${LD} -T $${ldname}                                         \
-	          --entry ${ENTRY_${notdir ${@:.axf=}}}                       \
+	          -Wl,--entry,${ENTRY_${notdir ${@:.axf=}}}                       \
 	          ${LDFLAGSgcc_${notdir ${@:.axf=}}}                          \
 	          ${LDFLAGS} -o ${@} $(filter %.o %.a, ${^})                  \
 	          '${LIBC}' '${LIBM}' '${LIBGCC}';                            \

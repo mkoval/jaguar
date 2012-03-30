@@ -28,6 +28,7 @@ SECTIONS
     {
         _text = .;
         KEEP(*(.isr_vector))
+	*(_text*)
         *(.text*)
         *(.rodata*)
         _etext = .;

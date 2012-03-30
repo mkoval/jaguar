@@ -1,7 +1,7 @@
 <launch>
-    <node name="diff_drive" pkg="diff_drive" type="diff_drive_node">
+    <node name="driver" pkg="jaguar" type="diff_drive">
         <!-- CAN bus Configuration -->
-        <param name="port" value="/dev/null"/>
+        <param name="port" value="/dev/ttyUSB0"/>
         <param name="id_left"  value="2"/>
         <param name="id_right" value="3"/>
         <!-- Periodic Message Rates -->
