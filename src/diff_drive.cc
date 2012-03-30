@@ -60,9 +60,10 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
+    // Convert from rev/sec to RPM, which the Jaguar expects.
     block(
-        jag_left_.speed_set(v_left),
-        jag_right_.speed_set(v_right)
+        jag_left_.speed_set(v_left * 60),
+        jag_right_.speed_set(v_right * 60)
     );
 }
 
@@ -88,7 +89,7 @@ void DiffDriveRobot::heartbeat(void)
 
 void foo(std::string side, uint32_t speed)
 {
-    std::cout << side << " speed = " << s16p16_to_double(speed) << std::endl;
+    std::cout << side << " speed = " << (s16p16_to_double(speed) / 60) << std::endl;
 }
 
 /*
@@ -241,7 +242,7 @@ void DiffDriveRobot::speed_init(void)
 
 void DiffDriveRobot::speed_update(DiffDriveRobot::Side side, int32_t speed)
 {
-    speed_signal_(side, s16p16_to_double(speed));
+    speed_signal_(side, s16p16_to_double(speed) / 60);
 }
 
 /*

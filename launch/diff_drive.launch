@@ -12,8 +12,8 @@
         <param name="wheel_radius"  value="0.127"/> <!-- meters -->
         <param name="robot_radius"  value="0.419"/> <!-- meters -->
         <!-- PID Gains -->
-        <param name="gain_p" value="0.50"/>
-        <param name="gain_i" value="0.05"/>
+        <param name="gain_p" value="1.00"/>
+        <param name="gain_i" value="0.02"/>
         <param name="gain_d" value="0.00"/>
     </node>
 </launch>
