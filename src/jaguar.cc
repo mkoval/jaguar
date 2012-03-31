@@ -206,8 +206,43 @@ void Jaguar::speed_set_noack(double speed, uint8_t group)
 }
 
 /*
- * Speed Updates
+ * Position Mode
  */
+can::TokenPtr Jaguar::position_enable(void) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionModeEnable,
+        eps
+    );
+}
+
+can::TokenPtr Jaguar::position_disable(void) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionModeDisable,
+        eps
+    );
+}
+
+can::TokenPtr Jaguar::position_set_p(double p) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionProportionalConstant,
+        little_dword(double_to_s16p16(p))
+    );
+}
+
+can::TokenPtr Jaguar::position_set_i(double i) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionIntegralConstant,
+        little_dword(double_to_s16p16(i))
+    );
+}
+
+can::TokenPtr Jaguar::position_set_d(double d) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionDifferentialConstant,
+        little_dword(double_to_s16p16(d))
+    );
+}
+
 can::TokenPtr Jaguar::position_set_reference(PositionReference::Enum reference)
 {
     return send_ack(
@@ -215,6 +250,35 @@ can::TokenPtr Jaguar::position_set_reference(PositionReference::Enum reference)
         byte_(reference)
     );
 }
+
+can::TokenPtr Jaguar::position_set(double position) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionSet,
+        little_dword(double_to_s16p16(position))
+    );
+}
+
+can::TokenPtr Jaguar::position_set(double position, uint8_t group) {
+    return send_ack(
+        APIClass::kPositionControl, PositionControl::kPositionSet,
+        little_dword(double_to_s16p16(position)) << byte_(group)
+    );
+}
+
+void Jaguar::position_set_noack(double position) {
+    send(
+        APIClass::kPositionControl, PositionControl::kPositionSetNoACK,
+        little_dword(double_to_s16p16(position))
+    );
+}
+
+void Jaguar::position_set_noack(double position, uint8_t group) {
+    send(
+        APIClass::kPositionControl, PositionControl::kPositionSetNoACK,
+        little_dword(double_to_s16p16(position)) << byte_(group)
+    );
+}
+
 
 /*
  * Periodic Status Updates

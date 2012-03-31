@@ -57,7 +57,17 @@ public:
     void          speed_set_noack(double speed, uint8_t group);
 
     // Position Control
+    can::TokenPtr position_enable(void);
+    can::TokenPtr position_disable(void);
+    can::TokenPtr position_set_p(double p);
+    can::TokenPtr position_set_i(double i);
+    can::TokenPtr position_set_d(double d);
     can::TokenPtr position_set_reference(PositionReference::Enum reference);
+    can::TokenPtr position_set(double position);
+    can::TokenPtr position_set(double position, uint8_t group);
+    void          position_set_noack(double position);
+    void          position_set_noack(double position, uint8_t group);
+
 
     // Periodic Status Updates
     can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms);

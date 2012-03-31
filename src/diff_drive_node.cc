@@ -2,8 +2,10 @@
 #include <string>
 #include <ros/ros.h>
 #include <dynamic_reconfigure/server.h>
-#include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
+#include <nav_msgs/Odometry.h>
+#include <std_msgs/Float64.h>
+
 #include <jaguar/diff_drive.h>
 #include <jaguar/JaguarConfig.h>
 
@@ -12,6 +14,7 @@ using namespace jaguar;
 
 static ros::Subscriber sub_twist;
 static ros::Publisher pub_odom;
+static ros::Publisher pub_vleft, pub_vright;
 
 static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
@@ -45,6 +48,25 @@ void callback_odom(double x,  double y,  double theta,
     pub_odom.publish(msg_odom);
 }
 
+void callback_speed(DiffDriveRobot::Side side, double speed)
+{
+    std_msgs::Float64 msg;
+    msg.data = speed;
+
+    switch (side) {
+    case DiffDriveRobot::kLeft:
+        pub_vleft.publish(msg);
+        break;
+
+    case DiffDriveRobot::kRight:
+        pub_vright.publish(msg);
+        break;
+
+    default:
+        ROS_WARN_THROTTLE(10, "Invalid speed callback.");
+    }
+}
+
 void callback_cmd(geometry_msgs::Twist const &twist)
 {
     if (twist.linear.y  != 0.0 || twist.linear.z  != 0
@@ -56,17 +78,38 @@ void callback_cmd(geometry_msgs::Twist const &twist)
 
 void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
 {
-    ROS_INFO("Reconfigure Callback");
-
     // Speed Control Gains
-    if (level & 1) robot->speed_set_p(config.gain_p);
-    if (level & 2) robot->speed_set_i(config.gain_i);
-    if (level & 4) robot->speed_set_d(config.gain_d);
+    if (level & 1) {
+        robot->speed_set_p(config.gain_p);
+        ROS_INFO("Reconfigure, P = %f", config.gain_p);
+    }
+    if (level & 2) {
+        robot->speed_set_i(config.gain_i);
+        ROS_INFO("Reconfigure, I = %f", config.gain_i);
+    }
+    if (level & 4) {
+        robot->speed_set_d(config.gain_d);
+        ROS_INFO("Reconfigure, D = %f", config.gain_d);
+    }
+    if (level & 8) {
+        robot->drive_brake(config.brake);
+        ROS_INFO("Reconfigure, Braking = %d", config.brake);
+    }
     if (level & 16) {
-        // TODO
+        if (0 < config.ticks_per_rev && config.ticks_per_rev <= std::numeric_limits<uint16_t>::max()) {
+            robot->robot_set_encoders(config.ticks_per_rev);
+            ROS_INFO("Reconfigure, Ticks/Rev = %d", config.ticks_per_rev);
+        } else {
+            ROS_WARN("Ticks/rev must be a positive 16-bit unsigned integer.");
+        }
     }
     if (level & 32) {
-        // TODO
+        // TODO: Implement this.
+        ROS_WARN("Dynamically changing the robot model parameters is not supported.");
+    }
+    if (level & 64) {
+        robot->drive_raw(config.setpoint, config.setpoint);
+        ROS_INFO("Reconfigure, Setpoint = %f", config.setpoint);
     }
 }
 
@@ -75,40 +118,25 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "diff_drive_node");
     ros::NodeHandle nh;
 
-    std::cout << "c" << std::endl;
+    int ticks_per_rev;
     ros::param::get("~port", settings.port);
     ros::param::get("~id_left", settings.id_left);
     ros::param::get("~id_right", settings.id_right);
     ros::param::get("~heartbeat", settings.heartbeat_ms);
     ros::param::get("~status", settings.status_ms);
-    ros::param::get("~ticks_per_rev", settings.ticks_per_rev);
+    ros::param::get("~ticks_per_rev", ticks_per_rev);
     ros::param::get("~wheel_radius", settings.wheel_radius_m);
     ros::param::get("~robot_radius", settings.robot_radius_m);
+    settings.ticks_per_rev = static_cast<uint16_t>(ticks_per_rev);
 
     ROS_INFO("Port: %s", settings.port.c_str());
     ROS_INFO("ID Left: %d", settings.id_left);
     ROS_INFO("ID Right: %d", settings.id_right);
     ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
     ROS_INFO("Status Rate: %d ms", settings.status_ms);
-    ROS_INFO("Ticks per Revolution: %f", settings.ticks_per_rev);
+    ROS_INFO("Ticks per Revolution: %d", settings.ticks_per_rev);
     ROS_INFO("Wheel Radius: %f m", settings.wheel_radius_m);
     ROS_INFO("Robot Radius: %f m", settings.robot_radius_m);
-
-    robot = boost::make_shared<DiffDriveRobot>(settings);
-    // TODO: Why does this hang?
-    std::cout << "A" << std::endl;
-    robot->odom_attach(&callback_odom);
-    std::cout << "B" << std::endl;
-
-    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
-    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
-    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
-
-    std::cout << "c" << std::endl;
-    dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
-    dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
-    f = boost::bind(&callback_reconfigure, _1, _2);
-    server.setCallback(f);
 
     // TODO: Read this from a parameter.
     settings.brake = BrakeCoastSetting::kOverrideCoast;
@@ -123,7 +151,7 @@ int main(int argc, char **argv)
     } else if (settings.status_ms <= 0 || settings.status_ms > std::numeric_limits<uint16_t>::max()) {
         ROS_FATAL("Status period invalid must be in the range 1-255 ms.");
         return 1;
-    } else if (settings.ticks_per_rev<= 0) {
+    } else if (ticks_per_rev <= 0) {
         ROS_FATAL("Number of ticks per revolution must be positive");
         return 1;
     } else if (settings.wheel_radius_m <= 0) {
@@ -134,6 +162,28 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    robot = boost::make_shared<DiffDriveRobot>(settings);
+    robot->odom_attach(&callback_odom);
+    robot->speed_attach(&callback_speed);
+
+    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
+    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
+    pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
+    pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
+    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
+
+    dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
+    dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
+    f = boost::bind(&callback_reconfigure, _1, _2);
+    server.setCallback(f);
+
+    // TODO: Read this heartbeat rate from a parameter.
+    ros::Rate heartbeat_rate(20);
+    while (ros::ok()) {
+        robot->heartbeat();
+        ros::spinOnce();
+        heartbeat_rate.sleep();
+    }
     ros::spin();
 
     return 0;

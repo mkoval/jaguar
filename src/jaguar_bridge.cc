@@ -88,12 +88,13 @@ void JaguarBridge::send(CANMessage const &message)
 TokenPtr JaguarBridge::recv(uint32_t id)
 {
     boost::mutex::scoped_lock lock(token_mutex_);
+
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
     std::pair<token_table::iterator, bool> it = tokens_.insert(
         std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id)))
     );
-    //assert(it.second);
+    assert(it.second);
     return it.first->second;
 }
 
@@ -233,6 +234,7 @@ void JaguarBridge::discard_token(JaguarToken &token)
 void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
 {
     boost::mutex::scoped_lock lock(token_mutex_);
+
     // Wake anyone who is blocking for a response.
     token_table::iterator token_it = tokens_.find(msg->id);
     if (token_it != tokens_.end()) {
@@ -317,7 +319,8 @@ JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
 
 JaguarToken::~JaguarToken(void)
 {
-    bridge_.discard_token(*this);
+    // FIXME: This causes deadlock (or something similar).
+    //bridge_.discard_token(*this);
 }
 
 void JaguarToken::discard(void)
