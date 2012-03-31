@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <fstream>
+#include <boost/program_options.hpp>
 #include <boost/assert.hpp>
 #include <boost/fusion/algorithm.hpp>
 #include <boost/spirit/include/karma.hpp>
@@ -127,32 +128,49 @@ private:
     can::CANBridge &can_;
 };
 
+namespace po = boost::program_options;
+
 int main(int argc, char *argv[])
 {
+    uint32_t fw_start;
+    std::string io_path;
+    std::string fw_path;
+    bool wait_for_req;
+    bool help;
+
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("serial_port,s",   po::value<std::string>(&io_path)->required(),
+            "serial port the Jaguar is connected to")
+        ("firmware,f",      po::value<std::string>(&fw_path)->required(),
+            "firmware binary to flash")
+        ("wait_for_req,w",  po::value<bool>(&wait_for_req)->zero_tokens(),
+            "wait for a request for a firmware update")
+        ("start_address,a", po::value<uint32_t>(&fw_start)->default_value(0x800),
+            "set the firmware start address")
+        ("help,h", po::value<bool>(&help)->zero_tokens(),
+            "show this message")
+        ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+
+    if (help) {
+        std::cout << desc << std::endl;
+        return 1;
+    }
+
     try {
-        if (argc <= 3) {
-            char const *n = argc?argv[0]:"./unbrick";
-            std::cerr << "err: lack args\n"
-                      << "usage: " << n << " <serial> <fw.bin> <start addr>"
-                        << std::endl;
-            return 1;
-        }
+        po::notify(vm);
+    } catch (std::exception &e) {
+        std::cerr << "bleh" << std::endl;
+        return 0;
+    }
 
-        std::string const io_path(argv[1]);
-        std::string const fw_path(argv[2]);
-
-        //std::stringstream sa_stm;
-        uint32_t fw_start;
-        //sa_stm << argv[3];
-
-        /* FIXME: */
-        //sa_stm >> std::hex >> fw_start;
-        fw_start = 0x800;
-
+    try {
         can::JaguarBridge     can(io_path);
         Bootloader bl(can);
 
-        /* XXX: the hell is this, C++? */
         std::ifstream     fw_stream(fw_path.c_str());
         std::stringstream fw_buf;
         fw_buf << fw_stream.rdbuf();
@@ -169,16 +187,16 @@ int main(int argc, char *argv[])
                 << arg1 << ":" << arg2 << ":" << arg3 << ":" << arg4);
 
         /* wait for Request & ping ack */
-#if 0
-        can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
+        if (wait_for_req) {
+            can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
 
-        std::cout << "waiting for request." << std::endl;
-        req_token->block();
+            std::cout << "waiting for request." << std::endl;
+            req_token->block();
 
-        std::cout << "recv'd req, pinging." << std::endl;
-#else
-        std::cout << "waiting for ping responce" << std::endl;
-#endif
+            std::cout << "recv'd req." << std::endl;
+        }
+
+        std::cout << "pinging." << std::endl;
 
         do {
             std::cout << 'p' << std::flush;
@@ -190,7 +208,6 @@ int main(int argc, char *argv[])
         /* set starting address and length */
         can::TokenPtr ack = bl.prepare(fw_start, fw.size());
 
-        /* TODO: examine ack */
         ack->block();
         if (ack->message()->payload[0] == 1) {
             std::cout << "Prepare failed" << std::endl;
@@ -209,7 +226,6 @@ int main(int argc, char *argv[])
 
                 std::cout << 'd' << std::flush;
 
-                /* TODO: look at ack payload (== status) */
                 ack->block();
                 if (ack->message()->payload[0] == 1) {
                     std::cout << std::endl << "send data failed" << std::endl;

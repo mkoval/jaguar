@@ -342,6 +342,7 @@ bool JaguarToken::timed_block(boost::posix_time::time_duration const& rel_time)
 {
     boost::unique_lock<boost::mutex> lock(mutex_);
     bool r = cond_.timed_wait(lock, rel_time, boost::lambda::var(done_));
+    std::cerr << "[ in timed_block " << done_ << "]" << std::endl;
     //bridge->remove_token();
     return r;
 }
