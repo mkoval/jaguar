@@ -3,9 +3,8 @@ all::
 CXX = clang++
 LD  = clang++
 RM  = rm -f
-CXXFLAGS = -MMD -Wall -ggdb -Isrc -Iinclude/
-LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt -lboost_program_options-mt -Wl,--as-needed,--gc-sections,-O1
-
+CXXFLAGS = -MMD -Wall -g -Isrc -Iinclude/
+LDFLAGS  = $(CXXFLAGS) -lboost_signals-mt -lboost_system-mt -lboost_thread-mt -lboost_program_options-mt
 LIB_OBJ+=src/jaguar.cc.o
 LIB_OBJ+=src/jaguar_broadcaster.cc.o
 LIB_OBJ+=src/jaguar_helper.cc.o
