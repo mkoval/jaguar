@@ -19,32 +19,14 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
     // FIXME: Convert from revolutions to meters using the robot model.
-    std::cout << "set coast mode" << std::endl;
     block(
         jag_left_.config_brake_set(settings.brake),
         jag_right_.config_brake_set(settings.brake)
     );
 
-    // FIXME: DEBUG
-    status_ms_ = 100;
-
     speed_init();
     odom_init();
-
-    std::cout << "system resume" << std::endl;
     jag_broadcast_.system_resume();
-
-#if 0
-    jag_left_.voltage_enable()->block();
-    jag_left_.voltage_set(1.0)->block();
-    jag_right_.voltage_enable()->block();
-    jag_right_.voltage_set(1.0)->block();
-    jag_left_.speed_enable()->block();
-    jag_left_.speed_set(100)->block();
-
-    jag_right_.speed_enable()->block();
-    jag_right_.speed_set(100)->block();
-#endif
 }
 
 DiffDriveRobot::~DiffDriveRobot(void)
@@ -87,11 +69,6 @@ void DiffDriveRobot::heartbeat(void)
     jag_broadcast_.heartbeat();
 }
 
-void foo(std::string side, uint32_t speed)
-{
-    std::cout << side << " speed = " << (s16p16_to_double(speed) / 60) << std::endl;
-}
-
 /*
  * Wheel Odometry
  */
@@ -112,7 +89,6 @@ void DiffDriveRobot::odom_init(void)
     // speed reference for velocity control and position reference for
     // odometry. As such, they must be configured for position control even
     // though we are are using speed control mode.
-    std::cout << "set position reference" << std::endl;
     block(
         jag_left_.position_set_reference(PositionReference::kQuadratureEncoder),
         jag_right_.position_set_reference(PositionReference::kQuadratureEncoder)
@@ -120,7 +96,6 @@ void DiffDriveRobot::odom_init(void)
 
     // FIXME: This fails if I only listen for position.
     // TODO: Combine position and speed into one callback.
-    std::cout << "config periodic updates" << std::endl;
     block(
         jag_left_.periodic_config(0,
             Position(boost::bind(
@@ -141,7 +116,6 @@ void DiffDriveRobot::odom_init(void)
             ))
         )
     );
-    std::cout << "enable periodic updates" << std::endl;
     block(
         jag_left_.periodic_enable(0, status_ms_),
         jag_right_.periodic_enable(0, status_ms_)
@@ -155,14 +129,6 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
 
 void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos)
 {
-    if (side == kLeft)
-        std::cout << "left";
-    else
-        std::cout << "right";
-
-    std::cout << " position = " << s16p16_to_double(new_pos) << std::endl;
-
-#if 0
     // Keep track of the last two encoder readings to measure the change.
     last_pos = curr_pos;
     curr_pos = new_pos;
@@ -192,7 +158,6 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
-#endif
 }
 
 /*
@@ -229,7 +194,6 @@ void DiffDriveRobot::speed_attach(boost::function<DiffDriveRobot::SpeedCallback>
 
 void DiffDriveRobot::speed_init(void)
 {
-    std::cout << "set speed reference" << std::endl;
     block(
         jag_left_.speed_set_reference(SpeedReference::kQuadratureEncoder),
         jag_right_.speed_set_reference(SpeedReference::kQuadratureEncoder)
