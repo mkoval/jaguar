@@ -19,6 +19,8 @@ static ros::Publisher pub_vleft, pub_vright;
 static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
 static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
+static std::string frame_parent;
+static std::string frame_child;
 
 void callback_odom(double x,  double y,  double theta,
                    double vx, double vy, double omega)
@@ -28,8 +30,8 @@ void callback_odom(double x,  double y,  double theta,
     // odom TF Frame
     geometry_msgs::TransformStamped msg_tf;
     msg_tf.header.stamp = now;
-    msg_tf.header.frame_id = "odom";
-    msg_tf.child_frame_id  = "base_link";
+    msg_tf.header.frame_id = frame_parent;
+    msg_tf.child_frame_id  = frame_child;
     msg_tf.transform.translation.x = x;
     msg_tf.transform.translation.y = y;
     msg_tf.transform.rotation = tf::createQuaternionMsgFromYaw(theta);
@@ -38,8 +40,8 @@ void callback_odom(double x,  double y,  double theta,
     // Odometry Message
     nav_msgs::Odometry msg_odom;
     msg_odom.header.stamp = now;
-    msg_odom.header.frame_id = "odom";
-    msg_odom.child_frame_id  = "base_link";
+    msg_odom.header.frame_id = frame_parent;
+    msg_odom.child_frame_id  = frame_child;
     msg_odom.pose.pose.position.x = x;
     msg_odom.pose.pose.position.y = y;
     msg_odom.twist.twist.linear.x = vx;
@@ -127,6 +129,8 @@ int main(int argc, char **argv)
     ros::param::get("~ticks_per_rev", ticks_per_rev);
     ros::param::get("~wheel_radius", settings.wheel_radius_m);
     ros::param::get("~robot_radius", settings.robot_radius_m);
+    ros::param::get("~frame_parent", frame_parent);
+    ros::param::get("~frame_child", frame_child);
     settings.ticks_per_rev = static_cast<uint16_t>(ticks_per_rev);
 
     ROS_INFO("Port: %s", settings.port.c_str());
