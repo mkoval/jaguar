@@ -1,7 +1,7 @@
 <launch>
     <node name="driver" pkg="jaguar" type="diff_drive">
         <!-- CAN bus Configuration -->
-        <param name="port" value="/dev/ttyUSB0"/>
+        <param name="port" value="/dev/jaguar"/>
         <param name="id_left"  value="2"/>
         <param name="id_right" value="3"/>
         <!-- Periodic Message Rates -->
@@ -18,5 +18,6 @@
         <!-- Odometry TF Frames -->
         <param name="frame_parent" value="/map"/>
         <param name="frame_child"  value="/odom"/>
+        <remap from="/cmd_vel" to="/drive/cmd_vel"/>
     </node>
 </launch>
