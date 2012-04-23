@@ -74,6 +74,9 @@ private:
     boost::signal<OdometryCallback> odom_signal_;
     boost::signal<SpeedCallback> speed_signal_;
 
+    double curr_v_left_, curr_v_right_;
+    double target_v_left_, target_v_right_;
+
     double robot_radius_;
 };
 

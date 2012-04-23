@@ -15,6 +15,8 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
       jag_right_(bridge_, settings.id_right),
       status_ms_(settings.status_ms),
       robot_radius_(settings.robot_radius_m)
+      current_v_left_(0.0), current_v_right_(0.0),
+      target_v_left_(0.0), target_v_right_(0.0)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
