@@ -77,6 +77,9 @@ void DiffDriveRobot::drive_spin(double dt)
         current_v_right_ += sgn(residual_right) * dv_max;
     }
 
+    std::cout << "L_current = " << current_v_left_  << ", L_target = " << target_v_left_  << std::endl;
+    std::cout << "R_current = " << current_v_right_ << ", R_target = " << target_v_right_ << std::endl;
+
     // Convert from rev/sec to RPM, which the Jaguar expects.
     block(
         jag_left_.speed_set(current_v_left_),

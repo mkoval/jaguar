@@ -131,6 +131,7 @@ int main(int argc, char **argv)
     ros::param::get("~robot_radius", settings.robot_radius_m);
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
+    ros::param::get("~accel_max", settings.accel_max_mps2);
     settings.ticks_per_rev = static_cast<uint16_t>(ticks_per_rev);
 
     ROS_INFO("Port: %s", settings.port.c_str());

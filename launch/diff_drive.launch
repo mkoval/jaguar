@@ -19,5 +19,7 @@
         <param name="frame_parent" value="/map"/>
         <param name="frame_child"  value="/odom"/>
         <remap from="/cmd_vel" to="/drive/cmd_vel"/>
+        <!-- Acceleration Limits -->
+        <param name="accel_max" value="0.5"/>
     </node>
 </launch>
