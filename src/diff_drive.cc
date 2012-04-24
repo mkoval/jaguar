@@ -64,6 +64,7 @@ void DiffDriveRobot::drive_spin(double dt)
 
     // Cap the acceleration at the limiting value.
     double const dv_max = accel_max_ * dt;
+    std::cout << "dv_max = " << dv_max << std::endl;
 
     if (fabs(residual_left) <= dv_max) {
         current_v_left_ = target_v_left_;
