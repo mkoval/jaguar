@@ -76,6 +76,7 @@ private:
     boost::signal<OdometryCallback> odom_signal_;
     boost::signal<SpeedCallback> speed_signal_;
     double robot_radius_;
+    double wheel_radius_;
 
     // Acceleration limiting code.
     double current_v_left_, current_v_right_;

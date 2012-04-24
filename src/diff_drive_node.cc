@@ -183,14 +183,12 @@ int main(int argc, char **argv)
     server.setCallback(f);
 
     // TODO: Read this heartbeat rate from a parameter.
-    ros::Rate heartbeat_rate(20);
+    ros::Rate heartbeat_rate(50);
     while (ros::ok()) {
-        robot->drive_spin(1 / 20.);
+        robot->drive_spin(1 / 50.);
         robot->heartbeat();
         ros::spinOnce();
         heartbeat_rate.sleep();
     }
-    ros::spin();
-
     return 0;
 }

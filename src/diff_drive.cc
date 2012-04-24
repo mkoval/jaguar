@@ -23,6 +23,7 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_right_(bridge_, settings.id_right)
     , status_ms_(settings.status_ms)
     , robot_radius_(settings.robot_radius_m)
+    , wheel_radius_(settings.wheel_radius_m)
     , current_v_left_(0.0), current_v_right_(0.0)
     , target_v_left_(0.0), target_v_right_(0.0)
     , accel_max_(settings.accel_max_mps2)
@@ -53,8 +54,9 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
-    target_v_left_ = v_left * 60;
-    target_v_right_ = v_right * 60;
+    double const circum = 2 * M_PI * wheel_radius_;
+    target_v_left_ = v_left * 60 / circum;
+    target_v_right_ = v_right * 60 / circum;
 }
 
 void DiffDriveRobot::drive_spin(double dt)
@@ -63,8 +65,8 @@ void DiffDriveRobot::drive_spin(double dt)
     double const residual_right = target_v_right_ - current_v_right_;
 
     // Cap the acceleration at the limiting value.
-    double const dv_max = accel_max_ * dt;
-    std::cout << "dv_max = " << dv_max << std::endl;
+    double const circum = 2 * M_PI * wheel_radius_;
+    double const dv_max = accel_max_ * dt * 60 / circum;
 
     if (fabs(residual_left) <= dv_max) {
         current_v_left_ = target_v_left_;
@@ -78,8 +80,13 @@ void DiffDriveRobot::drive_spin(double dt)
         current_v_right_ += sgn(residual_right) * dv_max;
     }
 
-    std::cout << "L_current = " << current_v_left_  << ", L_target = " << target_v_left_  << std::endl;
-    std::cout << "R_current = " << current_v_right_ << ", R_target = " << target_v_right_ << std::endl;
+    std::cout << "L_current = " << current_v_left_ 
+              << ", L_target = " << target_v_left_
+              << ", L_delta = " << residual_left << '\n'
+              << "R_current = " << current_v_right_
+              << ", R_target = " << target_v_right_
+              << ", R_delta = " << residual_right
+              << std::endl;
 
     // Convert from rev/sec to RPM, which the Jaguar expects.
     block(
@@ -180,12 +187,13 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
         odom_state_ = kNone;
 
         // Update the robot's pose using the new odometry data.
+        double const circum = 2 * M_PI * wheel_radius_;
         double const curr_left = s16p16_to_double(odom_curr_left_);
         double const last_left = s16p16_to_double(odom_last_left_);
         double const curr_right = s16p16_to_double(odom_curr_right_);
         double const last_right = s16p16_to_double(odom_last_right_);
-        double const delta_left  = curr_left - last_left;
-        double const delta_right = curr_right - last_right;
+        double const delta_left  = (curr_left - last_left) / circum;
+        double const delta_right = (curr_right - last_right) / circum;
 
         double const delta_linear  = (delta_left + delta_right) / 2;
         theta_ += (delta_right - delta_left) / (2 * robot_radius_);
@@ -245,7 +253,8 @@ void DiffDriveRobot::speed_init(void)
 
 void DiffDriveRobot::speed_update(DiffDriveRobot::Side side, int32_t speed)
 {
-    speed_signal_(side, s16p16_to_double(speed) / 60);
+    double const circum = 2 * M_PI * wheel_radius_;
+    speed_signal_(side, s16p16_to_double(speed) * circum / 60);
 }
 
 /*
