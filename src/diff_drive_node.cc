@@ -184,6 +184,7 @@ int main(int argc, char **argv)
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(20);
     while (ros::ok()) {
+        robot->drive_spin(1 / 20.);
         robot->heartbeat();
         ros::spinOnce();
         heartbeat_rate.sleep();
