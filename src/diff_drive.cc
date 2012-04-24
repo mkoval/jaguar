@@ -8,6 +8,14 @@ using can::JaguarBridge;
 
 namespace jaguar {
 
+template <typename T>
+inline T sgn(T x)
+{
+    if      (x > 0) return  1;
+    else if (x < 0) return -1;
+    else            return  0;
+}
+
 DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     : bridge_(settings.port)
     , jag_broadcast_(bridge_)
@@ -17,6 +25,7 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , robot_radius_(settings.robot_radius_m)
     , current_v_left_(0.0), current_v_right_(0.0)
     , target_v_left_(0.0), target_v_right_(0.0)
+    , accel_max_(settings.accel_max_mps2)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
@@ -44,10 +53,34 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
+    target_v_left_ = v_left * 60;
+    target_v_right_ = v_right * 60;
+}
+
+void DiffDriveRobot::drive_spin(double dt)
+{
+    double const residual_left  = target_v_left_  - current_v_left_;
+    double const residual_right = target_v_right_ - current_v_right_;
+
+    // Cap the acceleration at the limiting value.
+    double const dv_max = accel_max_ * dt;
+
+    if (fabs(residual_left) <= dv_max) {
+        current_v_left_ = target_v_left_;
+    } else {
+        current_v_left_ += sgn(residual_left) * dv_max;
+    }
+
+    if (fabs(residual_right) <= dv_max) {
+        current_v_right_ = target_v_right_;
+    } else {
+        current_v_right_ += sgn(residual_right) * dv_max;
+    }
+
     // Convert from rev/sec to RPM, which the Jaguar expects.
     block(
-        jag_left_.speed_set(v_left * 60),
-        jag_right_.speed_set(v_right * 60)
+        jag_left_.speed_set(current_v_left_),
+        jag_right_.speed_set(current_v_right_)
     );
 }
 

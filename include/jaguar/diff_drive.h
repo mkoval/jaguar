@@ -22,6 +22,7 @@ struct DiffDriveSettings {
     uint16_t ticks_per_rev;
     double wheel_radius_m;
     double robot_radius_m;
+    double accel_max_mps2;
     BrakeCoastSetting::Enum brake;
 };
 
@@ -39,6 +40,7 @@ public:
     virtual void drive(double v, double omega);
     virtual void drive_raw(double v_left, double v_right);
     virtual void drive_brake(bool braking);
+    virtual void drive_spin(double dt);
 
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
@@ -73,11 +75,12 @@ private:
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
     boost::signal<SpeedCallback> speed_signal_;
+    double robot_radius_;
 
+    // Acceleration limiting code.
     double current_v_left_, current_v_right_;
     double target_v_left_, target_v_right_;
-
-    double robot_radius_;
+    double accel_max_;
 };
 
 };
