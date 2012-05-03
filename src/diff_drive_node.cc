@@ -129,7 +129,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "diff_drive_node");
     ros::NodeHandle nh;
 
-    int ticks_per_rev;
     ros::param::get("~port", settings.port);
     ros::param::get("~id_left", settings.id_left);
     ros::param::get("~id_right", settings.id_right);
@@ -138,7 +137,6 @@ int main(int argc, char **argv)
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
-    settings.ticks_per_rev = static_cast<uint16_t>(ticks_per_rev);
 
     ROS_INFO("Port: %s", settings.port.c_str());
     ROS_INFO("ID Left: %d", settings.id_left);
