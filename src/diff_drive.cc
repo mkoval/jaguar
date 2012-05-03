@@ -261,6 +261,14 @@ void DiffDriveRobot::robot_set_encoders(uint16_t ticks_per_rev)
     );
 }
 
+void DiffDriveRobot::robot_set_radii(double wheel_radius, double robot_radius)
+{
+    assert(wheel_radius > 0);
+    assert(robot_radius > 0);
+    wheel_radius_ = wheel_radius;
+    robot_radius_ = robot_radius;
+}
+
 /*
  * Helper Methods
  */
