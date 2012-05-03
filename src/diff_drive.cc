@@ -2,6 +2,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <angles/angles.h>
 #include <jaguar/diff_drive.h>
 
 using can::JaguarBridge;
@@ -80,15 +81,6 @@ void DiffDriveRobot::drive_spin(double dt)
         current_v_right_ += sgn(residual_right) * dv_max;
     }
 
-    std::cout << "L_current = " << current_v_left_ 
-              << ", L_target = " << target_v_left_
-              << ", L_delta = " << residual_left << '\n'
-              << "R_current = " << current_v_right_
-              << ", R_target = " << target_v_right_
-              << ", R_delta = " << residual_right
-              << std::endl;
-
-    // Convert from rev/sec to RPM, which the Jaguar expects.
     block(
         jag_left_.speed_set(current_v_left_),
         jag_right_.speed_set(current_v_right_)
@@ -197,6 +189,7 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
 
         double const delta_linear  = (delta_left + delta_right) / 2;
         theta_ += (delta_right - delta_left) / (2 * robot_radius_);
+        theta_  = angles::normalize_angle(theta_);
         x_ += delta_linear * cos(theta_);
         y_ += delta_linear * sin(theta_);
 
