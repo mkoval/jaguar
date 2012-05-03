@@ -159,20 +159,21 @@ int main(int argc, char **argv)
     ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
     ROS_INFO("Status Rate: %d ms", settings.status_ms);
 
-    // This must be done first because the asynchronous encoder callbacks use
-    // the transform broadcaster.
-    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
-    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
-    pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
-    pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
-    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
-
+    // Setup dynamic reconfigure for all remaining parameters.
     dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
     dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
     f = boost::bind(&callback_reconfigure, _1, _2);
     server.setCallback(f);
 
     robot = boost::make_shared<DiffDriveRobot>(settings);
+    sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
+    pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
+    pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
+    pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
+    pub_tf = boost::make_shared<tf::TransformBroadcaster>();
+
+    // These must be registered after pub_tf is initialized. Otherwise there is
+    // a race condition in the odometry callback.
     robot->odom_attach(&callback_odom);
     robot->speed_attach(&callback_speed);
 
