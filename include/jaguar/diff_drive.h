@@ -50,6 +50,7 @@ public:
     virtual void speed_attach(boost::function<SpeedCallback> cb_left);
 
     virtual void robot_set_encoders(uint16_t ticks_per_rev);
+    virtual void robot_set_radii(double wheel_radius, double robot_radius);
 
 private:
     // Wheel Odometry

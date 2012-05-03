@@ -107,8 +107,16 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         }
     }
     if (level & 32) {
-        // TODO: Implement this.
-        ROS_WARN("Dynamically changing the robot model parameters is not supported.");
+        if (config.wheel_radius <= 0) {
+            ROS_WARN("Wheel radius must be positive.");
+        } else if (config.robot_radius <= 0) {
+            ROS_WARN("Robot radius must be positive.");
+        } else {
+            robot->robot_set_radii(config.wheel_radius, config.robot_radius);
+            ROS_INFO("Reconfigure, Wheel Radius = %f m and Robot Radius = %f m",
+                config.wheel_radius, config.robot_radius
+            );
+        }
     }
     if (level & 64) {
         robot->drive_raw(config.setpoint, config.setpoint);
@@ -127,9 +135,6 @@ int main(int argc, char **argv)
     ros::param::get("~id_right", settings.id_right);
     ros::param::get("~heartbeat", settings.heartbeat_ms);
     ros::param::get("~status", settings.status_ms);
-    ros::param::get("~ticks_per_rev", ticks_per_rev);
-    ros::param::get("~wheel_radius", settings.wheel_radius_m);
-    ros::param::get("~robot_radius", settings.robot_radius_m);
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
@@ -140,9 +145,6 @@ int main(int argc, char **argv)
     ROS_INFO("ID Right: %d", settings.id_right);
     ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
     ROS_INFO("Status Rate: %d ms", settings.status_ms);
-    ROS_INFO("Ticks per Revolution: %d", settings.ticks_per_rev);
-    ROS_INFO("Wheel Radius: %f m", settings.wheel_radius_m);
-    ROS_INFO("Robot Radius: %f m", settings.robot_radius_m);
 
     // TODO: Read this from a parameter.
     settings.brake = BrakeCoastSetting::kOverrideCoast;
@@ -168,10 +170,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    robot = boost::make_shared<DiffDriveRobot>(settings);
-    robot->odom_attach(&callback_odom);
-    robot->speed_attach(&callback_speed);
-
+    // This must be done first because the asynchronous encoder callbacks use
+    // the transform broadcaster.
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
     pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
     pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
@@ -182,6 +182,10 @@ int main(int argc, char **argv)
     dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
     f = boost::bind(&callback_reconfigure, _1, _2);
     server.setCallback(f);
+
+    robot = boost::make_shared<DiffDriveRobot>(settings);
+    robot->odom_attach(&callback_odom);
+    robot->speed_attach(&callback_speed);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);
