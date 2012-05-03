@@ -138,12 +138,6 @@ int main(int argc, char **argv)
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
 
-    ROS_INFO("Port: %s", settings.port.c_str());
-    ROS_INFO("ID Left: %d", settings.id_left);
-    ROS_INFO("ID Right: %d", settings.id_right);
-    ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
-    ROS_INFO("Status Rate: %d ms", settings.status_ms);
-
     // TODO: Read this from a parameter.
     settings.brake = BrakeCoastSetting::kOverrideCoast;
 
@@ -157,16 +151,13 @@ int main(int argc, char **argv)
     } else if (settings.status_ms <= 0 || settings.status_ms > std::numeric_limits<uint16_t>::max()) {
         ROS_FATAL("Status period invalid must be in the range 1-255 ms.");
         return 1;
-    } else if (ticks_per_rev <= 0) {
-        ROS_FATAL("Number of ticks per revolution must be positive");
-        return 1;
-    } else if (settings.wheel_radius_m <= 0) {
-        ROS_FATAL("Wheel radius must be positive.");
-        return 1;
-    } else if (settings.robot_radius_m <= 0) {
-        ROS_FATAL("Robot radius must be positive.");
-        return 1;
     }
+
+    ROS_INFO("Port: %s", settings.port.c_str());
+    ROS_INFO("ID Left: %d", settings.id_left);
+    ROS_INFO("ID Right: %d", settings.id_right);
+    ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
+    ROS_INFO("Status Rate: %d ms", settings.status_ms);
 
     // This must be done first because the asynchronous encoder callbacks use
     // the transform broadcaster.
