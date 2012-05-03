@@ -44,6 +44,7 @@ void callback_odom(double x,  double y,  double theta,
     msg_odom.child_frame_id  = frame_child;
     msg_odom.pose.pose.position.x = x;
     msg_odom.pose.pose.position.y = y;
+    msg_odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
     msg_odom.twist.twist.linear.x = vx;
     msg_odom.twist.twist.linear.y = vy;
     msg_odom.twist.twist.angular.z = omega;
