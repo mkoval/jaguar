@@ -168,10 +168,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    robot = boost::make_shared<DiffDriveRobot>(settings);
-    robot->odom_attach(&callback_odom);
-    robot->speed_attach(&callback_speed);
-
+    // This must be done first because the asynchronous encoder callbacks use
+    // the transform broadcaster.
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
     pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
     pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
@@ -182,6 +180,10 @@ int main(int argc, char **argv)
     dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
     f = boost::bind(&callback_reconfigure, _1, _2);
     server.setCallback(f);
+
+    robot = boost::make_shared<DiffDriveRobot>(settings);
+    robot->odom_attach(&callback_odom);
+    robot->speed_attach(&callback_speed);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);
