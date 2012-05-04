@@ -23,6 +23,7 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
     , status_ms_(settings.status_ms)
+    , velocity_left_(0.0), velocity_right_(0.0)
     , robot_radius_(settings.robot_radius_m)
     , wheel_radius_(settings.wheel_radius_m)
     , current_v_left_(0.0), current_v_right_(0.0)
@@ -132,26 +133,16 @@ void DiffDriveRobot::odom_init(void)
         jag_right_.position_set_reference(PositionReference::kQuadratureEncoder)
     );
 
-    // FIXME: This fails if I only listen for position.
-    // TODO: Combine position and speed into one callback.
     block(
-        jag_left_.periodic_config(0,
-            Position(boost::bind(
-                &DiffDriveRobot::odom_update, this,
-                kLeft, boost::ref(odom_last_left_), boost::ref(odom_curr_left_), _1
-            ))
-            << Speed(boost::bind(&DiffDriveRobot::speed_update, this,
-                kLeft, _1
-            ))
+        jag_left_.periodic_config_odom(0,
+            boost::bind(&DiffDriveRobot::odom_update, this,
+                kLeft, boost::ref(odom_last_left_), boost::ref(odom_curr_left_), _1, _2
+            )
         ),
-        jag_right_.periodic_config(0,
-            Position(boost::bind(
-                &DiffDriveRobot::odom_update, this,
-                kRight, boost::ref(odom_last_right_), boost::ref(odom_curr_right_), _1
-            ))
-            << Speed(boost::bind(&DiffDriveRobot::speed_update, this,
-                kRight, _1
-            ))
+        jag_right_.periodic_config_odom(0,
+            boost::bind(&DiffDriveRobot::odom_update, this,
+                kRight, boost::ref(odom_last_right_), boost::ref(odom_curr_right_), _1, _2
+            )
         )
     );
     block(
@@ -165,11 +156,19 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
     odom_signal_.connect(callback);
 }
 
-void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos)
+void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
+                                 double new_pos, double velocity)
 {
     // Keep track of the last two encoder readings to measure the change.
     last_pos = curr_pos;
     curr_pos = new_pos;
+
+    // Update the velocities.
+    if (side == kLeft) {
+        velocity_left_ = velocity;
+    } else if (side == kRight) {
+        velocity_right_ = velocity;
+    }
 
     // Update the state variables to indicate which odometry readings we already
     // have. Once we've received a pair of distinct readings, update!
@@ -178,14 +177,10 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
     } else if (odom_state_ != side) {
         odom_state_ = kNone;
 
-        // Update the robot's pose using the new odometry data.
+        // Estimate the robot's pose using the new odometry data.
         double const circum = 2 * M_PI * wheel_radius_;
-        double const curr_left = s16p16_to_double(odom_curr_left_);
-        double const last_left = s16p16_to_double(odom_last_left_);
-        double const curr_right = s16p16_to_double(odom_curr_right_);
-        double const last_right = s16p16_to_double(odom_last_right_);
-        double const delta_left  = (curr_left - last_left) / circum;
-        double const delta_right = (curr_right - last_right) / circum;
+        double const delta_left  = (odom_curr_left_  - odom_last_left_)  / circum;
+        double const delta_right = (odom_curr_right_ - odom_last_right_) / circum;
 
         double const delta_linear  = (delta_left + delta_right) / 2;
         theta_ += (delta_right - delta_left) / (2 * robot_radius_);
@@ -193,8 +188,11 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
         x_ += delta_linear * cos(theta_);
         y_ += delta_linear * sin(theta_);
 
-        // FIXME: Also needs the measured velocities.
-        odom_signal_(x_, y_, theta_, 0.0, 0.0, 0.0);
+        // Estimate the robot's current velocity.
+        double const v_linear = (velocity_right_ + velocity_left_) / 2;
+        double const omega    = (velocity_right_ - velocity_left_) / (2 * robot_radius_);
+
+        odom_signal_(x_, y_, theta_, v_linear, omega);
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
@@ -227,11 +225,6 @@ void DiffDriveRobot::speed_set_d(double d)
     );
 }
 
-void DiffDriveRobot::speed_attach(boost::function<DiffDriveRobot::SpeedCallback> cb)
-{
-    speed_signal_.connect(cb);
-}
-
 void DiffDriveRobot::speed_init(void)
 {
     block(
@@ -242,12 +235,6 @@ void DiffDriveRobot::speed_init(void)
         jag_left_.speed_enable(),
         jag_right_.speed_enable()
     );
-}
-
-void DiffDriveRobot::speed_update(DiffDriveRobot::Side side, int32_t speed)
-{
-    double const circum = 2 * M_PI * wheel_radius_;
-    speed_signal_(side, s16p16_to_double(speed) * circum / 60);
 }
 
 /*

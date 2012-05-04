@@ -22,8 +22,8 @@ static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
 static std::string frame_parent;
 static std::string frame_child;
 
-void callback_odom(double x,  double y,  double theta,
-                   double vx, double vy, double omega)
+static void callback_odom(double x, double y, double theta,
+                          double velocity, double omega)
 {
     ros::Time now = ros::Time::now();
 
@@ -45,8 +45,8 @@ void callback_odom(double x,  double y,  double theta,
     msg_odom.pose.pose.position.x = x;
     msg_odom.pose.pose.position.y = y;
     msg_odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
-    msg_odom.twist.twist.linear.x = vx;
-    msg_odom.twist.twist.linear.y = vy;
+    msg_odom.twist.twist.linear.x = velocity;
+    msg_odom.twist.twist.linear.y = 0;
     msg_odom.twist.twist.angular.z = omega;
     pub_odom.publish(msg_odom);
 }
@@ -175,7 +175,6 @@ int main(int argc, char **argv)
     // These must be registered after pub_tf is initialized. Otherwise there is
     // a race condition in the odometry callback.
     robot->odom_attach(&callback_odom);
-    robot->speed_attach(&callback_speed);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);
