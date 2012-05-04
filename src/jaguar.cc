@@ -301,6 +301,75 @@ can::TokenPtr Jaguar::periodic_disable(uint8_t index)
     );
 }
 
+can::TokenPtr Jaguar::periodic_config_diag(uint8_t index, boost::function<DiagCallback> callback)
+{
+    // Tell the Jaguar which status fields we're interested in. Due to CAN
+    // limitations, we can only receive eight bytes per update message.
+    uint32_t const config_id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kConfigureMessage + index
+    );
+    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    can::CANMessage msg(config_id);
+
+    // Request the limit switch status, fault status, temperature
+    msg.payload.resize(8);
+    msg.payload[0] = PeriodicStatusItem::kLimitNonClearing;
+    msg.payload[1] = PeriodicStatusItem::kStickyFaultsNonClearing;
+    msg.payload[2] = PeriodicStatusItem::kBusVoltageBase + 0;
+    msg.payload[3] = PeriodicStatusItem::kBusVoltageBase + 1;
+    msg.payload[4] = PeriodicStatusItem::kTemperatureBase + 0;
+    msg.payload[5] = PeriodicStatusItem::kTemperatureBase + 1;
+    msg.payload[6] = PeriodicStatusItem::kEndOfMessage;
+
+    // Register a callback to process the periodic status updates.
+    uint32_t const status_id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
+    );
+    sig_diag_[index].connect(callback);
+    can_.attach_callback(status_id, boost::bind(&Jaguar::diag_unpack, this, _1, index));
+
+    // Wait for an ACK in response to the config message.
+    can::TokenPtr token =  can_.recv(ack_id);
+    can_.send(msg);
+    return token;
+}
+
+can::TokenPtr Jaguar::periodic_config_odom(uint8_t index, boost::function<OdomCallback> callback)
+{
+    // Tell the Jaguar which status fields we're interested in. Due to CAN
+    // limitations, we can only receive eight bytes per update message.
+    uint32_t const config_id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kConfigureMessage + index
+    );
+    uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
+    can::CANMessage msg(config_id);
+
+    // Request the 16.16 position and 16.16 velocity.
+    msg.payload.reserve(8);
+    for (int i = 0; i < 4; i++) {
+        msg.payload.push_back(PeriodicStatusItem::kPositionBase + i);
+    }
+    for (int i = 0; i < 4; i++) {
+        msg.payload.push_back(PeriodicStatusItem::kSpeedBase + i);
+    }
+
+    // Register a callback to process the periodic status updates.
+    uint32_t const status_id = pack_id(num_,
+        kManufacturer, kDeviceType,
+        APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
+    );
+    sig_odom_[index].connect(callback);
+    can_.attach_callback(status_id, boost::bind(&Jaguar::odom_unpack, this, _1, index));
+
+    // Wait for an ACK in response to the config message.
+    can::TokenPtr token =  can_.recv(ack_id);
+    can_.send(msg);
+    return token;
+}
+
 can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
 {
     // Tell the Jaguar which status fields we're interested in. Due to CAN
@@ -338,6 +407,34 @@ can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
 /*
  * Helpers
  */
+void Jaguar::diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
+{
+    uint8_t raw_limits = 0, raw_faults = 0;
+    uint16_t raw_bus_voltage = 0, raw_temperature = 0;
+    boost::spirit::qi::parse(msg->payload.begin(), msg->payload.end(),
+        byte_(raw_limits) >> byte_(raw_faults)
+        >> little_word(raw_bus_voltage) >> little_word(raw_temperature)
+    );
+
+    LimitStatus::Enum const limits = static_cast<LimitStatus::Enum>(raw_limits);
+    Fault::Enum const faults = static_cast<Fault::Enum>(raw_faults);
+    double const bus_voltage = s8p8_to_double(raw_bus_voltage);
+    double const temperature = s8p8_to_double(raw_temperature);
+    sig_diag_[index](limits, faults, bus_voltage, temperature);
+}
+
+void Jaguar::odom_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
+{
+    int32_t raw_position = 0, raw_speed = 0;
+    boost::spirit::qi::parse(msg->payload.begin(), msg->payload.end(),
+        little_dword(raw_position) >> little_dword(raw_speed)
+    );
+    double const position = s16p16_to_double(raw_position);
+    double const speed = s16p16_to_double(raw_speed);
+    sig_odom_[index](position, speed);
+}
+
+
 void Jaguar::periodic_unpack(boost::shared_ptr<can::CANMessage> message, AggregateStatus statuses)
 {
     std::vector<uint8_t> const &payload = message->payload;

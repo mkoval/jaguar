@@ -2,6 +2,7 @@
 #define JAGUAR_H_
 
 #include <list>
+#include <vector>
 #include <stdint.h>
 #include <boost/spirit/include/karma.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -12,6 +13,7 @@
 #include <boost/function.hpp>
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/signals2.hpp>
 #include <boost/assert.hpp>
 
 #include "can_bridge.h"
@@ -28,6 +30,9 @@ class AggregateStatus;
 
 class Jaguar {
 public:
+    typedef void DiagCallback(LimitStatus::Enum, Fault::Enum, double, double);
+    typedef void OdomCallback(double, double);
+
     Jaguar(can::CANBridge &can, uint8_t device_num);
 
     // Motor Control Configuration
@@ -68,13 +73,16 @@ public:
     void          position_set_noack(double position);
     void          position_set_noack(double position, uint8_t group);
 
-
     // Periodic Status Updates
     can::TokenPtr periodic_enable(uint8_t index, uint16_t rate_ms);
     can::TokenPtr periodic_disable(uint8_t index);
     can::TokenPtr periodic_config(uint8_t index, AggregateStatus statuses);
+    can::TokenPtr periodic_config_diag(uint8_t index, boost::function<DiagCallback> callback);
+    can::TokenPtr periodic_config_odom(uint8_t index, boost::function<OdomCallback> callback);
 
 private:
+    void diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index);
+    void odom_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index);
     void periodic_unpack(boost::shared_ptr<can::CANMessage> message, AggregateStatus statuses);
 
     template <typename T> T rescale(double x);
@@ -88,6 +96,9 @@ private:
     uint8_t const num_;
     can::CANBridge &can_;
     can::TokenPtr token_;
+
+    std::vector<boost::signals2::signal<DiagCallback> > sig_diag_;
+    std::vector<boost::signals2::signal<OdomCallback> > sig_odom_;
 
     static Manufacturer::Enum const kManufacturer;
     static DeviceType::Enum   const kDeviceType;
