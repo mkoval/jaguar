@@ -113,9 +113,8 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
             ROS_WARN("Robot radius must be positive.");
         } else {
             robot->robot_set_radii(config.wheel_radius, config.robot_radius);
-            ROS_INFO("Reconfigure, Wheel Radius = %f m and Robot Radius = %f m",
-                config.wheel_radius, config.robot_radius
-            );
+            ROS_INFO("Reconfigure, Wheel Radius = %f", config.wheel_radius);
+            ROS_INFO("Reconfigure, Robot Radius = %f", config.robot_radius);
         }
     }
     if (level & 64) {
@@ -159,13 +158,14 @@ int main(int argc, char **argv)
     ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
     ROS_INFO("Status Rate: %d ms", settings.status_ms);
 
+    robot = boost::make_shared<DiffDriveRobot>(settings);
+
     // Setup dynamic reconfigure for all remaining parameters.
     dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
     dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
     f = boost::bind(&callback_reconfigure, _1, _2);
     server.setCallback(f);
 
-    robot = boost::make_shared<DiffDriveRobot>(settings);
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
     pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
     pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);

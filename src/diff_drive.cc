@@ -25,9 +25,9 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , status_ms_(settings.status_ms)
     , velocity_left_(0.0), velocity_right_(0.0)
     , robot_radius_(settings.robot_radius_m)
-    , wheel_radius_(settings.wheel_radius_m)
-    , current_v_left_(0.0), current_v_right_(0.0)
-    , target_v_left_(0.0), target_v_right_(0.0)
+    , wheel_circum_(2 * M_PI * settings.wheel_radius_m)
+    , current_rpm_left_(0), current_rpm_right_(0)
+    , target_rpm_left_(0), target_rpm_right_(0)
     , accel_max_(settings.accel_max_mps2)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
@@ -56,35 +56,33 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
-    double const circum = 2 * M_PI * wheel_radius_;
-    target_v_left_ = v_left * 60 / circum;
-    target_v_right_ = v_right * 60 / circum;
+    target_rpm_left_  = v_left  * 60 / wheel_circum_;
+    target_rpm_right_ = v_right * 60 / wheel_circum_;
 }
 
 void DiffDriveRobot::drive_spin(double dt)
 {
-    double const residual_left  = target_v_left_  - current_v_left_;
-    double const residual_right = target_v_right_ - current_v_right_;
+    double const residual_rpm_left  = target_rpm_left_  - current_rpm_left_;
+    double const residual_rpm_right = target_rpm_right_ - current_rpm_right_;
 
     // Cap the acceleration at the limiting value.
-    double const circum = 2 * M_PI * wheel_radius_;
-    double const dv_max = accel_max_ * dt * 60 / circum;
+    double const drpm_max = accel_max_ * dt * 60 / wheel_circum_;
 
-    if (fabs(residual_left) <= dv_max) {
-        current_v_left_ = target_v_left_;
+    if (fabs(residual_rpm_left) <= drpm_max) {
+        current_rpm_left_ = target_rpm_left_;
     } else {
-        current_v_left_ += sgn(residual_left) * dv_max;
+        current_rpm_left_ += sgn(residual_rpm_left) * drpm_max;
     }
 
-    if (fabs(residual_right) <= dv_max) {
-        current_v_right_ = target_v_right_;
+    if (fabs(residual_rpm_right) <= drpm_max) {
+        current_rpm_right_ = target_rpm_right_;
     } else {
-        current_v_right_ += sgn(residual_right) * dv_max;
+        current_rpm_right_ += sgn(residual_rpm_right) * drpm_max;
     }
 
     block(
-        jag_left_.speed_set(current_v_left_),
-        jag_right_.speed_set(current_v_right_)
+        jag_left_.speed_set(current_rpm_left_),
+        jag_right_.speed_set(current_rpm_right_)
     );
 }
 
@@ -177,16 +175,28 @@ void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
     } else if (odom_state_ != side) {
         odom_state_ = kNone;
 
-        // Estimate the robot's pose using the new odometry data.
-        double const circum = 2 * M_PI * wheel_radius_;
-        double const delta_left  = (odom_curr_left_  - odom_last_left_)  / circum;
-        double const delta_right = (odom_curr_right_ - odom_last_right_) / circum;
+        // Compute the difference between the last two updates. Speed is
+        // measured in RPMs, so all of these values are measured in
+        // revolutions.
+        double const curr_left = s16p16_to_double(odom_curr_left_);
+        double const last_left = s16p16_to_double(odom_last_left_);
+        double const curr_right = s16p16_to_double(odom_curr_right_);
+        double const last_right = s16p16_to_double(odom_last_right_);
+        double const revs_left  = curr_left - last_left;
+        double const revs_right = curr_right - last_right;
 
-        double const delta_linear  = (delta_left + delta_right) / 2;
-        theta_ += (delta_right - delta_left) / (2 * robot_radius_);
-        theta_  = angles::normalize_angle(theta_);
-        x_ += delta_linear * cos(theta_);
-        y_ += delta_linear * sin(theta_);
+        // Convert from revolutions to meters.
+        double const meters_left  = revs_left * wheel_circum_;
+        double const meters_right = revs_right * wheel_circum_;
+
+        // Use the robot model to convert from wheel odometry to
+        // two-dimensional motion.
+        // TODO: Switch to a better odometry model.
+        double const meters  = (meters_left + meters_right) / 2;
+        double const radians = (meters_left - meters_right) / (2 * robot_radius_);
+        x_ += meters * cos(theta_);
+        y_ += meters * sin(theta_);
+        theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
         double const v_linear = (velocity_right_ + velocity_left_) / 2;
@@ -252,7 +262,7 @@ void DiffDriveRobot::robot_set_radii(double wheel_radius, double robot_radius)
 {
     assert(wheel_radius > 0);
     assert(robot_radius > 0);
-    wheel_radius_ = wheel_radius;
+    wheel_circum_ = 2 * M_PI * wheel_radius;
     robot_radius_ = robot_radius;
 }
 

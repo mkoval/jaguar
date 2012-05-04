@@ -76,11 +76,11 @@ private:
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
     double robot_radius_;
-    double wheel_radius_;
+    double wheel_circum_;
 
     // Acceleration limiting code.
-    double current_v_left_, current_v_right_;
-    double target_v_left_, target_v_right_;
+    double current_rpm_left_, current_rpm_right_;
+    double target_rpm_left_, target_rpm_right_;
     double accel_max_;
 };
 
