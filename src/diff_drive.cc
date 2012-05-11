@@ -23,12 +23,9 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
     , status_ms_(settings.status_ms)
-    , velocity_left_(0.0), velocity_right_(0.0)
     , robot_radius_(settings.robot_radius_m)
     , wheel_circum_(2 * M_PI * settings.wheel_radius_m)
     , diag_init_(false)
-    , current_rpm_left_(0), current_rpm_right_(0)
-    , target_rpm_left_(0), target_rpm_right_(0)
     , accel_max_(settings.accel_max_mps2)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
@@ -113,13 +110,15 @@ void DiffDriveRobot::heartbeat(void)
  */
 void DiffDriveRobot::odom_init(void)
 {
-    odom_curr_left_  = 0;
-    odom_curr_right_ = 0;
-    odom_last_left_  = 0;
-    odom_last_right_ = 0;
     x_ = 0.0;
     y_ = 0.0;
     theta_ = 0.0;
+
+    // Ignore the first odometry message to establish the reference point.:
+    odom_left_.side = kLeft;
+    odom_left_.init = false;
+    odom_right_.side = kRight;
+    odom_right_.init = false;
 
     // Configure the Jaguars to use optical encoders. They are used as both a
     // speed reference for velocity control and position reference for
@@ -133,14 +132,10 @@ void DiffDriveRobot::odom_init(void)
     block(
         jag_left_.periodic_config_odom(0,
             boost::bind(&DiffDriveRobot::odom_update, this,
-                kLeft, boost::ref(odom_last_left_), boost::ref(odom_curr_left_), _1, _2
-            )
-        ),
+                boost::ref(odom_left_), _1, _2)),
         jag_right_.periodic_config_odom(0,
             boost::bind(&DiffDriveRobot::odom_update, this,
-                kRight, boost::ref(odom_last_right_), boost::ref(odom_curr_right_), _1, _2
-            )
-        )
+                boost::ref(odom_right_), _1, _2))
     );
 
     // TODO: Make this a parameter.
@@ -168,33 +163,32 @@ void DiffDriveRobot::estop_attach(boost::function<EStopCallback> callback)
     estop_signal_.connect(callback);
 }
 
-void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
-                                 double new_pos, double velocity)
+void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
 {
-    // Keep track of the last two encoder readings to measure the change.
-    last_pos = curr_pos;
-    curr_pos = new_pos;
+    odom.pos_prev = odom.pos_curr;
+    odom.pos_curr = pos;
+    odom.vel = vel;
 
-    // Update the velocities.
-    if (side == kLeft) {
-        velocity_left_ = velocity;
-    } else if (side == kRight) {
-        velocity_right_ = velocity;
+    // Skip the first sample from each wheel. This is necessary in case the
+    // encoders came up in an unknown state.
+    if (!odom.init) {
+        odom.init = true;
+        return;
     }
 
-    // Update the state variables to indicate which odometry readings we already
-    // have. Once we've received a pair of distinct readings, update!
+    // Update the state variables to indicate which odometry readings we
+    // already have. Trigger a callback once we've received a pair of readings.
     if (odom_state_ == kNone) {
-        odom_state_ = side;
-    } else if (odom_state_ != side) {
+        odom_state_ = odom.side;
+    } else if (odom.side != odom_state_) {
         odom_state_ = kNone;
         // TODO: Don't publish anything for the first message.
 
         // Compute the difference between the last two updates. Speed is
         // measured in RPMs, so all of these values are measured in
         // revolutions.
-        double const revs_left  = odom_curr_left_ - odom_last_left_;
-        double const revs_right = odom_curr_right_ - odom_last_right_;
+        double const revs_left  = odom_left_.pos_curr  - odom_left_.pos_prev;
+        double const revs_right = odom_right_.pos_curr - odom_right_.pos_prev;
 
         // Convert from revolutions to meters.
         double const meters_left  = revs_left * wheel_circum_;
@@ -210,8 +204,8 @@ void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
-        double const v_linear = (velocity_right_ + velocity_left_) / 2;
-        double const omega    = (velocity_right_ - velocity_left_) / (2 * robot_radius_);
+        double const v_linear = (odom_right_.vel + odom_left_.vel) / 2;
+        double const omega    = (odom_right_.vel - odom_left_.vel) / (2 * robot_radius_);
 
         odom_signal_(x_, y_, theta_, v_linear, omega);
     } else {

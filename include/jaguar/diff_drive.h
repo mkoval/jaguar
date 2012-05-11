@@ -58,6 +58,21 @@ public:
     virtual void robot_set_radii(double wheel_radius, double robot_radius);
 
 private:
+    // Wheel Odometry
+    struct Odometry {
+        Side side;
+        bool init;
+        double pos_curr, pos_prev;
+        double vel;
+    };
+
+    virtual void odom_init(void);
+    virtual void odom_update(Odometry &side, double pos, double vel);
+
+    // Speed Control
+    virtual void speed_init(void);
+    
+    // Diagnostics
     struct Diagnostics {
         bool init;
         bool stopped;
@@ -65,22 +80,12 @@ private:
         double temperature;
     };
 
-    // Wheel Odometry
-    virtual void odom_init(void);
-    virtual void odom_update(Side side, double &last_pos, double &curr_pos,
-                             double new_pos, double velocity);
-
-    // Speed Control
-    virtual void speed_init(void);
-
-    virtual void block(can::TokenPtr t1, can::TokenPtr t2);
-
-    
-    // Diagnostics
     void diag_init(void);
     void diag_update(Side side, Diagnostics &diag,
                      LimitStatus::Enum limits, Fault::Enum faults,
                      double voltage, double temperature);
+
+    virtual void block(can::TokenPtr t1, can::TokenPtr t2);
 
     can::JaguarBridge bridge_;
     jaguar::JaguarBroadcaster jag_broadcast_;
@@ -91,13 +96,10 @@ private:
 
     // Odometry
     Side odom_state_;
-    double velocity_left_, velocity_right_;
-    double odom_curr_left_, odom_curr_right_;
-    double odom_last_left_, odom_last_right_;
+    Odometry odom_left_, odom_right_;
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
-    double robot_radius_;
-    double wheel_circum_;
+    double robot_radius_, wheel_circum_;
 
     // Status message
     bool diag_init_;
