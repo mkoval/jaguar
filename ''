@@ -4,7 +4,6 @@
 #include <dynamic_reconfigure/server.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
-#include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 
 #include <jaguar/diff_drive.h>
@@ -14,10 +13,7 @@ using namespace can;
 using namespace jaguar;
 
 static ros::Subscriber sub_twist;
-static ros::Publisher pub_odom;
-static ros::Publisher pub_estop;
-static ros::Publisher pub_temp_left, pub_temp_right;
-static ros::Publisher pub_voltage_left, pub_voltage_right;
+static ros::Publisher pub_odom, pub_estop;
 static ros::Publisher pub_vleft, pub_vright;
 
 static DiffDriveSettings settings;
@@ -63,18 +59,7 @@ static void callback_odom(double x, double y, double theta,
 
 static void callback_estop(bool stopped)
 {
-    std_msgs::Bool msg;
-    msg.data = stopped;
-    pub_estop.publish(msg);
-}
-
-static void callback_diag(double voltage, double temperature)
-{
-    std_msgs::Float64 msg_voltage, msg_temperature;
-    msg_voltage.data = voltage;
-    msg_temperature.data = temperature;
-    pub_voltage_left.publish(msg_voltage);
-    pub_temp_left.publish(msg_temperature);
+    pub_estop.publish(stopped);
 }
 
 void callback_speed(DiffDriveRobot::Side side, double speed)
@@ -197,17 +182,11 @@ int main(int argc, char **argv)
     pub_estop = nh.advertise<std_msgs::Bool>("estop", 1, true);
     pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
     pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
-    pub_temp_left  = nh.advertise<std_msgs::Float64>("temperature_left", 10);
-    pub_temp_right = nh.advertise<std_msgs::Float64>("temperature_right", 10);
-    pub_voltage_left  = nh.advertise<std_msgs::Float64>("voltage_left", 10);
-    pub_voltage_right = nh.advertise<std_msgs::Float64>("voltage_right", 10);
     pub_tf = boost::make_shared<tf::TransformBroadcaster>();
 
     // These must be registered after the publishers are initialized. Otherwise
     // there is a race condition in the callbacks.
     robot->odom_attach(&callback_odom);
-    // TODO: Differentiate left from right.
-    robot->diag_attach(&callback_diag);
     robot->estop_attach(&callback_estop);
 
     // TODO: Read this heartbeat rate from a parameter.
