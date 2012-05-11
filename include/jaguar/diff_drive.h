@@ -31,8 +31,8 @@ class DiffDriveRobot
 {
 public:
     enum Side { kNone, kLeft, kRight };
-    typedef void DiagnosticsCallback(LimitStatus::Enum, Fault::Enum,
-                                     double, double);
+    typedef void EStopCallback(bool);
+    typedef void DiagnosticsCallback(double, double);
     typedef void OdometryCallback(double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
@@ -49,12 +49,15 @@ public:
     virtual void speed_set_d(double d);
 
     virtual void odom_attach(boost::function<OdometryCallback> callback);
+    virtual void diag_attach(boost::function<DiagnosticsCallback> callback);
+    virtual void estop_attach(boost::function<EStopCallback> callback);
 
     virtual void robot_set_encoders(uint16_t ticks_per_rev);
     virtual void robot_set_radii(double wheel_radius, double robot_radius);
 
 private:
     struct Diagnostics {
+        bool init;
         bool stopped;
         double voltage;
         double temperature;
@@ -95,7 +98,10 @@ private:
     double wheel_circum_;
 
     // Status message
+    bool diag_init_;
     Diagnostics diag_left_, diag_right_;
+    boost::signal<EStopCallback> estop_signal_;
+    boost::signal<DiagnosticsCallback> diag_signal_;
 
     // Acceleration limiting code.
     double current_rpm_left_, current_rpm_right_;

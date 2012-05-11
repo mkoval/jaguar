@@ -4,6 +4,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 
 #include <jaguar/diff_drive.h>
@@ -13,7 +14,7 @@ using namespace can;
 using namespace jaguar;
 
 static ros::Subscriber sub_twist;
-static ros::Publisher pub_odom;
+static ros::Publisher pub_odom, pub_estop;
 static ros::Publisher pub_vleft, pub_vright;
 
 static DiffDriveSettings settings;
@@ -56,6 +57,14 @@ static void callback_odom(double x, double y, double theta,
     msg_odom.twist.twist.angular.z = omega;
     pub_odom.publish(msg_odom);
 }
+
+static void callback_estop(bool stopped)
+{
+    std_msgs::Bool msg;
+    msg.data = stopped;
+    pub_estop.publish(msg);
+}
+
 
 void callback_speed(DiffDriveRobot::Side side, double speed)
 {
@@ -174,13 +183,16 @@ int main(int argc, char **argv)
 
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
     pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
+    pub_estop = nh.advertise<std_msgs::Bool>("estop", 1, true);
     pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
     pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
     pub_tf = boost::make_shared<tf::TransformBroadcaster>();
 
-    // These must be registered after pub_tf is initialized. Otherwise there is
-    // a race condition in the odometry callback.
+    // These must be registered after the publishers are initialized. Otherwise
+    // there is a race condition in the callbacks.
     robot->odom_attach(&callback_odom);
+    //robot->diag_attach(&callback_diag);
+    robot->estop_attach(&callback_estop);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);

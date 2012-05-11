@@ -26,6 +26,7 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , velocity_left_(0.0), velocity_right_(0.0)
     , robot_radius_(settings.robot_radius_m)
     , wheel_circum_(2 * M_PI * settings.wheel_radius_m)
+    , diag_init_(false)
     , current_rpm_left_(0), current_rpm_right_(0)
     , target_rpm_left_(0), target_rpm_right_(0)
     , accel_max_(settings.accel_max_mps2)
@@ -154,6 +155,16 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
     odom_signal_.connect(callback);
 }
 
+void DiffDriveRobot::diag_attach(boost::function<DiagnosticsCallback> callback)
+{
+    diag_signal_.connect(callback);
+}
+
+void DiffDriveRobot::estop_attach(boost::function<EStopCallback> callback)
+{
+    estop_signal_.connect(callback);
+}
+
 void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
                                  double new_pos, double velocity)
 {
@@ -235,10 +246,21 @@ void DiffDriveRobot::diag_update(Diagnostics &diag,
     LimitStatus::Enum limits, Fault::Enum faults,
     double voltage, double temperature)
 {
+    bool const estop_before = diag_left_.stopped || diag_right_.stopped;
+
     // TODO: Check for a fault.
     diag.stopped = !(limits & 0x03);
     diag.voltage = voltage;
     diag.temperature = temperature;
+
+    bool const estop_after = diag_left_.stopped || diag_right_.stopped;
+
+    // Only trigger an e-stop callback if the state changed.
+    if (!diag_init_ || estop_after != estop_before) {
+        estop_signal_(estop_after);
+    }
+    diag_signal_(voltage, temperature);
+    diag_init_ = true;
 }
 
 /*

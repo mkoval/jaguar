@@ -423,11 +423,6 @@ void Jaguar::diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
         raw_limits, raw_faults, raw_bus_voltage, raw_temperature
     );
 
-#if 0
-    std::cout << std::hex << static_cast<int>(raw_limits) << ", "
-              << std::hex << static_cast<int>(raw_faults) << std::endl;
-#endif
-
     LimitStatus::Enum const limits = static_cast<LimitStatus::Enum>(raw_limits);
     Fault::Enum const faults = static_cast<Fault::Enum>(raw_faults);
     double const bus_voltage = s8p8_to_double(raw_bus_voltage);
