@@ -141,9 +141,11 @@ void DiffDriveRobot::odom_init(void)
             )
         )
     );
+
+    // TODO: Make this a parameter.
     block(
-        jag_left_.periodic_enable(0, status_ms_),
-        jag_right_.periodic_enable(0, status_ms_)
+        jag_left_.periodic_enable(0, 200),
+        jag_right_.periodic_enable(0, 200)
     );
 }
 
@@ -222,10 +224,10 @@ void DiffDriveRobot::diag_init(void)
         )
     );
 
-    // TODO: Use a different rate than for Odom.
+    // TODO: Make this a parameter.
     block(
-        jag_left_.periodic_enable(1, status_ms_),
-        jag_right_.periodic_enable(1, status_ms_)
+        jag_left_.periodic_enable(1, 500),
+        jag_right_.periodic_enable(1, 500)
     );
 }
 
@@ -233,9 +235,7 @@ void DiffDriveRobot::diag_update(Side side,
     LimitStatus::Enum limits, Fault::Enum faults,
     double voltage, double temperature)
 {
-    std::cout << side << ": voltage = " << voltage
-                      << ": temperature = " << temperature
-                      << std::endl;
+    
 }
 
 /*

@@ -416,12 +416,10 @@ can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
  */
 void Jaguar::diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
 {
-    std::cout << msg->payload.size() << std::endl;
-
     uint8_t raw_limits = 0, raw_faults = 0;
     uint16_t raw_bus_voltage = 0, raw_temperature = 0;
     boost::spirit::qi::parse(msg->payload.begin(), msg->payload.end(),
-        byte_(raw_limits) >> byte_ >> little_word >> little_word,
+        byte_ >> byte_ >> little_word >> little_word,
         raw_limits, raw_faults, raw_bus_voltage, raw_temperature
     );
 
