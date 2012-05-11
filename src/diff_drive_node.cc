@@ -68,13 +68,22 @@ static void callback_estop(bool stopped)
     pub_estop.publish(msg);
 }
 
-static void callback_diag(double voltage, double temperature)
+static void callback_diag_left(double voltage, double temperature)
 {
     std_msgs::Float64 msg_voltage, msg_temperature;
     msg_voltage.data = voltage;
     msg_temperature.data = temperature;
     pub_voltage_left.publish(msg_voltage);
     pub_temp_left.publish(msg_temperature);
+}
+
+static void callback_diag_right(double voltage, double temperature)
+{
+    std_msgs::Float64 msg_voltage, msg_temperature;
+    msg_voltage.data = voltage;
+    msg_temperature.data = temperature;
+    pub_voltage_right.publish(msg_voltage);
+    pub_temp_right.publish(msg_temperature);
 }
 
 void callback_speed(DiffDriveRobot::Side side, double speed)
@@ -206,8 +215,7 @@ int main(int argc, char **argv)
     // These must be registered after the publishers are initialized. Otherwise
     // there is a race condition in the callbacks.
     robot->odom_attach(&callback_odom);
-    // TODO: Differentiate left from right.
-    robot->diag_attach(&callback_diag);
+    robot->diag_attach(&callback_diag_left, &callback_diag_right);
     robot->estop_attach(&callback_estop);
 
     // TODO: Read this heartbeat rate from a parameter.

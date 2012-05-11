@@ -49,7 +49,9 @@ public:
     virtual void speed_set_d(double d);
 
     virtual void odom_attach(boost::function<OdometryCallback> callback);
-    virtual void diag_attach(boost::function<DiagnosticsCallback> callback);
+    virtual void diag_attach(
+        boost::function<DiagnosticsCallback> callback_left,
+        boost::function<DiagnosticsCallback> callback_right);
     virtual void estop_attach(boost::function<EStopCallback> callback);
 
     virtual void robot_set_encoders(uint16_t ticks_per_rev);
@@ -76,7 +78,7 @@ private:
     
     // Diagnostics
     void diag_init(void);
-    void diag_update(Diagnostics &diag,
+    void diag_update(Side side, Diagnostics &diag,
                      LimitStatus::Enum limits, Fault::Enum faults,
                      double voltage, double temperature);
 
@@ -101,7 +103,7 @@ private:
     bool diag_init_;
     Diagnostics diag_left_, diag_right_;
     boost::signal<EStopCallback> estop_signal_;
-    boost::signal<DiagnosticsCallback> diag_signal_;
+    boost::signal<DiagnosticsCallback> diag_left_signal_, diag_right_signal_;
 
     // Acceleration limiting code.
     double current_rpm_left_, current_rpm_right_;

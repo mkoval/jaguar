@@ -155,9 +155,12 @@ void DiffDriveRobot::odom_attach(boost::function<OdometryCallback> callback)
     odom_signal_.connect(callback);
 }
 
-void DiffDriveRobot::diag_attach(boost::function<DiagnosticsCallback> callback)
+void DiffDriveRobot::diag_attach(
+    boost::function<DiagnosticsCallback> callback_left,
+    boost::function<DiagnosticsCallback> callback_right)
 {
-    diag_signal_.connect(callback);
+    diag_left_signal_.connect(callback_left);
+    diag_right_signal_.connect(callback_right);
 }
 
 void DiffDriveRobot::estop_attach(boost::function<EStopCallback> callback)
@@ -227,11 +230,11 @@ void DiffDriveRobot::diag_init(void)
     block(
         jag_left_.periodic_config_diag(1,
             boost::bind(&DiffDriveRobot::diag_update, this,
-                boost::ref(diag_left_), _1, _2, _3, _4)
+                kLeft, boost::ref(diag_left_), _1, _2, _3, _4)
         ),
         jag_right_.periodic_config_diag(1,
             boost::bind(&DiffDriveRobot::diag_update, this,
-                boost::ref(diag_right_), _1, _2, _3, _4)
+                kRight, boost::ref(diag_right_), _1, _2, _3, _4)
         )
     );
 
@@ -242,7 +245,8 @@ void DiffDriveRobot::diag_init(void)
     );
 }
 
-void DiffDriveRobot::diag_update(Diagnostics &diag,
+void DiffDriveRobot::diag_update(
+    Side side, Diagnostics &diag,
     LimitStatus::Enum limits, Fault::Enum faults,
     double voltage, double temperature)
 {
@@ -255,12 +259,20 @@ void DiffDriveRobot::diag_update(Diagnostics &diag,
 
     bool const estop_after = diag_left_.stopped || diag_right_.stopped;
 
-    // Only trigger an e-stop callback if the state changed.
+    // Only trigger an e-stop callback if the state changed. We don't know the
+    // initial state, so the first update always triggers a callback.
     if (!diag_init_ || estop_after != estop_before) {
         estop_signal_(estop_after);
     }
-    diag_signal_(voltage, temperature);
     diag_init_ = true;
+
+    // Other diagnostics (i.e. bus voltage and temperature) use separate left
+    // and right callbacks.
+    if (side == kLeft) {
+        diag_left_signal_(voltage, temperature);
+    } else if (side == kRight) {
+        diag_right_signal_(voltage, temperature);
+    }
 }
 
 /*
