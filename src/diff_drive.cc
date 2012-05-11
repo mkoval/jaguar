@@ -23,8 +23,6 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
     , status_ms_(settings.status_ms)
-    , robot_radius_(settings.robot_radius_m)
-    , wheel_circum_(2 * M_PI * settings.wheel_radius_m)
     , diag_init_(false)
     , accel_max_(settings.accel_max_mps2)
 {
@@ -48,8 +46,8 @@ DiffDriveRobot::~DiffDriveRobot(void)
 
 void DiffDriveRobot::drive(double v, double omega)
 {
-    double const v_left  = v - robot_radius_ * omega;
-    double const v_right = v + robot_radius_ * omega;
+    double const v_left  = v - 0.5 * wheel_sep_ * omega;
+    double const v_right = v + 0.5 * wheel_sep_ * omega;
     drive_raw(v_left, v_right);
 }
 
@@ -97,6 +95,24 @@ void DiffDriveRobot::drive_brake(bool braking)
     block(
         jag_left_.config_brake_set(value),
         jag_right_.config_brake_set(value)
+    );
+}
+
+void DiffDriveRobot::odom_set_circumference(double circum_m)
+{
+    wheel_circum_ = circum_m;
+}
+
+void DiffDriveRobot::odom_set_separation(double separation_m)
+{
+    wheel_sep_ = separation_m;
+}
+
+void DiffDriveRobot::odom_set_encoders(uint16_t cpr)
+{
+    block(
+        jag_left_.config_encoders_set(cpr),
+        jag_right_.config_encoders_set(cpr)
     );
 }
 
@@ -181,9 +197,6 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
     if (odom_state_ == kNone) {
         odom_state_ = odom.side;
     } else if (odom.side != odom_state_) {
-        odom_state_ = kNone;
-        // TODO: Don't publish anything for the first message.
-
         // Compute the difference between the last two updates. Speed is
         // measured in RPMs, so all of these values are measured in
         // revolutions.
@@ -198,16 +211,17 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
         // two-dimensional motion.
         // TODO: Switch to a better odometry model.
         double const meters  = (meters_left + meters_right) / 2;
-        double const radians = (meters_left - meters_right) / (2 * robot_radius_);
+        double const radians = (meters_left - meters_right) / wheel_sep_;
         x_ += meters * cos(theta_);
         y_ += meters * sin(theta_);
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
         double const v_linear = (odom_right_.vel + odom_left_.vel) / 2;
-        double const omega    = (odom_right_.vel - odom_left_.vel) / (2 * robot_radius_);
+        double const omega    = (odom_right_.vel - odom_left_.vel) / wheel_sep_;
 
         odom_signal_(x_, y_, theta_, v_linear, omega);
+        odom_state_ = kNone;
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
@@ -303,25 +317,6 @@ void DiffDriveRobot::speed_init(void)
         jag_left_.speed_enable(),
         jag_right_.speed_enable()
     );
-}
-
-/*
- * Robot Parameters
- */
-void DiffDriveRobot::robot_set_encoders(uint16_t ticks_per_rev)
-{
-    block(
-        jag_left_.config_encoders_set(ticks_per_rev),
-        jag_right_.config_encoders_set(ticks_per_rev)
-    );
-}
-
-void DiffDriveRobot::robot_set_radii(double wheel_radius, double robot_radius)
-{
-    assert(wheel_radius > 0);
-    assert(robot_radius > 0);
-    wheel_circum_ = 2 * M_PI * wheel_radius;
-    robot_radius_ = robot_radius;
 }
 
 /*

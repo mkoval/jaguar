@@ -31,12 +31,6 @@ static void callback_odom(double x, double y, double theta,
 {
     ros::Time now = ros::Time::now();
 
-#if 0
-    std::cout << "(x, y, theta) = (" << x << ", " << y << ", " << theta << ") "
-              << "(v, omega) = (" << velocity << ", " << omega << ")"
-              << std::endl;
-#endif
-
     // odom TF Frame
     geometry_msgs::TransformStamped msg_tf;
     msg_tf.header.stamp = now;
@@ -134,25 +128,30 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         ROS_INFO("Reconfigure, Braking = %d", config.brake);
     }
     if (level & 16) {
-        if (0 < config.ticks_per_rev && config.ticks_per_rev <= std::numeric_limits<uint16_t>::max()) {
-            robot->robot_set_encoders(config.ticks_per_rev);
-            ROS_INFO("Reconfigure, Ticks/Rev = %d", config.ticks_per_rev);
+        if (0 < config.cpr && config.cpr <= std::numeric_limits<uint16_t>::max()) {
+            robot->odom_set_encoders(config.cpr);
+            ROS_INFO("Reconfigure, CPR = %d", config.cpr);
         } else {
-            ROS_WARN("Ticks/rev must be a positive 16-bit unsigned integer.");
+            ROS_WARN("CPR must be a positive 16-bit unsigned integer.");
         }
     }
     if (level & 32) {
-        if (config.wheel_radius <= 0) {
-            ROS_WARN("Wheel radius must be positive.");
-        } else if (config.robot_radius <= 0) {
-            ROS_WARN("Robot radius must be positive.");
+        if (config.wheel_diameter <= 0) {
+            ROS_WARN("Wheel diameter must be positive.");
         } else {
-            robot->robot_set_radii(config.wheel_radius, config.robot_radius);
-            ROS_INFO("Reconfigure, Wheel Radius = %f", config.wheel_radius);
-            ROS_INFO("Reconfigure, Robot Radius = %f", config.robot_radius);
+            robot->odom_set_circumference(M_PI * config.wheel_diameter);
+            ROS_INFO("Reconfigure, Wheel Diameter = %f", config.wheel_diameter);
         }
     }
     if (level & 64) {
+        if (config.wheel_separation <= 0) {
+            ROS_WARN("Wheel separation must be positive.");
+        } else {
+            robot->odom_set_separation(config.wheel_separation);
+            ROS_INFO("Reconfigure, Wheel Separation = %f", config.wheel_separation);
+        }
+    }
+    if (level & 128) {
         robot->drive_raw(config.setpoint, config.setpoint);
         ROS_INFO("Reconfigure, Setpoint = %f", config.setpoint);
     }

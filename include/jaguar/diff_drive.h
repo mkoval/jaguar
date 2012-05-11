@@ -44,18 +44,19 @@ public:
     virtual void drive_brake(bool braking);
     virtual void drive_spin(double dt);
 
+    virtual void odom_set_circumference(double circum_m);
+    virtual void odom_set_separation(double separation_m);
+    virtual void odom_set_encoders(uint16_t cpr);
+    virtual void odom_attach(boost::function<OdometryCallback> callback);
+
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
     virtual void speed_set_d(double d);
 
-    virtual void odom_attach(boost::function<OdometryCallback> callback);
     virtual void diag_attach(
         boost::function<DiagnosticsCallback> callback_left,
         boost::function<DiagnosticsCallback> callback_right);
     virtual void estop_attach(boost::function<EStopCallback> callback);
-
-    virtual void robot_set_encoders(uint16_t ticks_per_rev);
-    virtual void robot_set_radii(double wheel_radius, double robot_radius);
 
 private:
     // Wheel Odometry
@@ -99,7 +100,7 @@ private:
     Odometry odom_left_, odom_right_;
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
-    double robot_radius_, wheel_circum_;
+    double wheel_circum_, wheel_sep_;
 
     // Status message
     bool diag_init_;
