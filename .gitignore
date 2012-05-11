@@ -1,5 +1,6 @@
 *~
 *.swo
+*.swn
 
 *.[do]
 *.sublime-workspace

@@ -47,6 +47,7 @@ public:
     virtual void odom_set_circumference(double circum_m);
     virtual void odom_set_separation(double separation_m);
     virtual void odom_set_encoders(uint16_t cpr);
+    virtual void odom_set_rate(uint8_t rate_ms);
     virtual void odom_attach(boost::function<OdometryCallback> callback);
 
     virtual void speed_set_p(double p);
@@ -56,6 +57,8 @@ public:
     virtual void diag_attach(
         boost::function<DiagnosticsCallback> callback_left,
         boost::function<DiagnosticsCallback> callback_right);
+    virtual void diag_set_rate(uint8_t rate_ms);
+
     virtual void estop_attach(boost::function<EStopCallback> callback);
 
 private:
@@ -92,8 +95,6 @@ private:
     jaguar::JaguarBroadcaster jag_broadcast_;
     jaguar::Jaguar jag_left_, jag_right_;
     boost::mutex mutex_;
-
-    uint32_t status_ms_;
 
     // Odometry
     Side odom_state_;

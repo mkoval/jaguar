@@ -22,7 +22,6 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_broadcast_(bridge_)
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
-    , status_ms_(settings.status_ms)
     , diag_init_(false)
     , accel_max_(settings.accel_max_mps2)
 {
@@ -116,6 +115,22 @@ void DiffDriveRobot::odom_set_encoders(uint16_t cpr)
     );
 }
 
+void DiffDriveRobot::odom_set_rate(uint8_t rate_ms)
+{
+    block(
+        jag_left_.periodic_enable(0, rate_ms),
+        jag_right_.periodic_enable(0, rate_ms)
+    );
+}
+
+void DiffDriveRobot::diag_set_rate(uint8_t rate_ms)
+{
+    block(
+        jag_left_.periodic_enable(1, rate_ms),
+        jag_right_.periodic_enable(1, rate_ms)
+    );
+}
+
 void DiffDriveRobot::heartbeat(void)
 {
     jag_broadcast_.heartbeat();
@@ -152,12 +167,6 @@ void DiffDriveRobot::odom_init(void)
         jag_right_.periodic_config_odom(0,
             boost::bind(&DiffDriveRobot::odom_update, this,
                 boost::ref(odom_right_), _1, _2))
-    );
-
-    // TODO: Make this a parameter.
-    block(
-        jag_left_.periodic_enable(0, 200),
-        jag_right_.periodic_enable(0, 200)
     );
 }
 

@@ -25,6 +25,7 @@ static boost::shared_ptr<DiffDriveRobot> robot;
 static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
 static std::string frame_parent;
 static std::string frame_child;
+static int heartbeat_rate;
 
 static void callback_odom(double x, double y, double theta,
                           double velocity, double omega)
@@ -140,7 +141,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
             ROS_WARN("Wheel diameter must be positive.");
         } else {
             robot->odom_set_circumference(M_PI * config.wheel_diameter);
-            ROS_INFO("Reconfigure, Wheel Diameter = %f", config.wheel_diameter);
+            ROS_INFO("Reconfigure, Wheel Diameter = %f m", config.wheel_diameter);
         }
     }
     if (level & 64) {
@@ -148,10 +149,36 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
             ROS_WARN("Wheel separation must be positive.");
         } else {
             robot->odom_set_separation(config.wheel_separation);
-            ROS_INFO("Reconfigure, Wheel Separation = %f", config.wheel_separation);
+            ROS_INFO("Reconfigure, Wheel Separation = %f m", config.wheel_separation);
         }
     }
     if (level & 128) {
+        if (config.odom_rate <= 0 || config.odom_rate > 255) {
+            ROS_WARN("Odometry update rate must be positive.");
+        } else {
+            robot->odom_set_rate(config.odom_rate);
+            ROS_INFO("Reconfigure, Odometry Update Rate = %d ms", config.odom_rate);
+        }
+    }
+    if (level & 256) {
+        if (config.diag_rate <= 0 || config.diag_rate > 255) {
+            ROS_WARN("Diagnostics update rate must be positive.");
+        } else {
+            robot->diag_set_rate(config.diag_rate);
+            ROS_INFO("Reconfigure, Diagnostics Update Rate = %d ms", config.diag_rate);
+        }
+    }
+    if (level & 512) {
+        if (config.heartbeat_rate <= 0 || config.heartbeat_rate > 255) {
+            ROS_WARN("Heartbeat rate must be in the range 1-255.");
+        } else if (config.heartbeat_rate > 100) {
+            ROS_WARN("Heartbeat rate is dangerously high.");
+        } else {
+            heartbeat_rate = config.heartbeat_rate;
+            ROS_INFO("Reconfigure, Heartbeat Rate = %d ms", config.heartbeat_rate);
+        }
+    }
+    if (level & 1024) {
         robot->drive_raw(config.setpoint, config.setpoint);
         ROS_INFO("Reconfigure, Setpoint = %f", config.setpoint);
     }
@@ -165,8 +192,6 @@ int main(int argc, char **argv)
     ros::param::get("~port", settings.port);
     ros::param::get("~id_left", settings.id_left);
     ros::param::get("~id_right", settings.id_right);
-    ros::param::get("~heartbeat", settings.heartbeat_ms);
-    ros::param::get("~status", settings.status_ms);
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
@@ -178,23 +203,16 @@ int main(int argc, char **argv)
      || !(1 <= settings.id_right && settings.id_right <= 63)) {
         ROS_FATAL("Invalid CAN device id. Must be in the range 1-63.");
         return 1;
-    } else if (settings.heartbeat_ms <= 0 || settings.heartbeat_ms > 100) {
-        ROS_FATAL("Heartbeat period invalid. Must be in the range 1-500 ms.");
-        return 1;
-    } else if (settings.status_ms <= 0 || settings.status_ms > std::numeric_limits<uint16_t>::max()) {
-        ROS_FATAL("Status period invalid must be in the range 1-255 ms.");
+    } else if (settings.id_left == settings.id_right){
+        ROS_FATAL("Invalid CAN device ID. Left and right IDs must be unique.");
         return 1;
     }
-
-    ROS_INFO("Port: %s", settings.port.c_str());
-    ROS_INFO("ID Left: %d", settings.id_left);
-    ROS_INFO("ID Right: %d", settings.id_right);
-    ROS_INFO("Heartbeat Rate: %d ms", settings.heartbeat_ms);
-    ROS_INFO("Status Rate: %d ms", settings.status_ms);
+    ROS_INFO("Communicating to IDs %d and %d over %s", settings.id_left,
+             settings.id_right, settings.port.c_str());
 
     robot = boost::make_shared<DiffDriveRobot>(settings);
 
-    // Setup dynamic reconfigure for all remaining parameters.
+    // Use dynamic reconfigure for all remaining parameters.
     dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
     dynamic_reconfigure::Server<jaguar::JaguarConfig>::CallbackType f;
     f = boost::bind(&callback_reconfigure, _1, _2);
