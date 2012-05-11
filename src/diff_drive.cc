@@ -40,6 +40,7 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
 
     speed_init();
     odom_init();
+    diag_init();
     jag_broadcast_.system_resume();
 }
 
@@ -111,9 +112,6 @@ void DiffDriveRobot::heartbeat(void)
  */
 void DiffDriveRobot::odom_init(void)
 {
-    using jaguar::PeriodicStatus::Position;
-    using jaguar::PeriodicStatus::Speed;
-
     odom_curr_left_  = 0;
     odom_curr_right_ = 0;
     odom_last_left_  = 0;
@@ -206,6 +204,38 @@ void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
+}
+
+/*
+ * Diagnostics
+ */
+void DiffDriveRobot::diag_init(void)
+{
+    block(
+        jag_left_.periodic_config_diag(1,
+            boost::bind(&DiffDriveRobot::diag_update, this,
+                kLeft, _1, _2, _3, _4)
+        ),
+        jag_right_.periodic_config_diag(1,
+            boost::bind(&DiffDriveRobot::diag_update, this,
+                kRight, _1, _2, _3, _4)
+        )
+    );
+
+    // TODO: Use a different rate than for Odom.
+    block(
+        jag_left_.periodic_enable(1, status_ms_),
+        jag_right_.periodic_enable(1, status_ms_)
+    );
+}
+
+void DiffDriveRobot::diag_update(Side side,
+    LimitStatus::Enum limits, Fault::Enum faults,
+    double voltage, double temperature)
+{
+    std::cout << side << ": voltage = " << voltage
+                      << ": temperature = " << temperature
+                      << std::endl;
 }
 
 /*

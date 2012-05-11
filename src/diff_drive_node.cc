@@ -27,6 +27,12 @@ static void callback_odom(double x, double y, double theta,
 {
     ros::Time now = ros::Time::now();
 
+#if 0
+    std::cout << "(x, y, theta) = (" << x << ", " << y << ", " << theta << ") "
+              << "(v, omega) = (" << velocity << ", " << omega << ")"
+              << std::endl;
+#endif
+
     // odom TF Frame
     geometry_msgs::TransformStamped msg_tf;
     msg_tf.header.stamp = now;

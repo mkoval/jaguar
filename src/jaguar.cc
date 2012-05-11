@@ -30,8 +30,15 @@ struct speed_group_t {
 } __attribute__((__packed__));
 
 Jaguar::Jaguar(can::CANBridge &can, uint8_t device_num)
-    : num_(device_num), can_(can)
+    : num_(device_num)
+    , can_(can)
+    , sig_diag_(4)
+    , sig_odom_(4)
 {
+    for (size_t i = 0; i < 4; i++) {
+        sig_diag_[i] = boost::make_shared<DiagSignal>();
+        sig_odom_[i] = boost::make_shared<OdomSignal>();
+    }
 }
 
 /*
@@ -286,7 +293,7 @@ void Jaguar::position_set_noack(double position, uint8_t group) {
 can::TokenPtr Jaguar::periodic_enable(uint8_t index, uint16_t rate_ms)
 {
     return send_ack(
-        static_cast<APIClass::Enum>(6), 0,
+        APIClass::kPeriodicStatus, PeriodicStatus::kEnableMessage + index,
         little_word(rate_ms)
     );
 }
@@ -327,7 +334,7 @@ can::TokenPtr Jaguar::periodic_config_diag(uint8_t index, boost::function<DiagCa
         kManufacturer, kDeviceType,
         APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
     );
-    sig_diag_[index].connect(callback);
+    sig_diag_[index]->connect(callback);
     can_.attach_callback(status_id, boost::bind(&Jaguar::diag_unpack, this, _1, index));
 
     // Wait for an ACK in response to the config message.
@@ -361,7 +368,7 @@ can::TokenPtr Jaguar::periodic_config_odom(uint8_t index, boost::function<OdomCa
         kManufacturer, kDeviceType,
         APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
     );
-    sig_odom_[index].connect(callback);
+    sig_odom_[index]->connect(callback);
     can_.attach_callback(status_id, boost::bind(&Jaguar::odom_unpack, this, _1, index));
 
     // Wait for an ACK in response to the config message.
@@ -409,29 +416,31 @@ can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
  */
 void Jaguar::diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
 {
+    std::cout << msg->payload.size() << std::endl;
+
     uint8_t raw_limits = 0, raw_faults = 0;
     uint16_t raw_bus_voltage = 0, raw_temperature = 0;
     boost::spirit::qi::parse(msg->payload.begin(), msg->payload.end(),
-        byte_(raw_limits) >> byte_(raw_faults)
-        >> little_word(raw_bus_voltage) >> little_word(raw_temperature)
+        byte_(raw_limits) >> byte_ >> little_word >> little_word,
+        raw_limits, raw_faults, raw_bus_voltage, raw_temperature
     );
 
     LimitStatus::Enum const limits = static_cast<LimitStatus::Enum>(raw_limits);
     Fault::Enum const faults = static_cast<Fault::Enum>(raw_faults);
     double const bus_voltage = s8p8_to_double(raw_bus_voltage);
     double const temperature = s8p8_to_double(raw_temperature);
-    sig_diag_[index](limits, faults, bus_voltage, temperature);
+    (*sig_diag_[index])(limits, faults, bus_voltage, temperature);
 }
 
 void Jaguar::odom_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index)
 {
     int32_t raw_position = 0, raw_speed = 0;
     boost::spirit::qi::parse(msg->payload.begin(), msg->payload.end(),
-        little_dword(raw_position) >> little_dword(raw_speed)
+        little_dword >> little_dword, raw_position, raw_speed
     );
     double const position = s16p16_to_double(raw_position);
     double const speed = s16p16_to_double(raw_speed);
-    sig_odom_[index](position, speed);
+    (*sig_odom_[index])(position, speed);
 }
 
 

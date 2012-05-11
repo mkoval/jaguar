@@ -7,6 +7,7 @@
 #include <boost/signal.hpp>
 #include <boost/thread/thread.hpp>
 #include <jaguar/jaguar.h>
+#include <jaguar/jaguar_api.h>
 #include <jaguar/jaguar_bridge.h>
 #include <jaguar/jaguar_broadcaster.h>
 
@@ -30,6 +31,8 @@ class DiffDriveRobot
 {
 public:
     enum Side { kNone, kLeft, kRight };
+    typedef void DiagnosticsCallback(LimitStatus::Enum, Fault::Enum,
+                                     double, double);
     typedef void OdometryCallback(double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
@@ -60,6 +63,12 @@ private:
     virtual void speed_init(void);
 
     virtual void block(can::TokenPtr t1, can::TokenPtr t2);
+
+    
+    // Diagnostics
+    void diag_init(void);
+    void diag_update(Side side, LimitStatus::Enum limits, Fault::Enum faults,
+                     double voltage, double temperature);
 
     can::JaguarBridge bridge_;
     jaguar::JaguarBroadcaster jag_broadcast_;

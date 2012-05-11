@@ -81,6 +81,11 @@ public:
     can::TokenPtr periodic_config_odom(uint8_t index, boost::function<OdomCallback> callback);
 
 private:
+    typedef boost::signals2::signal<DiagCallback> DiagSignal;
+    typedef boost::signals2::signal<OdomCallback> OdomSignal;
+    typedef boost::shared_ptr<DiagSignal> DiagSignalPtr;
+    typedef boost::shared_ptr<OdomSignal> OdomSignalPtr;
+
     void diag_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index);
     void odom_unpack(boost::shared_ptr<can::CANMessage> msg, uint8_t index);
     void periodic_unpack(boost::shared_ptr<can::CANMessage> message, AggregateStatus statuses);
@@ -97,8 +102,8 @@ private:
     can::CANBridge &can_;
     can::TokenPtr token_;
 
-    std::vector<boost::signals2::signal<DiagCallback> > sig_diag_;
-    std::vector<boost::signals2::signal<OdomCallback> > sig_odom_;
+    std::vector<DiagSignalPtr> sig_diag_;
+    std::vector<OdomSignalPtr> sig_odom_;
 
     static Manufacturer::Enum const kManufacturer;
     static DeviceType::Enum   const kDeviceType;
