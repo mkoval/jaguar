@@ -188,16 +188,13 @@ void DiffDriveRobot::odom_update(Side side, double &last_pos, double &curr_pos,
         odom_state_ = side;
     } else if (odom_state_ != side) {
         odom_state_ = kNone;
+        // TODO: Don't publish anything for the first message.
 
         // Compute the difference between the last two updates. Speed is
         // measured in RPMs, so all of these values are measured in
         // revolutions.
-        double const curr_left = s16p16_to_double(odom_curr_left_);
-        double const last_left = s16p16_to_double(odom_last_left_);
-        double const curr_right = s16p16_to_double(odom_curr_right_);
-        double const last_right = s16p16_to_double(odom_last_right_);
-        double const revs_left  = curr_left - last_left;
-        double const revs_right = curr_right - last_right;
+        double const revs_left  = odom_curr_left_ - odom_last_left_;
+        double const revs_right = odom_curr_right_ - odom_last_right_;
 
         // Convert from revolutions to meters.
         double const meters_left  = revs_left * wheel_circum_;
