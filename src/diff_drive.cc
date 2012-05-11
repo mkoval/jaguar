@@ -216,11 +216,11 @@ void DiffDriveRobot::diag_init(void)
     block(
         jag_left_.periodic_config_diag(1,
             boost::bind(&DiffDriveRobot::diag_update, this,
-                kLeft, _1, _2, _3, _4)
+                boost::ref(diag_left_), _1, _2, _3, _4)
         ),
         jag_right_.periodic_config_diag(1,
             boost::bind(&DiffDriveRobot::diag_update, this,
-                kRight, _1, _2, _3, _4)
+                boost::ref(diag_right_), _1, _2, _3, _4)
         )
     );
 
@@ -231,11 +231,14 @@ void DiffDriveRobot::diag_init(void)
     );
 }
 
-void DiffDriveRobot::diag_update(Side side,
+void DiffDriveRobot::diag_update(Diagnostics &diag,
     LimitStatus::Enum limits, Fault::Enum faults,
     double voltage, double temperature)
 {
-    
+    // TODO: Check for a fault.
+    diag.stopped = !(limits & 0x03);
+    diag.voltage = voltage;
+    diag.temperature = temperature;
 }
 
 /*

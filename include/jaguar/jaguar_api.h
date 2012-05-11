@@ -241,7 +241,7 @@ namespace PeriodicStatusItem {
         kPositionBase              = 9,
         kSpeedBase                 = 13,
         kLimitNonClearing          = 17,
-        kLimitClearing             = 17,
+        kLimitClearing             = 18,
         kFaults                    = 19,
         kStickyFaultsNonClearing   = 20,
         kStickyFaultsClearing      = 21,

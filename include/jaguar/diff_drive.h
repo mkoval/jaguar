@@ -54,6 +54,12 @@ public:
     virtual void robot_set_radii(double wheel_radius, double robot_radius);
 
 private:
+    struct Diagnostics {
+        bool stopped;
+        double voltage;
+        double temperature;
+    };
+
     // Wheel Odometry
     virtual void odom_init(void);
     virtual void odom_update(Side side, double &last_pos, double &curr_pos,
@@ -67,7 +73,8 @@ private:
     
     // Diagnostics
     void diag_init(void);
-    void diag_update(Side side, LimitStatus::Enum limits, Fault::Enum faults,
+    void diag_update(Diagnostics &diag,
+                     LimitStatus::Enum limits, Fault::Enum faults,
                      double voltage, double temperature);
 
     can::JaguarBridge bridge_;
@@ -86,6 +93,9 @@ private:
     boost::signal<OdometryCallback> odom_signal_;
     double robot_radius_;
     double wheel_circum_;
+
+    // Status message
+    Diagnostics diag_left_, diag_right_;
 
     // Acceleration limiting code.
     double current_rpm_left_, current_rpm_right_;
