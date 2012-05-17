@@ -146,6 +146,7 @@ void DiffDriveRobot::odom_init(void)
     theta_ = 0.0;
 
     // Ignore the first odometry message to establish the reference point.:
+    // TODO: This is wrong.
     odom_left_.side = kLeft;
     odom_left_.init = false;
     odom_right_.side = kRight;
@@ -209,8 +210,9 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
         // Compute the difference between the last two updates. Speed is
         // measured in RPMs, so all of these values are measured in
         // revolutions.
-        double const revs_left  = odom_left_.pos_curr  - odom_left_.pos_prev;
-        double const revs_right = odom_right_.pos_curr - odom_right_.pos_prev;
+        double revs_left  = odom_left_.pos_curr  - odom_left_.pos_prev;
+        double revs_right = odom_right_.pos_curr - odom_right_.pos_prev;
+        std::swap(revs_left, revs_right);
 
         // Convert from revolutions to meters.
         double const meters_left  = revs_left * wheel_circum_;

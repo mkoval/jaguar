@@ -65,6 +65,13 @@ public:
 private:
     // Wheel Odometry
     struct Odometry {
+        Odometry(void)
+            : init(false)
+            , pos_curr(0.0)
+            , pos_prev(0.0)
+            , vel(0.0)
+        {}
+
         Side side;
         bool init;
         double pos_curr, pos_prev;

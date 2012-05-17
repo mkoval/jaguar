@@ -6,7 +6,6 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
-
 #include <jaguar/diff_drive.h>
 #include <jaguar/JaguarConfig.h>
 
@@ -33,6 +32,8 @@ static void callback_odom(double x, double y, double theta,
                           double v_left, double v_right)
 {
     ros::Time now = ros::Time::now();
+
+    ROS_INFO("(%f, %f, %f) facing %f rad", x, y, 0.0, theta);
 
     // odom TF Frame
     geometry_msgs::TransformStamped msg_tf;
@@ -97,7 +98,7 @@ void callback_speed(DiffDriveRobot::Side side, double speed)
 {
     std_msgs::Float64 msg;
     msg.data = speed;
-switch (side) {
+    switch (side) {
     case DiffDriveRobot::kLeft:
         pub_vleft.publish(msg);
         break;

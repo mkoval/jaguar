@@ -15,9 +15,10 @@
         <param name="gain_p" value="1.00"/>
         <param name="gain_i" value="0.02"/>
         <param name="gain_d" value="0.00"/>
-        <!-- Odometry TF Frames -->
-        <param name="frame_parent" value="/map"/>
-        <param name="frame_child"  value="/odom"/>
+        <!-- Odometry -->
+        <param name="alpha" value="0.05"/>
+        <param name="frame_parent" value="/odom"/>
+        <param name="frame_child"  value="/base_footprint"/>
         <remap from="/cmd_vel" to="/drive/cmd_vel"/>
         <!-- Acceleration Limits -->
         <param name="accel_max" value="10"/>
