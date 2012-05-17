@@ -8,9 +8,9 @@
         <param name="heartbeat" value="50"/> <!-- period in ms -->
         <param name="status"    value="50"/> <!-- period in ms -->
         <!-- Robot Model Parameters -->
-        <param name="cpr" value="230"/>
+        <param name="cpr" value="400"/>
         <param name="wheel_diameter" value="0.254"/> <!-- meters -->
-        <param name="wheel_separation" value="0.838"/> <!-- meters -->
+        <param name="wheel_separation" value="0.712"/> <!-- meters -->
         <!-- PID Gains -->
         <param name="gain_p" value="1.00"/>
         <param name="gain_i" value="0.02"/>
