@@ -26,6 +26,7 @@ static std::string frame_parent;
 static std::string frame_child;
 static int heartbeat_rate;
 static double wheel_separation, alpha;
+static volatile bool spinlock = false;
 
 static void callback_odom(double x, double y, double theta,
                           double velocity, double omega,
@@ -58,14 +59,15 @@ static void callback_odom(double x, double y, double theta,
     msg_odom.twist.twist.angular.z = omega;
     pub_odom.publish(msg_odom);
 
+    // TODO: Why are these flipped?
     robot_kf::WheelOdometry msg_wheel;
     msg_wheel.header.stamp = now;
     msg_wheel.header.frame_id = frame_child;
     msg_wheel.separation = wheel_separation;
-    msg_wheel.left.movement = v_left;
-    msg_wheel.left.variance = alpha * fabs(v_left);
-    msg_wheel.right.movement = v_right;
-    msg_wheel.right.variance = alpha * fabs(v_right);
+    msg_wheel.left.movement = v_right;
+    msg_wheel.left.variance = alpha * fabs(v_right);
+    msg_wheel.right.movement = v_left;
+    msg_wheel.right.variance = alpha * fabs(v_left);
     pub_wheel.publish(msg_wheel);
 }
 
@@ -203,6 +205,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
             ROS_INFO("Reconfigure, alpha = %f", alpha);
         }
     }
+    spinlock = true;
 }
 
 int main(int argc, char **argv)
@@ -256,6 +259,8 @@ int main(int argc, char **argv)
     robot->odom_attach(&callback_odom);
     robot->diag_attach(&callback_diag_left, &callback_diag_right);
     robot->estop_attach(&callback_estop);
+
+    while (!spinlock);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);
