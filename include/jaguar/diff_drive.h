@@ -10,6 +10,7 @@
 #include <jaguar/jaguar_api.h>
 #include <jaguar/jaguar_bridge.h>
 #include <jaguar/jaguar_broadcaster.h>
+#include <robot_kf/WheelOdometry.h>
 
 namespace jaguar {
 
@@ -33,7 +34,7 @@ public:
     enum Side { kNone, kLeft, kRight };
     typedef void EStopCallback(bool);
     typedef void DiagnosticsCallback(double, double);
-    typedef void OdometryCallback(double, double, double, double, double);
+    typedef void OdometryCallback(double, double, double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);

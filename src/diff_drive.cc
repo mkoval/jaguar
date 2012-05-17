@@ -229,7 +229,7 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
         double const v_linear = (odom_right_.vel + odom_left_.vel) / 2;
         double const omega    = (odom_right_.vel - odom_left_.vel) / wheel_sep_;
 
-        odom_signal_(x_, y_, theta_, v_linear, omega);
+        odom_signal_(x_, y_, theta_, v_linear, omega, meters_left, meters_right);
         odom_state_ = kNone;
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;

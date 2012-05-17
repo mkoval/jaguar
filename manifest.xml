@@ -9,6 +9,7 @@
   <rosdep name="google-mock"/>
   <depend package="angles"/>
   <depend package="dynamic_reconfigure"/>
+  <depend package="robot_kf"/>
   <depend package="nav_msgs"/>
   <depend package="roscpp"/>
   <depend package="tf"/>
