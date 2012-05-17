@@ -13,7 +13,9 @@
   <depend package="nav_msgs"/>
   <depend package="roscpp"/>
   <depend package="tf"/>
+  <!--
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -ljaguar"/>
   </export>
+  -->
 </package>
