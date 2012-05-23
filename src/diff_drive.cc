@@ -23,7 +23,11 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
     , diag_init_(false)
+    // These are set by dynamic_reconfigure. However, there is a race condition
+    // in waiting for the callback. These are sane defaults to prevent
+    // generating +/-infinity or NaN during the race.
     , accel_max_(settings.accel_max_mps2)
+    , wheel_circum_(0.0), wheel_sep_(0.0)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
@@ -45,6 +49,7 @@ DiffDriveRobot::~DiffDriveRobot(void)
 
 void DiffDriveRobot::drive(double v, double omega)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     double const v_left  = v - 0.5 * wheel_sep_ * omega;
     double const v_right = v + 0.5 * wheel_sep_ * omega;
     drive_raw(v_left, v_right);
@@ -52,12 +57,14 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     target_rpm_left_  = v_left  * 60 / wheel_circum_;
     target_rpm_right_ = v_right * 60 / wheel_circum_;
 }
 
 void DiffDriveRobot::drive_spin(double dt)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     double const residual_rpm_left  = target_rpm_left_  - current_rpm_left_;
     double const residual_rpm_right = target_rpm_right_ - current_rpm_right_;
 
@@ -152,6 +159,12 @@ void DiffDriveRobot::odom_init(void)
     odom_right_.side = kRight;
     odom_right_.init = false;
 
+    // Just in case. This shouldn't really matter.
+    odom_left_.pos_prev = 0;
+    odom_left_.pos_curr = 0;
+    odom_right_.pos_prev = 0;
+    odom_right_.pos_curr = 0;
+
     // Configure the Jaguars to use optical encoders. They are used as both a
     // speed reference for velocity control and position reference for
     // odometry. As such, they must be configured for position control even
@@ -191,6 +204,8 @@ void DiffDriveRobot::estop_attach(boost::function<EStopCallback> callback)
 
 void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
+
     odom.pos_prev = odom.pos_curr;
     odom.pos_curr = pos;
     odom.vel = vel;
@@ -198,6 +213,8 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
     // Skip the first sample from each wheel. This is necessary in case the
     // encoders came up in an unknown state.
     if (!odom.init) {
+        odom.pos_prev = pos;
+        odom.pos_curr = pos;
         odom.init = true;
         return;
     }

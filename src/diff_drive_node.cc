@@ -34,8 +34,6 @@ static void callback_odom(double x, double y, double theta,
 {
     ros::Time now = ros::Time::now();
 
-    ROS_INFO("(%f, %f, %f) facing %f rad", x, y, 0.0, theta);
-
     // odom TF Frame
     geometry_msgs::TransformStamped msg_tf;
     msg_tf.header.stamp = now;
