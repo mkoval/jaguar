@@ -19,6 +19,7 @@ static ros::Publisher pub_temp_left, pub_temp_right;
 static ros::Publisher pub_voltage_left, pub_voltage_right;
 static ros::Publisher pub_vleft, pub_vright, pub_wheel;
 
+static ros::Time last_time;
 static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
 static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
@@ -41,6 +42,7 @@ static void callback_odom(double x, double y, double theta,
     msg_tf.child_frame_id  = frame_child;
     msg_tf.transform.translation.x = x;
     msg_tf.transform.translation.y = y;
+    msg_tf.transform.translation.z = 0;
     msg_tf.transform.rotation = tf::createQuaternionMsgFromYaw(theta);
     pub_tf->sendTransform(msg_tf);
 
@@ -61,12 +63,15 @@ static void callback_odom(double x, double y, double theta,
     robot_kf::WheelOdometry msg_wheel;
     msg_wheel.header.stamp = now;
     msg_wheel.header.frame_id = frame_child;
+    msg_wheel.timestep = now - last_time;
     msg_wheel.separation = wheel_separation;
     msg_wheel.left.movement = v_right;
     msg_wheel.left.variance = alpha * fabs(v_right);
     msg_wheel.right.movement = v_left;
     msg_wheel.right.variance = alpha * fabs(v_left);
     pub_wheel.publish(msg_wheel);
+
+    last_time = now;
 }
 
 static void callback_estop(bool stopped)
@@ -219,6 +224,7 @@ int main(int argc, char **argv)
     ros::param::get("~accel_max", settings.accel_max_mps2);
 
     // TODO: Read this from a parameter.
+    last_time = ros::Time::now();
     settings.brake = BrakeCoastSetting::kOverrideCoast;
 
     if (!(1 <= settings.id_left  && settings.id_left  <= 63)
