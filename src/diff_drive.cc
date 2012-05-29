@@ -31,7 +31,6 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
-    // FIXME: Convert from revolutions to meters using the robot model.
     block(
         jag_left_.config_brake_set(settings.brake),
         jag_right_.config_brake_set(settings.brake)
@@ -240,8 +239,8 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
         // TODO: Switch to a better odometry model.
         double const meters  = (meters_left + meters_right) / 2;
         double const radians = (meters_left - meters_right) / wheel_sep_;
-        x_ += meters * cos(theta_);
-        y_ += meters * sin(theta_);
+        x_ += meters * cos(theta_ + radians / 2);
+        y_ += meters * sin(theta_ + radians / 2);
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
