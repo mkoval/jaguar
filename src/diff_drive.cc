@@ -28,6 +28,8 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings)
     // generating +/-infinity or NaN during the race.
     , accel_max_(settings.accel_max_mps2)
     , wheel_circum_(0.0), wheel_sep_(0.0)
+    , flip_left_((settings.flip_left) ? -1.0 : 1.0)
+    , flip_right_((settings.flip_right) ? -1.0 : 1.0)
 {
     // This is necessary for the Jaguars to work after a fresh boot, even if
     // we never called system_halt() or system_reset().
@@ -244,10 +246,12 @@ void DiffDriveRobot::odom_update(Odometry &odom, double pos, double vel)
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
-        double const v_linear = (odom_right_.vel + odom_left_.vel) / 2;
-        double const omega    = (odom_right_.vel - odom_left_.vel) / wheel_sep_;
+        double const vl = odom_left_.vel * wheel_circum_ / 60;
+        double const vr = odom_right_.vel * wheel_circum_ / 60;
+        double const v_linear = (vr + vl) / 2;
+        double const omega    = (vr - vl) / wheel_sep_;
 
-        odom_signal_(x_, y_, theta_, v_linear, omega, meters_left, meters_right);
+        odom_signal_(x_, y_, theta_, v_linear, omega, meters_left, meters_right, vl, vr);
         odom_state_ = kNone;
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
@@ -313,24 +317,24 @@ void DiffDriveRobot::diag_update(
 void DiffDriveRobot::speed_set_p(double p)
 {
     block(
-        jag_left_.speed_set_p(p),
-        jag_right_.speed_set_p(p)
+        jag_left_.speed_set_p(flip_left_ * p),
+        jag_right_.speed_set_p(flip_right_ * p)
     );
 }
 
 void DiffDriveRobot::speed_set_i(double i)
 {
     block(
-        jag_left_.speed_set_i(i),
-        jag_right_.speed_set_i(i)
+        jag_left_.speed_set_i(flip_left_ * i),
+        jag_right_.speed_set_i(flip_right_ * i)
     );
 }
 
 void DiffDriveRobot::speed_set_d(double d)
 {
     block(
-        jag_left_.speed_set_d(d),
-        jag_right_.speed_set_d(d)
+        jag_left_.speed_set_d(flip_left_ * d),
+        jag_right_.speed_set_d(flip_right_ * d)
     );
 }
 

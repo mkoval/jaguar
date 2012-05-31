@@ -26,6 +26,8 @@ struct DiffDriveSettings {
     double robot_radius_m;
     double accel_max_mps2;
     BrakeCoastSetting::Enum brake;
+    bool flip_left;
+    bool flip_right;
 };
 
 class DiffDriveRobot
@@ -34,7 +36,7 @@ public:
     enum Side { kNone, kLeft, kRight };
     typedef void EStopCallback(bool);
     typedef void DiagnosticsCallback(double, double);
-    typedef void OdometryCallback(double, double, double, double, double, double, double);
+    typedef void OdometryCallback(double, double, double, double, double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
@@ -121,6 +123,9 @@ private:
     double current_rpm_left_, current_rpm_right_;
     double target_rpm_left_, target_rpm_right_;
     double accel_max_;
+
+    // Flipped encoder orientation.
+    double flip_left_, flip_right_;
 };
 
 };

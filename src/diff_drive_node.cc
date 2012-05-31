@@ -31,6 +31,7 @@ static volatile bool spinlock = false;
 
 static void callback_odom(double x, double y, double theta,
                           double velocity, double omega,
+                          double delta_left, double delta_right,
                           double v_left, double v_right)
 {
     ros::Time now = ros::Time::now();
@@ -45,6 +46,13 @@ static void callback_odom(double x, double y, double theta,
     msg_tf.transform.translation.z = 0;
     msg_tf.transform.rotation = tf::createQuaternionMsgFromYaw(theta);
     pub_tf->sendTransform(msg_tf);
+
+    // Publish instantaneous velocity.
+    std_msgs::Float64 msg_vl, msg_vr;
+    msg_vl.data = v_left;
+    msg_vr.data = v_right;
+    pub_vleft.publish(msg_vl);
+    pub_vright.publish(msg_vr);
 
     // Odometry Message
     nav_msgs::Odometry msg_odom;
@@ -65,10 +73,10 @@ static void callback_odom(double x, double y, double theta,
     msg_wheel.header.frame_id = frame_child;
     msg_wheel.timestep = now - last_time;
     msg_wheel.separation = wheel_separation;
-    msg_wheel.left.movement = v_right;
-    msg_wheel.left.variance = alpha * fabs(v_right);
-    msg_wheel.right.movement = v_left;
-    msg_wheel.right.variance = alpha * fabs(v_left);
+    msg_wheel.left.movement = delta_right;
+    msg_wheel.left.variance = alpha * fabs(delta_right);
+    msg_wheel.right.movement = delta_left;
+    msg_wheel.right.variance = alpha * fabs(delta_left);
     pub_wheel.publish(msg_wheel);
 
     last_time = now;
@@ -222,6 +230,8 @@ int main(int argc, char **argv)
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
+    ros::param::get("~flip_left", settings.flip_left);
+    ros::param::get("~flip_right", settings.flip_left);
 
     // TODO: Read this from a parameter.
     last_time = ros::Time::now();
